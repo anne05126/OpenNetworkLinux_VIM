@@ -50,9 +50,6 @@
 #define SYSTEM_CPLD_I2C_ADDR              0x5F  /* System CPLD Physical Address in the I2C */
 #define SYSTEM_CPLD_REVISION_ADDR_OFFSET  0x00
 
-#define ONIE_EEPROM_BUS_ID              0
-#define ONIE_EEPROM_ADDR                0x56
-
 #define NUM_OF_CPLD						1
 #define SYSTEM_CPLD_MAX_STRLEN              8
 
@@ -85,18 +82,18 @@ onlp_sysi_onie_data_get(uint8_t** data, int* size)
     return ONLP_STATUS_E_INTERNAL;
 }
 
-#else  // for EEPROM should be read by "i2cdump -y 0 0x56 c"(consecutive byte)
+#else
 int
 onlp_sysi_onie_data_get(uint8_t **data, int *size)
 {
     DIAG_PRINT("%s", __FUNCTION__);
-    int ret = 0;
     uint8_t *rdata = aim_zmalloc(256);
 
-    ret = i2c_sequential_read(ONIE_EEPROM_BUS_ID, ONIE_EEPROM_ADDR, 0, 256, (char *)rdata);
-    if (ret >= 0)
+    if (onlp_file_read(rdata, 256, size, ONIE_EEPROM_PATH) == ONLP_STATUS_OK)
     {
-        *data = rdata;
+    	if(*size == 256)
+        {
+        	*data = rdata;
 
 #if 0//debug
         int i = 0;
@@ -113,7 +110,8 @@ onlp_sysi_onie_data_get(uint8_t **data, int *size)
         }
         AIM_LOG_INFO("\n",rdata[i]);
 #endif
-        return ONLP_STATUS_OK;
+       		 return ONLP_STATUS_OK;
+    	}
     }
 
     aim_free(rdata);

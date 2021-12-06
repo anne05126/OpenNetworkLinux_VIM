@@ -32,6 +32,8 @@
 #define IDPROM_PATH "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0056/eeprom"
 //#define IDPROM_PATH "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-6/i2c-10/10-0051/eeprom"
 
+#define ONIE_EEPROM_PATH                "/sys/bus/i2c/devices/0-0056/eeprom"
+
 #define PSU1_ID 1
 #define PSU2_ID 2
 #define PSUI_BUS_ID_OFFSET      1

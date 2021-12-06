@@ -23,6 +23,7 @@
  *
  *
  ***********************************************************/
+
 #include <onlp/platformi/sfpi.h>
 
 #include <stdio.h>
@@ -30,43 +31,40 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <onlplib/i2c.h>
+#include <onlplib/file.h>
+#include <onlplib/gpio.h>
+#include <x86_64_alphanetworks_spx70d0_082f/x86_64_alphanetworks_spx70d0_082f_gpio_table.h>
 #include "platform_lib.h"
 
-#define DEBUG                           0
+/**
+ * This table maps the presence gpio, tx_disable gpio, tx_fault gpio, lp_mode gpio, and reset gpio
+ * for each SFP port.
+ */
+typedef struct sfpmap_s {
+    int port;
+    int present_gpio;
+    int tx_dis_gpio;
+    int tx_fault_gpio;
+//    int rx_los_gpio;
+    int lp_mode_gpio;
+    int reset_gpio;
+} sfpmap_t;
 
-#define PCA9539_NUM1_I2C_BUS_ID         21
-#define PCA9539_NUM3_I2C_BUS_ID         11
-#define PCA9539_NUM4_I2C_BUS_ID         16
+static sfpmap_t sfpmap__[] =
+    {
+        {  0, SPX70D0_082F_PCA9539_GPIO_XFP_1_PRSNT_N, SPX70D0_082F_PCA9539_GPIO_XFP_1_TX_DIS_N, SPX70D0_082F_PCA9539_GPIO_XFP_1_TX_FAULT_N, 0, 0 },
+        {  1, SPX70D0_082F_PCA9539_GPIO_XFP_2_PRSNT_N, SPX70D0_082F_PCA9539_GPIO_XFP_2_TX_DIS_N, SPX70D0_082F_PCA9539_GPIO_XFP_2_TX_FAULT_N, 0, 0 },
+        {  2, SPX70D0_082F_PCA9539_GPIO_XFP_3_PRSNT_N, SPX70D0_082F_PCA9539_GPIO_XFP_3_TX_DIS_N, SPX70D0_082F_PCA9539_GPIO_XFP_3_TX_FAULT_N, 0, 0 },
+        {  3, SPX70D0_082F_PCA9539_GPIO_XFP_4_PRSNT_N, SPX70D0_082F_PCA9539_GPIO_XFP_4_TX_DIS_N, SPX70D0_082F_PCA9539_GPIO_XFP_4_TX_FAULT_N, 0, 0 },
+        {  4, SPX70D0_082F_PCA9539_GPIO_XFP_5_PRSNT_N, SPX70D0_082F_PCA9539_GPIO_XFP_5_TX_DIS_N, SPX70D0_082F_PCA9539_GPIO_XFP_5_TX_FAULT_N, 0, 0 },
+        {  5, SPX70D0_082F_PCA9539_GPIO_XFP_6_PRSNT_N, SPX70D0_082F_PCA9539_GPIO_XFP_6_TX_DIS_N, SPX70D0_082F_PCA9539_GPIO_XFP_6_TX_FAULT_N, 0, 0 },
+        {  6, SPX70D0_082F_PCA9539_GPIO_XFP_7_PRSNT_N, SPX70D0_082F_PCA9539_GPIO_XFP_7_TX_DIS_N, SPX70D0_082F_PCA9539_GPIO_XFP_7_TX_FAULT_N, 0, 0 },        
+        {  7, SPX70D0_082F_PCA9539_GPIO_XFP_8_PRSNT_N, SPX70D0_082F_PCA9539_GPIO_XFP_8_TX_DIS_N, SPX70D0_082F_PCA9539_GPIO_XFP_8_TX_FAULT_N, 0, 0 },        
+        {  8, SPX70D0_082F_PCA9539_GPIO_QSFP28_1_PRSNT_N, 0, 0, SPX70D0_082F_PCA9539_GPIO_QSFP28_1_LPMODE_N, SPX70D0_082F_PCA9539_GPIO_QSFP28_1_RESET_N },
+        {  9, SPX70D0_082F_PCA9539_GPIO_QSFP28_2_PRSNT_N, 0, 0, SPX70D0_082F_PCA9539_GPIO_QSFP28_2_LPMODE_N, SPX70D0_082F_PCA9539_GPIO_QSFP28_2_RESET_N }     
+  };
 
-#define PCA9539_NUM1_I2C_ADDR           0x76  /* PCA9539#1 is used for XFP 1~4 ports */
-#define PCA9539_NUM3_I2C_ADDR           0x77  /* PCA9539#3 is used for QSFP28 ports */
-#define PCA9539_NUM4_I2C_ADDR           0x74  /* PCA9539#4 is used for XFP 5~8 ports */
-
-#define PCA9539_IO_INPUT    1
-#define PCA9539_IO_OUTPUT   0
-
-#define PCA9539_IO0_INPUT_OFFSET       0x00
-#define PCA9539_IO1_INPUT_OFFSET       0x01
-#define PCA9539_IO0_OUTPUT_OFFSET      0x02
-#define PCA9539_IO1_OUTPUT_OFFSET      0x03
-
-
-/* configures the directions of the I/O pin. 1:input, 0:output */
-#define PCA9539_IO0_DIRECTION_OFFSET   0x06 
-#define PCA9539_IO1_DIRECTION_OFFSET   0x07
-
-#define PCA9539_XFP_1_3_5_7_TXDIS_BIT      0  /* TX_DISB bit for XFP1, XFP3, XFP5 and XFP7 on PCA9539#1 or #4 */
-#define PCA9539_XFP_1_3_5_7_TXFAULT_BIT    1
-#define PCA9539_XFP_1_3_5_7_PRESENT_BIT    2
-
-#define PCA9539_XFP_2_4_6_8_TXDIS_BIT      4  /* TX_DISB bit for XFP2, XFP4, XFP6 and XFP8 on PCA9539#1 or #4 */
-#define PCA9539_XFP_2_4_6_8_TXFAULT_BIT    5
-#define PCA9539_XFP_2_4_6_8_PRESENT_BIT    6
-
-#define PCA9539_QSFP_LPMODE_BIT            0  /* PCA9539#3 */
-#define PCA9539_QSFP_INT_BIT               1
-#define PCA9539_QSFP_MODPRS_BIT            2 
-#define PCA9539_QSFP_RESET_BIT             3
+#define SFP_GET(_port) (sfpmap__ + _port)
 
 enum sfp_port
 {
@@ -82,526 +80,22 @@ enum sfp_port
 	SFP_PORT_100G_QSFP28_2 = 9
 };
 
-static int
-port_to_pca9539_busid(int port)
-{
-    int ret = 0;
+#define SFP0_PORT_INDEX                     SFP_PORT_10G_XFP_1
+#define SFP1_PORT_INDEX                     SFP_PORT_10G_XFP_8
+#define QSFP_PORT_INDEX_START               SFP_PORT_100G_QSFP28_1
+#define QSFP_PORT_INDEX_END                 SFP_PORT_100G_QSFP28_2
 
-    if ((port < SFP_PORT_10G_XFP_1) || (port > SFP_PORT_100G_QSFP28_2))
-    {
-        AIM_LOG_INFO("%s:%d port[%d] is out of range\n", __FUNCTION__, __LINE__, port);
-        return ret;
-    }
+#define IS_SFP_PORT(_port)  (_port >= SFP0_PORT_INDEX && _port <= SFP1_PORT_INDEX)
+#define IS_QSFP_PORT(_port) (_port >= QSFP_PORT_INDEX_START && _port <= QSFP_PORT_INDEX_END)
 
-    switch (port)
-    {
-        case SFP_PORT_10G_XFP_1:
-        case SFP_PORT_10G_XFP_2:
-        case SFP_PORT_10G_XFP_3:
-        case SFP_PORT_10G_XFP_4:
-            ret = PCA9539_NUM1_I2C_BUS_ID;
-            break;
 
-        case SFP_PORT_10G_XFP_5:
-        case SFP_PORT_10G_XFP_6:
-        case SFP_PORT_10G_XFP_7:
-        case SFP_PORT_10G_XFP_8:
-            ret = PCA9539_NUM4_I2C_BUS_ID;
-            break;
+#define PORT_BUS_INDEX(port) (port_to_dev_busid(port))
 
-        case SFP_PORT_100G_QSFP28_1:
-        case SFP_PORT_100G_QSFP28_2:
-            ret = PCA9539_NUM3_I2C_BUS_ID;
-            break;
-        
-        default:
-            break;        
-    }
-    
-    DIAG_PRINT("%s, port:%d, busid:%d ", __FUNCTION__, port, ret);
-    return ret;
-}
+/* SFP */
+#define MODULE_EEPROM_SFP_FORMAT            "/sys/bus/i2c/devices/%d-0050/eeprom"
+#define MODULE_EEPROM_DOM_SFP_FORMAT        "/sys/bus/i2c/devices/%d-0051/eeprom"
 
-static int
-port_to_pca9539_addr(int port)
-{
-    int ret = 0;
-
-    if ((port < SFP_PORT_10G_XFP_1) || (port > SFP_PORT_100G_QSFP28_2))
-    {
-        AIM_LOG_INFO("%s:%d port[%d] is out of range\n", __FUNCTION__, __LINE__, port);
-        return ret;
-    }
-
-    switch (port)
-    {
-        case SFP_PORT_10G_XFP_1:
-        case SFP_PORT_10G_XFP_2:
-        case SFP_PORT_10G_XFP_3:
-        case SFP_PORT_10G_XFP_4:
-            ret = PCA9539_NUM1_I2C_ADDR;
-            break;
-
-        case SFP_PORT_10G_XFP_5:
-        case SFP_PORT_10G_XFP_6:
-        case SFP_PORT_10G_XFP_7:
-        case SFP_PORT_10G_XFP_8:
-            ret = PCA9539_NUM4_I2C_ADDR;
-            break;
-
-        case SFP_PORT_100G_QSFP28_1:
-        case SFP_PORT_100G_QSFP28_2:
-            ret = PCA9539_NUM3_I2C_ADDR;
-            break;
-        
-        default:
-            break;        
-    }
-    
-    DIAG_PRINT("%s, port:%d, pca9539_addr:%d ", __FUNCTION__, port, ret);
-    return ret;
-}
-
-static int
-port_to_pca9539_sfp_offset(int port, int direction)
-{
-    int ret = 0;
-
-    if (direction == PCA9539_IO_INPUT)
-    {
-        switch (port)
-        {
-            case SFP_PORT_10G_XFP_1:
-            case SFP_PORT_10G_XFP_2:
-            case SFP_PORT_10G_XFP_5:
-            case SFP_PORT_10G_XFP_6:
-            case SFP_PORT_100G_QSFP28_1:
-                ret = PCA9539_IO0_INPUT_OFFSET;
-                break;
-
-            case SFP_PORT_10G_XFP_3:
-            case SFP_PORT_10G_XFP_4:
-            case SFP_PORT_10G_XFP_7:
-            case SFP_PORT_10G_XFP_8:
-            case SFP_PORT_100G_QSFP28_2:
-                ret = PCA9539_IO1_INPUT_OFFSET;
-                break;
-               
-            default:
-                break;        
-        }
-    }
-    else if (direction == PCA9539_IO_OUTPUT)
-    {
-        switch (port)
-        {
-            case SFP_PORT_10G_XFP_1:
-            case SFP_PORT_10G_XFP_2:
-            case SFP_PORT_10G_XFP_5:
-            case SFP_PORT_10G_XFP_6:
-            case SFP_PORT_100G_QSFP28_1:
-                ret = PCA9539_IO0_OUTPUT_OFFSET;
-                break;
-
-            case SFP_PORT_10G_XFP_3:
-            case SFP_PORT_10G_XFP_4:
-            case SFP_PORT_10G_XFP_7:
-            case SFP_PORT_10G_XFP_8:
-            case SFP_PORT_100G_QSFP28_2:
-                ret = PCA9539_IO1_OUTPUT_OFFSET;
-                break;
-               
-            default:
-                break;        
-        }
-    }
-
-    DIAG_PRINT("%s, port:%d, direction %d, offset:0x%X", __FUNCTION__, port, direction, ret);
-    return ret;
-}
-
-static int
-port_to_pca9539_txdis_bit(int port)
-{
-    int index = 0;
-
-    switch (port)
-    {
-        case SFP_PORT_10G_XFP_1:
-        case SFP_PORT_10G_XFP_3:
-        case SFP_PORT_10G_XFP_5:
-        case SFP_PORT_10G_XFP_7:
-            index = PCA9539_XFP_1_3_5_7_TXDIS_BIT;
-            break;
-
-        case SFP_PORT_10G_XFP_2:
-        case SFP_PORT_10G_XFP_4:
-        case SFP_PORT_10G_XFP_6:
-        case SFP_PORT_10G_XFP_8:
-            index = PCA9539_XFP_2_4_6_8_TXDIS_BIT;
-            break;
-           
-        default:
-            break;        
-    }
-    
-    DIAG_PRINT("%s, port:%d, index:%d ", __FUNCTION__, port, index);
-    return index;
-}
-
-static int
-port_to_pca9539_txfault_bit(int port)
-{
-    int index = 0;
-
-    switch (port)
-    {
-        case SFP_PORT_10G_XFP_1:
-        case SFP_PORT_10G_XFP_3:
-        case SFP_PORT_10G_XFP_5:
-        case SFP_PORT_10G_XFP_7:
-            index = PCA9539_XFP_1_3_5_7_TXFAULT_BIT;
-            break;
-
-        case SFP_PORT_10G_XFP_2:
-        case SFP_PORT_10G_XFP_4:
-        case SFP_PORT_10G_XFP_6:
-        case SFP_PORT_10G_XFP_8:
-            index = PCA9539_XFP_2_4_6_8_TXFAULT_BIT;
-            break;
-           
-        default:
-            break;        
-    }
-    
-    DIAG_PRINT("%s, port:%d, index:%d ", __FUNCTION__, port, index);
-    return index;
-}
-
-static int
-port_to_pca9539_present_bit(int port)
-{
-    int index = 0;
-
-    switch (port)
-    {
-        case SFP_PORT_10G_XFP_1:
-        case SFP_PORT_10G_XFP_3:
-        case SFP_PORT_10G_XFP_5:
-        case SFP_PORT_10G_XFP_7:
-            index = PCA9539_XFP_1_3_5_7_PRESENT_BIT;
-            break;
-
-        case SFP_PORT_10G_XFP_2:
-        case SFP_PORT_10G_XFP_4:
-        case SFP_PORT_10G_XFP_6:
-        case SFP_PORT_10G_XFP_8:
-            index = PCA9539_XFP_2_4_6_8_PRESENT_BIT;
-            break;
-
-        case SFP_PORT_100G_QSFP28_1:
-        case SFP_PORT_100G_QSFP28_2:
-            index = PCA9539_QSFP_MODPRS_BIT;
-            break;
-           
-        default:
-            break;        
-    }
-    
-    DIAG_PRINT("%s, port:%d, index:%d ", __FUNCTION__, port, index);
-    return index;
-}
-
-static int
-port_to_pca9539_lpmode_bit(int port)
-{
-    int index = 0;
-
-    switch (port)
-    {
-        case SFP_PORT_100G_QSFP28_1:
-        case SFP_PORT_100G_QSFP28_2:
-            index = PCA9539_QSFP_LPMODE_BIT;
-            break;
-
-        default:
-            break;        
-    }
-    
-    DIAG_PRINT("%s, port:%d, index:%d ", __FUNCTION__, port, index);
-    return index;
-}
-
-static int
-port_to_pca9539_reset_bit(int port)
-{
-    int index = 0;
-
-    switch (port)
-    {
-        case SFP_PORT_100G_QSFP28_1:
-        case SFP_PORT_100G_QSFP28_2:
-            index = PCA9539_QSFP_RESET_BIT;
-            break;
-
-        default:
-            break;        
-    }
-    
-    DIAG_PRINT("%s, port:%d, index:%d ", __FUNCTION__, port, index);
-    return index;
-}
-
-static int
-spx70d0_sfp_present(int port)
-{
-    int data = 0;
-    int pca9539_bus = 0;
-    int pca9539_addr = 0;
-    int offset = 0;
-
-    DIAG_PRINT("%s, port:%d", __FUNCTION__, port);
-    
-    pca9539_bus = port_to_pca9539_busid(port);
-    pca9539_addr = port_to_pca9539_addr(port);
-    offset = port_to_pca9539_sfp_offset(port, PCA9539_IO_INPUT);
-
-    data = onlp_i2c_readb(pca9539_bus, pca9539_addr, offset, ONLP_I2C_F_FORCE);
-    if (data < 0)
-    {
-        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, data);
-        return data;
-    }
-
-    if (DEBUG)
-        AIM_LOG_INFO("%s:%d port[%d],busid[%d],addr[%02x],offset[%02x],read_byte[%02x]\n", __FUNCTION__, __LINE__,
-                      port, pca9539_bus, pca9539_addr, offset, (unsigned char)data);
-
-    /* "0" indicates Module Present. */
-    if (!(data & (1 << port_to_pca9539_present_bit(port))))
-    {
-        /*
-         * Return 1 if present.
-         * Return 0 if not present.
-         * Return < 0 if error.
-         */
-        return 1;
-    }
-
-    return 0;
-}
-
-static int
-spx70d0_sfp_pca9539_direction_set(int IO_port)
-{
-    int offset = 0;
-    char data = 0;
-    int ret = 0;
-
-    if (IO_port == 0)
-        offset = PCA9539_IO0_DIRECTION_OFFSET;
-    else
-        offset = PCA9539_IO1_DIRECTION_OFFSET;
-
-    /* 1. Configure the direction of PCA9539#1 */
-    data = onlp_i2c_readb(PCA9539_NUM1_I2C_BUS_ID, PCA9539_NUM1_I2C_ADDR, offset, ONLP_I2C_F_FORCE);
-
-    /* configuration direction to output, input:1, output:0.  */
-    data &= ~(1 << PCA9539_XFP_1_3_5_7_TXDIS_BIT);
-    data &= ~(1 << PCA9539_XFP_2_4_6_8_TXDIS_BIT);
-
-    ret = onlp_i2c_writeb(PCA9539_NUM1_I2C_BUS_ID, PCA9539_NUM1_I2C_ADDR, offset, data, ONLP_I2C_F_FORCE);
-    if (ret < 0)
-    {
-        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
-        return ret;
-    }
-
-    /* 2. Configure the direction of PCA9539#4 */
-    data = onlp_i2c_readb(PCA9539_NUM4_I2C_BUS_ID, PCA9539_NUM4_I2C_ADDR, offset, ONLP_I2C_F_FORCE);
-
-    /* configuration direction to output, input:1, output:0.  */
-    data &= ~(1 << PCA9539_XFP_1_3_5_7_TXDIS_BIT);
-    data &= ~(1 << PCA9539_XFP_2_4_6_8_TXDIS_BIT);
-
-    ret = onlp_i2c_writeb(PCA9539_NUM4_I2C_BUS_ID, PCA9539_NUM4_I2C_ADDR, offset, data, ONLP_I2C_F_FORCE);
-    if (ret < 0)
-    {
-        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
-        return ret;
-    }
-
-    /* 3. Configure the direction of PCA9539#3 */
-    data = onlp_i2c_readb(PCA9539_NUM3_I2C_BUS_ID, PCA9539_NUM3_I2C_ADDR, offset, ONLP_I2C_F_FORCE);
-
-    /* configuration direction to output, input:1, output:0.  */
-    data &= ~(1 << PCA9539_QSFP_LPMODE_BIT);
-    data &= ~(1 << PCA9539_QSFP_RESET_BIT);
-
-    ret = onlp_i2c_writeb(PCA9539_NUM3_I2C_BUS_ID, PCA9539_NUM3_I2C_ADDR, offset, data, ONLP_I2C_F_FORCE);
-    if (ret < 0)
-    {
-        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
-        return ret;
-    }
-
-    return 0;      
-}
-
-static int
-spx70d0_sfp_pca9539_direction_setting_check(int IO_port)
-{
-    int offset = 0;
-    int data = 0;
-    //int ret = 0;
-
-    if (IO_port == 0)
-        offset = PCA9539_IO0_DIRECTION_OFFSET;
-    else
-        offset = PCA9539_IO1_DIRECTION_OFFSET;
-
-    /* Get the I/O port direction setting of PCA9539#1 */
-    data = onlp_i2c_readb(PCA9539_NUM1_I2C_BUS_ID, PCA9539_NUM1_I2C_ADDR, offset, ONLP_I2C_F_FORCE);
-
-    DIAG_PRINT("[%s(%d)] pca9539_bus:%d, addr:0x%X, offset:0x%X, data:0x%2X \n", 
-                __FUNCTION__, __LINE__,  PCA9539_NUM1_I2C_BUS_ID, PCA9539_NUM1_I2C_ADDR, offset, (unsigned char)data);
-
-    /* Check PCA9539#2 I/O port0 direction has been initialized or not */
-    if ((unsigned char)data != 0xEE)
-        return 0; 
-
-    /* Get the I/O port direction setting of PCA9539#4 */
-    data = onlp_i2c_readb(PCA9539_NUM4_I2C_BUS_ID, PCA9539_NUM4_I2C_ADDR, offset, ONLP_I2C_F_FORCE);
-
-    DIAG_PRINT("[%s(%d)] pca9539_bus:%d, addr:0x%X, offset:0x%X, data:0x%2X \n", 
-                __FUNCTION__, __LINE__,  PCA9539_NUM4_I2C_BUS_ID, PCA9539_NUM4_I2C_ADDR, offset, (unsigned char)data);
-
-    /* Check PCA9539#4 I/O port0 direction has been initialized or not */
-    if ((unsigned char)data != 0xEE)
-        return 0; 
-
-    /* Get the I/O port direction setting of PCA9539#3 */
-    data = onlp_i2c_readb(PCA9539_NUM3_I2C_BUS_ID, PCA9539_NUM3_I2C_ADDR, offset, ONLP_I2C_F_FORCE);
-
-    DIAG_PRINT("[%s(%d)] pca9539_bus:%d, addr:0x%X, offset:0x%X, data:0x%2X \n", 
-                __FUNCTION__, __LINE__,  PCA9539_NUM3_I2C_BUS_ID, PCA9539_NUM3_I2C_ADDR, offset, (unsigned char)data);
-
-    /* Check PCA9539#4 I/O port0 direction has been initialized or not */
-    if ((unsigned char)data != 0xF6)
-        return 0;
-
-    return 1;      
-}
-
-static int
-spx70d0_sfp_init(void)
-{
-    int ret = 0;
-
-    DIAG_PRINT("%s", __FUNCTION__);
-
-    /* Configure PCA9539#1,3,4 I/O port0 direction if not been initialized */
-    if (spx70d0_sfp_pca9539_direction_setting_check(0) == 0)
-    {
-        /* config pca9539 IO port0 direction */
-        ret = spx70d0_sfp_pca9539_direction_set(0);
-        if (ret < 0)
-        {
-            AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
-            return ret;
-        }
-
-        /* config pca9539 IO port1 direction */
-        ret = spx70d0_sfp_pca9539_direction_set(1);
-        if (ret < 0)
-        {
-            AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
-            return ret;
-        }
-
-        onlp_sfpi_control_set(SFP_PORT_10G_XFP_1, ONLP_SFP_CONTROL_TX_DISABLE, 0);
-        onlp_sfpi_control_set(SFP_PORT_10G_XFP_2, ONLP_SFP_CONTROL_TX_DISABLE, 0);
-        onlp_sfpi_control_set(SFP_PORT_10G_XFP_3, ONLP_SFP_CONTROL_TX_DISABLE, 0);
-        onlp_sfpi_control_set(SFP_PORT_10G_XFP_4, ONLP_SFP_CONTROL_TX_DISABLE, 0);
-        onlp_sfpi_control_set(SFP_PORT_10G_XFP_5, ONLP_SFP_CONTROL_TX_DISABLE, 0);
-        onlp_sfpi_control_set(SFP_PORT_10G_XFP_6, ONLP_SFP_CONTROL_TX_DISABLE, 0);
-        onlp_sfpi_control_set(SFP_PORT_10G_XFP_7, ONLP_SFP_CONTROL_TX_DISABLE, 0);
-        onlp_sfpi_control_set(SFP_PORT_10G_XFP_8, ONLP_SFP_CONTROL_TX_DISABLE, 0);
-        onlp_sfpi_control_set(SFP_PORT_100G_QSFP28_1, ONLP_SFP_CONTROL_LP_MODE, 0);
-        onlp_sfpi_control_set(SFP_PORT_100G_QSFP28_1, ONLP_SFP_CONTROL_RESET, 1);
-        onlp_sfpi_control_set(SFP_PORT_100G_QSFP28_2, ONLP_SFP_CONTROL_LP_MODE, 0);
-        onlp_sfpi_control_set(SFP_PORT_100G_QSFP28_2, ONLP_SFP_CONTROL_RESET, 1);
-    }
-
-    return 0;
-}
-
-/************************************************************
- *
- * SFPI Entry Points
- *
- ***********************************************************/
-int
-onlp_sfpi_init(void)
-{
-    DIAG_PRINT("%s", __FUNCTION__);
-    /* Called at initialization time */
-    spx70d0_sfp_init();
-
-    return ONLP_STATUS_OK;
-}
-
-int
-onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t *bmap)
-{
-    /*
-     * Ports {0, 9}
-     */
-    int p = 0;
-    AIM_BITMAP_CLR_ALL(bmap);
-
-    for (p = 0; p < NUM_OF_SFP_PORT; p++)
-    {
-        AIM_BITMAP_SET(bmap, p);
-    }
-    DIAG_PRINT("%s", __FUNCTION__);
-
-    return ONLP_STATUS_OK;
-}
-
-int
-onlp_sfpi_is_present(int port)
-{
-    /*
-     * Return 1 if present.
-     * Return 0 if not present.
-     * Return < 0 if error.
-     */
-    int present = 0;
-
-    present = spx70d0_sfp_present(port);
-
-    DIAG_PRINT("%s, port=%d, present:%d", __FUNCTION__, port, present);
-    return present;
-}
-
-int
-onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t *dst)
-{
-    DIAG_PRINT("%s", __FUNCTION__);
-
-    int i = 0;
-    AIM_BITMAP_CLR_ALL(dst);
-    for (i = 0; i < NUM_OF_SFP_PORT; i++)
-    {
-        if (onlp_sfpi_is_present(i))
-        {
-            AIM_BITMAP_SET(dst, i);
-        }
-    }
-
-    return ONLP_STATUS_OK;
-}
+#define DEBUG                           0
 
 static int
 port_to_dev_busid(int port)
@@ -647,21 +141,110 @@ port_to_dev_busid(int port)
     return busid;
 }
 
+/************************************************************
+ *
+ * SFPI Entry Points
+ *
+ ***********************************************************/
+int
+onlp_sfpi_init(void)
+{
+    DIAG_PRINT("%s", __FUNCTION__);
+
+    return ONLP_STATUS_OK;
+}
+
+int
+onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t *bmap)
+{
+    /*
+     * Ports {0, 9}
+     */
+    int p = 0;
+    AIM_BITMAP_CLR_ALL(bmap);
+
+    for (p = 0; p < NUM_OF_SFP_PORT; p++)
+    {
+        AIM_BITMAP_SET(bmap, p);
+    }
+    DIAG_PRINT("%s", __FUNCTION__);
+
+    return ONLP_STATUS_OK;
+}
+
+int
+onlp_sfpi_is_present(int port)
+{
+    /*
+     * Return 1 if present.
+     * Return 0 if not present.
+     * Return < 0 if error.
+     */
+    int value = 0;
+
+    sfpmap_t* sfp = SFP_GET(port);
+    if(sfp->present_gpio > 0) 
+    {
+        DIAG_PRINT("%s, port %d, sfp->present_gpio %d\r\n", __FUNCTION__, port, sfp->present_gpio);
+
+        if(onlp_gpio_get(sfp->present_gpio, &value) == ONLP_STATUS_OK)
+            return (value == 0);
+        else
+            return ONLP_STATUS_E_MISSING;		
+    }
+    else
+    {
+        return ONLP_STATUS_E_INVALID;
+    }
+
+}
+
+int
+onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
+{
+    /* auto generate from sfp.c */
+    return ONLP_STATUS_E_UNSUPPORTED;
+}
+
+int
+onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
+{
+    /* auto generate from sfp.c */
+    return ONLP_STATUS_E_UNSUPPORTED;
+}
+
 int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-    int busid = port_to_dev_busid(port);
-
-    DIAG_PRINT("%s, port:%d, busid:%d", __FUNCTION__, port, busid);
-
     /*
      * Read the SFP eeprom into data[]
+     *
+     * Return MISSING if SFP is missing.
+     * Return OK if eeprom is read
      */
-    memset(data, 0x0, 256);
 
-    if (onlp_i2c_read(busid, SFP_PLUS_EEPROM_I2C_ADDR, 0x0, 256, data, ONLP_I2C_F_FORCE) != 0)
+    int size = 0;
+    if(port < 0 || port >= NUM_OF_SFP_PORT)
+        return ONLP_STATUS_E_INTERNAL;
+
+    DIAG_PRINT("%s, port:%d, busid:%d", __FUNCTION__, port, PORT_BUS_INDEX(port));
+
+    if (IS_SFP_PORT(port) || IS_QSFP_PORT(port)) 
     {
-        AIM_LOG_INFO("Unable to read eeprom from port(%d)\r\n", port);
+        if(onlp_file_read(data, 256, &size, MODULE_EEPROM_SFP_FORMAT, 
+                PORT_BUS_INDEX(port)) != ONLP_STATUS_OK) 
+        {
+            AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }    
+    }
+    else
+    {
+        return ONLP_STATUS_E_INVALID;
+    }
+
+    if(size != 256) 
+    {
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -670,23 +253,38 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 
 int onlp_sfpi_dom_read(int port, uint8_t data[256])
 {
-    int busid = port_to_dev_busid(port);
-    int dev_addr = 0;
+    FILE* fp;
+    char file[64] = {0};
 
-    memset(data, 0x0, 256);
-    DIAG_PRINT("%s, port:%d, busid:%d", __FUNCTION__, port, busid);
+    DIAG_PRINT("%s, port:%d, busid:%d", __FUNCTION__, port, PORT_BUS_INDEX(port));
 
-    if (port >= SFP_START_INDEX && port < (SFP_START_INDEX+NUM_OF_SFP_PORT))
+    if (IS_SFP_PORT(port))
     {
-        dev_addr = SFP_PLUS_EEPROM_I2C_ADDR;
-    }
+        sprintf(file, MODULE_EEPROM_SFP_FORMAT, PORT_BUS_INDEX(port));
+        fp = fopen(file, "r");
+        if(fp == NULL) {
+            AIM_LOG_ERROR("Unable to open the eeprom device file of port(%d)", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
 
-    if (onlp_i2c_read(busid, dev_addr, 0x0, 256, data, ONLP_I2C_F_FORCE) != 0)
+        if (fseek(fp, 256, SEEK_CUR) != 0) {
+            fclose(fp);
+            AIM_LOG_ERROR("Unable to set the file position indicator of port(%d)", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        int ret = fread(data, 1, 256, fp);
+        fclose(fp);
+        if (ret != 256) {
+            AIM_LOG_ERROR("Unable to read the module_eeprom device file of port(%d)", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+    else
     {
-        AIM_LOG_INFO("Unable to read eeprom from port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
+        return ONLP_STATUS_E_INVALID;
     }
-
+    
     return ONLP_STATUS_OK;
 }
 
@@ -738,36 +336,6 @@ onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
     return ret;
 }
 
-/* the description is not correct, will remove later
-  Reset and LP mode can control by CPLD so the setting will be keep in CPLD.
-  For other options, control is get/set to QSFP28.
-  Control options set to QSFP28 will be lost when the QSFP28 is removed.
-  Upper layer software system should keep the configuration and set it again when detect a new sfp module insert. 
-    [QSFP]
-     function                            R/W  CPLD           EEPROM
-    ------------------------------------ ---  -------------  -----------------
-    ONLP_SFP_CONTROL_RESET                W   0x7
-    ONLP_SFP_CONTROL_RESET_STATE         R/W  0x7  
-    ONLP_SFP_CONTROL_RX_LOS               R   none           byte 4
-    ONLP_SFP_CONTROL_TX_FAULT             R   none           byte 3
-    ONLP_SFP_CONTROL_TX_DISABLE          R/W  none           byte 86
-    ONLP_SFP_CONTROL_TX_DISABLE_CHANNEL  R/W  none           byte 86
-    ONLP_SFP_CONTROL_LP_MODE             R/W  0x9          
-    ONLP_SFP_CONTROL_POWER_OVERRIDE      R/W  none           byte 93
-    [SFP]
-     function                            R/W  CPLD       
-    ------------------------------------ ---  ---------------  
-    ONLP_SFP_CONTROL_RESET               Not Support(There is no RESET pin in SFP module)
-    ONLP_SFP_CONTROL_RESET_STATE         Not Support(There is no RESET pin in SFP module)
-    ONLP_SFP_CONTROL_RX_LOS               R   0x13/0x14/0x15
-    ONLP_SFP_CONTROL_TX_FAULT             R   0x10/0x11/0x12
-    ONLP_SFP_CONTROL_TX_DISABLE          R/W  0x19/0x1A/0x1B
-    ONLP_SFP_CONTROL_TX_DISABLE_CHANNEL  Not Support(It is for QSFP)
-    ONLP_SFP_CONTROL_LP_MODE             Not Support(It is for QSFP)
-    ONLP_SFP_CONTROL_POWER_OVERRIDE      Not Support(It is for QSFP)
-
-*/
-
 int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int *supported)
 {
     if (supported == NULL)
@@ -778,33 +346,39 @@ int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int *suppo
 
     *supported = 0;
 
-    if ((port >= SFP_PORT_10G_XFP_1) && (port <= SFP_PORT_10G_XFP_8))
+    switch (control)
     {
-        switch (control)
+        case ONLP_SFP_CONTROL_RESET:
+        case ONLP_SFP_CONTROL_LP_MODE:            
         {
-            case ONLP_SFP_CONTROL_TX_FAULT:
-            case ONLP_SFP_CONTROL_TX_DISABLE:
-              *supported = 1;
-              break;
-                
-            default:
-              *supported = 0;
-              break;
+            if(IS_QSFP_PORT(port))
+            {
+                *supported = 1;
+            }
+            else
+            {
+                *supported = 0;
+            }
+            break;            
         }
-    }
-    else if ((port >= SFP_PORT_100G_QSFP28_1) && (port <= SFP_PORT_100G_QSFP28_2))
-    {
-        switch (control)
+
+        case ONLP_SFP_CONTROL_TX_FAULT:
+        case ONLP_SFP_CONTROL_TX_DISABLE:
         {
-            case ONLP_SFP_CONTROL_LP_MODE:
-            case ONLP_SFP_CONTROL_RESET:
-              *supported = 1;
-              break;
-                
-            default:
-              *supported = 0;
-              break;
+            if(IS_SFP_PORT(port))
+            {
+                *supported = 1;
+            }
+            else
+            {
+                *supported = 0;
+            }
+            break;            
         }
+
+        default:
+            *supported = 0;
+            break;
     }
 
     DIAG_PRINT("%s, port:%d, control:%d(%s), supported:%d", __FUNCTION__, port, control, sfp_control_to_str(control), *supported);
@@ -814,78 +388,99 @@ int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int *suppo
 int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
-    int rv = ONLP_STATUS_OK;
-    int pca9539_bus = 0;
-    int pca9539_addr = 0;
-    int offset = 0;
-    int port_bit = 0;
+    int rv;  
     int supported = 0;
-    char optval = 0;
+    sfpmap_t* sfp = SFP_GET(port);
     
-    if ((onlp_sfpi_control_supported(port, control, &supported) == ONLP_STATUS_OK) && (supported == 0))
+    if ((onlp_sfpi_control_supported(port, control, &supported) == ONLP_STATUS_OK) && 
+        (supported == 0))
+    {
+        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
         return ONLP_STATUS_E_UNSUPPORTED;
-
+    }
+    
     DIAG_PRINT("%s, port:%d, control:%d(%s), value:0x%X", __FUNCTION__, port, control, sfp_control_to_str(control), value);
 
+    /* ONLP_SFP_CONTROL_RESET: write-only. */
     switch (control)
     {
-        /* TXDIS is Output direction!!!! */
         case ONLP_SFP_CONTROL_TX_DISABLE:
-            offset = port_to_pca9539_sfp_offset(port, PCA9539_IO_OUTPUT);
-            port_bit = port_to_pca9539_txdis_bit(port);
+        {
+            if(IS_SFP_PORT(port)) 
+            {
+                if(onlp_gpio_set(sfp->tx_dis_gpio, value) == ONLP_STATUS_OK)
+                    rv = ONLP_STATUS_OK;
+                else
+                {
+                    AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }            
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
             break;
+        }
 
         case ONLP_SFP_CONTROL_LP_MODE:
-            offset = port_to_pca9539_sfp_offset(port, PCA9539_IO_OUTPUT);
-            port_bit = port_to_pca9539_lpmode_bit(port);
+        {
+            if(IS_QSFP_PORT(port)) 
+            {
+                if(onlp_gpio_set(sfp->lp_mode_gpio, value) == ONLP_STATUS_OK)
+                    rv = ONLP_STATUS_OK;
+                else
+                {
+                    AIM_LOG_ERROR("Unable to set lp_mode status to port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }            
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
             break;
+        }
 
         case ONLP_SFP_CONTROL_RESET:
-            offset = port_to_pca9539_sfp_offset(port, PCA9539_IO_OUTPUT);
-            port_bit = port_to_pca9539_reset_bit(port);
+        {
+            if(IS_QSFP_PORT(port)) 
+            {
+                if(onlp_gpio_set(sfp->reset_gpio, value) == ONLP_STATUS_OK)
+                    rv = ONLP_STATUS_OK;
+                else
+                {
+                    AIM_LOG_ERROR("Unable to set reset_gpio status to port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }            
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
             break;
+        }
             
         default:
-            return ONLP_STATUS_E_UNSUPPORTED;
+            rv = ONLP_STATUS_E_UNSUPPORTED;            
             break;
     }
 
-    pca9539_bus = port_to_pca9539_busid(port);
-    pca9539_addr = port_to_pca9539_addr(port);
-
-    optval = onlp_i2c_readb(pca9539_bus, pca9539_addr, offset, ONLP_I2C_F_FORCE);
-
-    if (value != 0)
+    if (rv == ONLP_STATUS_E_UNSUPPORTED)
     {
-        optval |= (1 << port_bit);
-    }
-    else
-    {
-        optval &= ~(1 << port_bit);
+        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
     }
 
-    rv = onlp_i2c_writeb(pca9539_bus, pca9539_addr, offset, optval, ONLP_I2C_F_FORCE);
-    if (rv < 0)
-    {
-        dump_stack();
-        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, rv);
-        return rv;
-    }
-    
-    DIAG_PRINT("%s, port_bit:%d, pca9539_bus:%d, pca9539_addr:0x%X, offset:0x%X", __FUNCTION__, port_bit, pca9539_bus, pca9539_addr, offset);
     return rv;
+
 }
 
 int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int *value)
 {
-    int rv = ONLP_STATUS_OK;
-    int pca9539_bus = 0;
-    int pca9539_addr = 0;
-    int offset = 0;
-    int port_bit = 0;
+    int rv;
     int supported = 0;
-    char optval = 0;
+    sfpmap_t* sfp = SFP_GET(port);
 
     if (value == NULL)
     {
@@ -893,7 +488,8 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int *value)
         return ONLP_STATUS_E_PARAM;
     }
 
-    if ((onlp_sfpi_control_supported(port, control, &supported) == ONLP_STATUS_OK) && (supported == 0))
+    if ((onlp_sfpi_control_supported(port, control, &supported) == ONLP_STATUS_OK) && 
+        (supported == 0))
     {
         AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
         return ONLP_STATUS_E_UNSUPPORTED;
@@ -903,47 +499,95 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int *value)
     switch (control)
     {
         case ONLP_SFP_CONTROL_TX_FAULT:
-            offset = port_to_pca9539_sfp_offset(port, PCA9539_IO_INPUT);
-            port_bit = port_to_pca9539_txfault_bit(port);
+        {
+            if(IS_SFP_PORT(port))
+            {
+                if(onlp_gpio_get(sfp->tx_fault_gpio, value) == ONLP_STATUS_OK){
+                    rv = ONLP_STATUS_OK;
+                }
+                else{
+                    AIM_LOG_ERROR("Unable to read tx_fault status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }            
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
             break;
+        }
             
         case ONLP_SFP_CONTROL_TX_DISABLE:
-            offset = port_to_pca9539_sfp_offset(port, PCA9539_IO_OUTPUT);
-            port_bit = port_to_pca9539_txdis_bit(port);
+        {
+            if(IS_SFP_PORT(port))
+            {
+                if(onlp_gpio_get(sfp->tx_dis_gpio, value) == ONLP_STATUS_OK){                    
+                    rv = ONLP_STATUS_OK;
+                }
+                else{
+                    AIM_LOG_ERROR("Unable to read tx_disable status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
             break;
+        }
 
         case ONLP_SFP_CONTROL_LP_MODE:
-            offset = port_to_pca9539_sfp_offset(port, PCA9539_IO_OUTPUT);
-            port_bit = port_to_pca9539_lpmode_bit(port);
+        {
+            if(IS_QSFP_PORT(port))
+            {
+                if(onlp_gpio_get(sfp->lp_mode_gpio, value) == ONLP_STATUS_OK){
+                    rv = ONLP_STATUS_OK;
+                }
+                else{
+                    AIM_LOG_ERROR("Unable to read lp_mode status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }            
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
             break;
+        }
 
         case ONLP_SFP_CONTROL_RESET:
-            offset = port_to_pca9539_sfp_offset(port, PCA9539_IO_OUTPUT);
-            port_bit = port_to_pca9539_reset_bit(port);
+        {
+            if(IS_QSFP_PORT(port))
+            {
+                if(onlp_gpio_get(sfp->reset_gpio, value) == ONLP_STATUS_OK){
+                    rv = ONLP_STATUS_OK;
+                }
+                else{
+                    AIM_LOG_ERROR("Unable to read reset status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }            
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
             break;
+        }
 
         default:
-            return ONLP_STATUS_E_UNSUPPORTED;
+            rv = ONLP_STATUS_E_UNSUPPORTED;            
             break;
     }
 
-    pca9539_bus = port_to_pca9539_busid(port);
-    pca9539_addr = port_to_pca9539_addr(port);
-    
-    optval = onlp_i2c_readb(pca9539_bus, pca9539_addr, offset, ONLP_I2C_F_FORCE);
-    if ((optval & (1 << port_bit)) != 0) //1
-    {
-        *value = 1;
-    }
-    else
-    {
-        *value = 0;
-    }
-    
-    DIAG_PRINT("%s, port_bit:%d, cpld_bus:%d, addr:0x%X, offset:0x%X", __FUNCTION__, port_bit, pca9539_bus, pca9539_addr, offset);
     DIAG_PRINT("%s, port:%d, control:%d(%s), value:0x%X", __FUNCTION__, port, control, sfp_control_to_str(control), *value);
 
+    if (rv == ONLP_STATUS_E_UNSUPPORTED)
+    {
+        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
+    }
+
     return rv;
+
 }
 
 int
@@ -952,4 +596,3 @@ onlp_sfpi_denit(void)
     DIAG_PRINT("%s", __FUNCTION__);
     return ONLP_STATUS_OK;
 }
-

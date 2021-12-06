@@ -254,6 +254,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t *info)
 int
 onlp_fani_init(void)
 {
+    DIAG_PRINT("%s", __FUNCTION__);
 	int ret = 0;
 #if 0 //onlpdump call this and reset fan pwm.
     DIAG_PRINT("%s", __FUNCTION__);

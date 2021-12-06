@@ -403,6 +403,7 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 echo "127.0.0.1 localhost" >/etc/hosts
 touch /etc/fstab
 echo "localhost" >/etc/hostname
+sed -i '7 i\mount -t tmpfs tmpfs \/tmp' /etc/init.d/rcS
 if [ -f /var/lib/dpkg/info/dash.preinst ]; then
     /var/lib/dpkg/info/dash.preinst install
 fi
