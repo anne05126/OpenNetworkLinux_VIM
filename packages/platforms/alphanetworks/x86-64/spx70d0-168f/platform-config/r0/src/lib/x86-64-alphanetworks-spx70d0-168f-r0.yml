@@ -23,9 +23,8 @@ x86-64-alphanetworks-spx70d0-168f-r0:
     args: >-
       nopat
       intel_iommu=off
-      initcall_blacklist=pca953x_init
       modprobe.blacklist=i2c-ismt
-      console=ttyS0,115200n8
+      console=ttyS1,115200n8
 
   ##network
   ##  interfaces:

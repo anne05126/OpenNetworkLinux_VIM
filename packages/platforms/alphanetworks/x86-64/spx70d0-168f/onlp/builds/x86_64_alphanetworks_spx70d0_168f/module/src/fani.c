@@ -28,105 +28,41 @@
 #include <fcntl.h>
 #include <math.h>
 #include "platform_lib.h"
-#include <onlplib/i2c.h>
+#include <onlplib/file.h>
+#include <onlp/platformi/psui.h>
 
-#define DEBUG                           0
-
-#define CPLD_FAN0_STATUS_ADDR_OFFSET    0x10	//bit 0: Fan 0 Direction, bit 1: Fan Present or not
-#define CPLD_FAN1_STATUS_ADDR_OFFSET    0x11  
-#define CPLD_FAN2_STATUS_ADDR_OFFSET    0x12  
-#define CPLD_FAN3_STATUS_ADDR_OFFSET    0x13
-#define CPLD_FAN4_STATUS_ADDR_OFFSET    0x14
-#define CPLD_FAN5_STATUS_ADDR_OFFSET    0x15
-
-#define CPLD_FAN0_SPEED_ADDR_OFFSET   0x16
-#define CPLD_FAN1_SPEED_ADDR_OFFSET   0x17
-#define CPLD_FAN2_SPEED_ADDR_OFFSET   0x18
-#define CPLD_FAN3_SPEED_ADDR_OFFSET   0x19
-#define CPLD_FAN4_SPEED_ADDR_OFFSET   0x1A
-#define CPLD_FAN5_SPEED_ADDR_OFFSET   0x1B
-
-#define CPLD_FAN_MIN_RPS_ADDR_OFFSET        0x22
-#define CPLD_FAN_PWM_ADDR_OFFSET            0x23
-#define CPLD_FAN_SEL_CONTROL_ADDR_OFFSET    0x24  /* Default value 0. 0: CPLD control, 1: BMC control */
-
-#define FAN_TACH_SPEED_TO_RPM   150
-#define FAN_MAX_RPM  21000
-#define FAN_MIN_SPEED_LIMIT		0xE
-
-#define MAX_PSU_FAN_SPEED   32500
-
-#define FAN_DIR_FRONT_TO_BACK   0
-#define FAN_DIR_BACK_TO_FRONT   1
-
+#define FAN_MAX_RPM                         22800         
+#define FAN_DIR_RIGHT_TO_LEFT               0
+#define FAN_DIR_LEFT_TO_RIGHT               1
 
 /* Static fan information */
-onlp_fan_info_t linfo[] = {
-    { }, /* Not used */
-	{
-        { ONLP_FAN_ID_CREATE(FAN_0), "Chassis Fan 0", 0 },
-        0x0,
-        ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { ONLP_FAN_ID_CREATE(FAN_1), "Chassis Fan 1", 0 },
-        0x0,
-        ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { ONLP_FAN_ID_CREATE(FAN_2), "Chassis Fan 2", 0 },
-        0x0,
-        ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { ONLP_FAN_ID_CREATE(FAN_3), "Chassis Fan 3", 0 },
-        0x0,
-        ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { ONLP_FAN_ID_CREATE(FAN_4), "Chassis Fan 4", 0 },
-        0x0,
-        ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { ONLP_FAN_ID_CREATE(FAN_5), "Chassis Fan 5", 0 },
-        0x0,
-        ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { ONLP_FAN_ID_CREATE(FAN_PSU1_1), "PSU1 Fan 1", 0 },
-        0x0,
-        ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { ONLP_FAN_ID_CREATE(FAN_PSU2_1), "PSU2 Fan 1", 0 },
-        0x0,
-        ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
+#define CHASSIS_FAN_INFO(local_id)		\
+    { \
+        { ONLP_FAN_ID_CREATE(FAN_##local_id), "Chassis Fan "#local_id, 0 },\
+        0x0,\
+        ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE,\
+        0,\
+        0,\
+        ONLP_FAN_MODE_INVALID,\
     }
+
+#define PSU_FAN_INFO(pid) \
+    { \
+        { ONLP_FAN_ID_CREATE(FAN_PSU##pid##_0), "PSU"#pid" Fan 0 ", 0 },\
+        0x0,\
+        ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM,\
+        0,\
+        0,\
+        ONLP_FAN_MODE_INVALID,\
+    }
+
+onlp_fan_info_t finfo[] = {
+    { }, /* Not used */
+    CHASSIS_FAN_INFO(1),
+    CHASSIS_FAN_INFO(2),
+    CHASSIS_FAN_INFO(3),
+    PSU_FAN_INFO(1),
+    PSU_FAN_INFO(2),
 };
 
 #define VALIDATE(_id)                           \
@@ -136,65 +72,6 @@ onlp_fan_info_t linfo[] = {
         }                                       \
     } while(0)
 
-
-typedef union
-{
-    unsigned char val;
-    struct
-    {
-        unsigned char fan_direction :1; //bit 0
-        unsigned char fan_present   :1; //bit 1
-        unsigned char fan_speed_err :1;
-        unsigned char :5;  /* reserved */
-    }bit;
-
-}_CPLD_FAN_STATUS_REG_T;
-
-/* Get the CPLD address offset for fan status */
-static char
-_onlp_fani_get_fan_status_addr_offset(int local_id)
-{
-    DIAG_PRINT("%s, local_id=%d", __FUNCTION__, local_id);
-    switch (local_id)
-    {
-    	case FAN_0:
-            return CPLD_FAN0_STATUS_ADDR_OFFSET;
-        case FAN_1:
-            return CPLD_FAN1_STATUS_ADDR_OFFSET;
-        case FAN_2:
-            return CPLD_FAN2_STATUS_ADDR_OFFSET;
-        case FAN_3:
-            return CPLD_FAN3_STATUS_ADDR_OFFSET;
-        case FAN_4:
-            return CPLD_FAN4_STATUS_ADDR_OFFSET;
-        case FAN_5:
-            return CPLD_FAN5_STATUS_ADDR_OFFSET;
-    }
-    return 0;
-}
-
-/* Get the CPLD address offset for fan speed */
-static char
-_onlp_fani_get_fan_speed_addr_offset(int local_id)
-{
-    DIAG_PRINT("%s, local_id=%d", __FUNCTION__, local_id);
-    switch (local_id)
-    {
-    	case FAN_0:
-            return CPLD_FAN0_SPEED_ADDR_OFFSET;
-        case FAN_1:
-            return CPLD_FAN1_SPEED_ADDR_OFFSET;
-        case FAN_2:
-            return CPLD_FAN2_SPEED_ADDR_OFFSET;
-        case FAN_3:
-            return CPLD_FAN3_SPEED_ADDR_OFFSET;
-        case FAN_4:
-            return CPLD_FAN4_SPEED_ADDR_OFFSET;
-        case FAN_5:
-            return CPLD_FAN5_SPEED_ADDR_OFFSET;
-    }
-    return 0;
-}
 
 static int 
 _onlp_fani_rpm_to_percentage(int rpm)
@@ -206,6 +83,10 @@ _onlp_fani_rpm_to_percentage(int rpm)
     {
         percentage = 1;
     }
+	if (rpm >= FAN_MAX_RPM)
+    {
+        percentage = 100;
+    }
     DIAG_PRINT("%s, rpm=%d to percentage=%d", __FUNCTION__, rpm, percentage);
 
     return percentage;
@@ -215,76 +96,65 @@ static int
 _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t *info)
 {
     DIAG_PRINT("%s, local_id=%d", __FUNCTION__, local_id);
-    _CPLD_FAN_STATUS_REG_T fan_status_reg;
-    char status_addr_offset = 0;
-    char speed_addr_offset = 0;
-    char data = 0;
-    char tach_speed = 0;
-    int ret = 0;
+    int value;
 
-    /* Get the CPLD address offset for fan status */
-    status_addr_offset = _onlp_fani_get_fan_status_addr_offset(local_id);
-
-	ret = onlp_i2c_readb(POWERCPLD_I2C_BUS_ID, POWERCPLD_I2C_ADDR, status_addr_offset, ONLP_I2C_F_FORCE);
-	data = ret;
-
-    if (ret < 0)
-    {
-        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
-        return ret;
+    /* get fan present status
+     */
+    if (onlp_file_read_int(&value, "%s""fan%d_present", FAN_BOARD_PATH, local_id) < 0) {
+        AIM_LOG_ERROR("Unable to read fan_present from (%s%s)\r\n", FAN_BOARD_PATH, local_id);
+        return ONLP_STATUS_E_INTERNAL;
     }
-    if (DEBUG)
-        AIM_LOG_INFO("%s:%d id[%d],status_addr_offset[%02x],read_byte[%02x]\n",
-                     __FUNCTION__, __LINE__, local_id, (unsigned char)status_addr_offset, (unsigned char)data);
 
-    fan_status_reg.val = data;
+    if (value == 0) {
+        return ONLP_STATUS_OK; /* fan is not present */
+    }
+    info->status |= ONLP_FAN_STATUS_PRESENT;
 
-    /* Get fan air flow direction */
-    if (fan_status_reg.bit.fan_direction == FAN_DIR_FRONT_TO_BACK)
-        info->status |= ONLP_FAN_STATUS_F2B;
-    else
-        info->status |= ONLP_FAN_STATUS_B2F;
 
-    /* Get fan present */
-    if (fan_status_reg.bit.fan_present == 0) //need to check
-        info->status |= ONLP_FAN_STATUS_PRESENT;
-    else
-        info->status |= ONLP_FAN_STATUS_FAILED;
 
-    /* Check Speed Error */
-    if (fan_status_reg.bit.fan_speed_err == 1)
-    {
+    /* get fan fault status (turn on when any one fails)
+    value=0 : fan speed OK.
+    value=1 : fan speed is 0, error.
+     */
+    if (onlp_file_read_int(&value, "%s""fan%d_fault", FAN_BOARD_PATH, local_id) < 0) {
+        AIM_LOG_ERROR("Unable to read fan_status from (%s%s)\r\n", FAN_BOARD_PATH, local_id);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (value > 0) {
         info->status |= ONLP_FAN_STATUS_FAILED;
     }
 
-    /* Get the CPLD address offset for fan speed */
-    speed_addr_offset = _onlp_fani_get_fan_speed_addr_offset(local_id);
 
-    /* Get fan speed */    
-	ret = onlp_i2c_readb(POWERCPLD_I2C_BUS_ID, POWERCPLD_I2C_ADDR, speed_addr_offset, ONLP_I2C_F_FORCE);
-	tach_speed = ret;
-    if (ret < 0)
-    {
-        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
-        return ret;
+
+    /* get fan speed
+     */
+    if (onlp_file_read_int(&value, "%s""fan%d_input", FAN_BOARD_PATH, local_id) < 0) {
+        AIM_LOG_ERROR("Unable to read fan_speed from (%s%s)\r\n", FAN_BOARD_PATH, local_id);
+        return ONLP_STATUS_E_INTERNAL;
     }
-    if (DEBUG)
-        AIM_LOG_INFO("%s:%d id[%d],speed_addr_offset[%02x],read_byte[%02x]\n",
-                     __FUNCTION__, __LINE__, local_id, (unsigned char)status_addr_offset, (unsigned char)tach_speed);
-
     /* Get fan rpm */
-    info->rpm = tach_speed * FAN_TACH_SPEED_TO_RPM;
+    info->rpm = value;
 
     /* Get fan percentage */
-    info->percentage = _onlp_fani_rpm_to_percentage(info->rpm);
+    info->percentage = _onlp_fani_rpm_to_percentage(info->rpm); 
 
-    return ONLP_STATUS_OK;
+	/* Get fan air flow direction 
+	value=0 : ( <--- ) air in  (B2F)
+	value=1 : ( ---> ) air out (F2B)
+	*/
+	if (onlp_file_read_int(&value, "%s""fan%d_dir", FAN_BOARD_PATH, local_id) < 0) {
+        AIM_LOG_ERROR("Unable to read fan_dir from (%s%s)\r\n", FAN_BOARD_PATH, local_id);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+	if (value == FAN_DIR_RIGHT_TO_LEFT)
+		info->status |= ONLP_FAN_STATUS_B2F;
+    else
+        info->status |= ONLP_FAN_STATUS_F2B;
+
+	return ONLP_STATUS_OK;
 }
-
-/*
- * This function will be called prior to all of onlp_fani_* functions.
- */
-#define DEFAULT_FAN_SPEED 50
 
 static uint32_t
 _onlp_get_fan_direction_on_psu(void)
@@ -293,9 +163,13 @@ _onlp_get_fan_direction_on_psu(void)
 
     for (i = PSU1_ID; i <= PSU2_ID; i++) {
         psu_type_t psu_type;
-        psu_type = get_psu_type(i, NULL, 0);
+        psu_type = psu_type_get(i, NULL, 0);
 
-        if (PSU_TYPE_AC_F2B == psu_type || PSU_TYPE_DC_48V_F2B == psu_type) {
+        if (psu_type == PSU_TYPE_UNKNOWN) {
+            continue;
+        }
+
+        if (PSU_TYPE_AC_F2B == psu_type) {
             return ONLP_FAN_STATUS_F2B;
         }
         else {
@@ -306,61 +180,54 @@ _onlp_get_fan_direction_on_psu(void)
     return 0;
 }
 
+
 static int
 _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 {
-    int val = 0;
+    int value;
 
-    info->status |= ONLP_FAN_STATUS_PRESENT;
+	/* Get the present state */
+    if (onlp_file_read_int(&value, "%s""psu%d_present", PSU_HWMON_PATH, local_id) < 0) 
+	{
+        AIM_LOG_ERROR("Unable to read status from (%s""psu%d_present)\r\n", PSU_HWMON_PATH, local_id);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (value != PSU_STATUS_PRESENT) 
+	{
+        return ONLP_STATUS_OK;
+    }
+    info->status |= ONLP_PSU_STATUS_PRESENT;
 
     /* get fan direction
      */
     info->status |= _onlp_get_fan_direction_on_psu();
 
-    /* get fan fault status
-     */
-    if (local_id == PSU1_ID)
-    {
-    	val = onlp_i2c_readb(PSU_I2C_BUS_ID, RPS_PSU0_MICRO_P_ADDR, PSU_PMBUS_FAN_STATUS_OFFSET, ONLP_I2C_F_FORCE);
-       	info->status |= (val > 0) ? ONLP_FAN_STATUS_FAILED : 0; //need to check
-    }
-	else if (local_id == PSU2_ID)
-	{
-		val = onlp_i2c_readb(PSU_I2C_BUS_ID, RPS_PSU1_MICRO_P_ADDR, PSU_PMBUS_FAN_STATUS_OFFSET, ONLP_I2C_F_FORCE);
-       	info->status |= (val > 0) ? ONLP_FAN_STATUS_FAILED : 0; //need to check
-	}
-
     /* get fan speed
      */
-    if (local_id == PSU1_ID)
-    {
-    	val = onlp_i2c_readw(PSU_I2C_BUS_ID, RPS_PSU0_EEPROM_ADDR, RPS_PSU_FAN_SPEED_OFFSET, ONLP_I2C_F_FORCE);
-        info->rpm = val;
-	    info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;
+    if (onlp_file_read_int(&value, "%s""psu%d_fan1_input", PSU_PMBUS_PATH, local_id) < 0) {
+        AIM_LOG_ERROR("Unable to read psu fan_speed from (%s%s)\r\n", PSU_PMBUS_PATH, local_id);
+    	return ONLP_STATUS_E_INTERNAL;
     }
-	else if (local_id == PSU2_ID)
-	{
-		val = onlp_i2c_readw(PSU_I2C_BUS_ID, RPS_PSU1_EEPROM_ADDR, RPS_PSU_FAN_SPEED_OFFSET, ONLP_I2C_F_FORCE);
-        info->rpm = val;
-	    info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;
-	}
+    
+	info->rpm = value;
+	info->percentage = _onlp_fani_rpm_to_percentage(info->rpm); 
+
+	/* get fan fault status
+     */
+    if (!info->rpm)
+        info->status |= ONLP_FAN_STATUS_FAILED;
+	
 
     return ONLP_STATUS_OK;
+
 }
+
 
 int
 onlp_fani_init(void)
 {
-	int ret = 0;
-
-	/* Set FAN MIN SPEED VALUE */
-	ret = onlp_i2c_writeb(POWERCPLD_I2C_BUS_ID, POWERCPLD_I2C_ADDR, CPLD_FAN_MIN_RPS_ADDR_OFFSET, FAN_MIN_SPEED_LIMIT, ONLP_I2C_F_FORCE);
-    if (ret < 0)
-    {
-    	AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
-        return ret;
-    }
-
+    DIAG_PRINT("%s", __FUNCTION__);
     return ONLP_STATUS_OK;
 }
 
@@ -376,45 +243,29 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t *info)
 
     local_id = ONLP_OID_ID_GET(id);
 
-    *info = linfo[local_id];
+    *info = finfo[local_id];
 
-	switch(local_id)
-	{
-		case FAN_PSU1_1:
-			ret = _onlp_fani_info_get_fan_on_psu(PSU1_ID, info);
-			break;
-		case FAN_PSU2_1:
-			ret = _onlp_fani_info_get_fan_on_psu(PSU2_ID, info);
-			break;
-		case FAN_0:
+    switch(local_id)
+    {
+        case FAN_PSU1_0:
+            ret = _onlp_fani_info_get_fan_on_psu(PSU1_ID, info);
+            break;
+        case FAN_PSU2_0:
+            ret = _onlp_fani_info_get_fan_on_psu(PSU2_ID, info);
+            break;
 		case FAN_1:
-		case FAN_2:
-		case FAN_3:
-		case FAN_4:
-		case FAN_5:
-    		ret = _onlp_fani_info_get_fan(local_id, info);
-			break;
-		default:
-			ret = ONLP_STATUS_E_INVALID;
-			break;
-	}
+        case FAN_2:
+        case FAN_3:
+            ret = _onlp_fani_info_get_fan(local_id, info);
+            break;
+        default:
+            ret = ONLP_STATUS_E_INVALID;
+            break;
+    }
 	
     return ret;
 }
 
-int 
-onlp_fani_status_get(onlp_oid_t id, uint32_t *rv)
-{
-
-    DIAG_PRINT("%s, id=%d", __FUNCTION__, id);
-    onlp_fan_info_t info;
-    onlp_fan_status_t ret = 0;
-    onlp_fani_info_get(id, &info);
-
-    ret = info.status & (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_FAILED);
-    *rv = (uint32_t)ret;
-    return 0;
-}
 
 /*
  * This function sets the speed of the given fan in RPM.
@@ -453,67 +304,31 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
 int
 onlp_fani_percentage_set(onlp_oid_t id, int p)
 {
-    int ret = 0;
-    float val = (float)p * 2.55;
-    char data = (char)round(val);
+	int local_id;
+	char data = (char)p;
 
     DIAG_PRINT("%s, id=%d, p=%d (0x%2X)", __FUNCTION__, id, p, (unsigned char)data);
 
     VALIDATE(id);
 
-    /* Not support to stop fan */    
-    if (p == 0)
-        return ONLP_STATUS_E_INVALID;
-    else if (p == 100)
-        data = 0xff;
+	local_id = ONLP_OID_ID_GET(id);
 
-	ret = onlp_i2c_writeb(POWERCPLD_I2C_BUS_ID, POWERCPLD_I2C_ADDR, CPLD_FAN_PWM_ADDR_OFFSET, data, ONLP_I2C_F_FORCE);
-    if (ret < 0)
+
+    switch (local_id)
     {
-        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
-        return ret;
+		case FAN_1:
+        case FAN_2:
+        case FAN_3:		
+            if (onlp_file_write_int(p, "%s""fan%d_pwm", FAN_BOARD_PATH, local_id) < 0) {
+                AIM_LOG_ERROR("Unable to read fan_pwm from (%sfan%d_pwm)\r\n", FAN_BOARD_PATH, local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+            break;		
+        default:
+            return ONLP_STATUS_E_INVALID;
     }
 
     return ONLP_STATUS_OK;
-}
-
-/*
- * This function sets the fan speed of the given OID as per
- * the predefined ONLP fan speed modes: off, slow, normal, fast, max.
- *
- * Interpretation of these modes is up to the platform.
- *
- */
-int
-onlp_fani_mode_set(onlp_oid_t id, onlp_fan_mode_t mode)
-{
-    DIAG_PRINT("%s, ONLP_STATUS_E_UNSUPPORTED", __FUNCTION__);
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-/*
- * This function sets the fan direction of the given OID.
- *
- * This function is only relevant if the fan OID supports both direction
- * capabilities.
- *
- * This function is optional unless the functionality is available.
- */
-int
-onlp_fani_dir_set(onlp_oid_t id, onlp_fan_dir_t dir)
-{
-    DIAG_PRINT("%s, ONLP_STATUS_E_UNSUPPORTED", __FUNCTION__);
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-/*
- * Generic fan ioctl. Optional.
- */
-int
-onlp_fani_ioctl(onlp_oid_t id, va_list vargs)
-{
-    DIAG_PRINT("%s, ONLP_STATUS_E_UNSUPPORTED", __FUNCTION__);
-    return ONLP_STATUS_E_UNSUPPORTED;
 }
 
 

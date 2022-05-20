@@ -28,76 +28,24 @@
 
 #include "x86_64_alphanetworks_spx70d0_168f_log.h"
 
-//for ne10032 
-#define IDPROM_PATH "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0056/eeprom"
-//#define IDPROM_PATH "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-6/i2c-10/10-0051/eeprom"
+#define DEBUG_FLAG 0
+
+#define ONIE_EEPROM_PATH                "/sys/bus/i2c/devices/33-0055/eeprom"
 
 #define PSU1_ID 1
 #define PSU2_ID 2
 
-#define CHASSIS_THERMAL_COUNT 4
-#define CHASSIS_FAN_COUNT     6
-#define CHASSIS_PSU_COUNT     2
+#define PSU_STATUS_PRESENT     1
+#define PSU_STATUS_POWER_GOOD  1
 
-enum onlp_bmc_i2c_id
-{
-    BMC_I2C1 = 0,
-    BMC_I2C2,
-    BMC_I2C3,
-    BMC_I2C4,
-    BMC_I2C5,
-    BMC_I2C6,
-};
+#define PSU_HWMON_PATH  "/sys/devices/platform/spx70d0_pwr_cpld/"
+#define PSU_PMBUS_PATH  "/sys/devices/platform/spx70d0_168f_psu/"
 
-#define IPMI_I2C_BUS0_ID                 0x01
-#define IPMI_I2C_BUS1_ID                 0x03
-#define IPMI_I2C_BUS2_ID                 0x05
-#define IPMI_I2C_BUS3_ID                 0x07
-#define IPMI_I2C_BUS4_ID                 0x09
-#define IPMI_I2C_BUS5_ID                 0x0B
+#define CHASSIS_LED_COUNT      6
+#define CHASSIS_PSU_COUNT      2
 
-#define BMC_CPLD_I2C_BUS_ID            BMC_I2C5
-#define POWERCPLD_I2C_ADDR                  0x5F  /* Power CPLD Physical Address in the I2C */ 
-/* IPMI Table 22-14 define Request Data byte 2 as I2C address. 
-  * [7:1] -Slave address and [0] - reserved.
-  * So Power CPLD Physical Address in the I2C 0x5F( 0101 1111) should transfer to 0xBE (1011 1110).
-  */
-#define BMC_CPLD_I2C_ADDR                   0xBE
-
-#define PCA9548_0_ADDR                      0x70  /* PSU EEPROM Physical Address in the I2C */ 
-/* IPMI Table 22-14 define Request Data byte 2 as I2C address. 
-  * [7:1] -Slave address and [0] - reserved.
-  * So Power CPLD Physical Address in the I2C 0x70( 0111 0000) should transfer to 0xE0 (1110 0000).
-  */
-#define BMC_PCA9548_0_ADDR                  0xE0
-
-#define PSUD_EEPROM_ADDR                    0x50  /* PSU EEPROM Physical Address in the I2C */ 
-/* IPMI Table 22-14 define Request Data byte 2 as I2C address. 
-  * [7:1] -Slave address and [0] - reserved.
-  * So Power CPLD Physical Address in the I2C 0x50( 0101 0000) should transfer to 0xA0 (1010 0000).
-  */
-#define BMC_PSUD_EEPROM_ADDR                0xA0
-#define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/57-003c/"
-#define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/58-003f/"
-
-#define PSU1_AC_HWMON_PREFIX "/sys/bus/i2c/devices/2-0050/"
-#define PSU1_DC_HWMON_PREFIX "/sys/bus/i2c/devices/57-0050/"
-#define PSU2_AC_HWMON_PREFIX "/sys/bus/i2c/devices/3-0050/"
-#define PSU2_DC_HWMON_PREFIX "/sys/bus/i2c/devices/58-0053/"
-
-#define PSU1_AC_HWMON_NODE(node) PSU1_AC_HWMON_PREFIX#node
-#define PSU1_DC_HWMON_NODE(node) PSU1_DC_HWMON_PREFIX#node
-#define PSU2_AC_HWMON_NODE(node) PSU2_AC_HWMON_PREFIX#node
-#define PSU2_DC_HWMON_NODE(node) PSU2_DC_HWMON_PREFIX#node
-
-#define PSU_I2C_BUS_ID			 		5
-#define RPS_PSU0_EEPROM_ADDR     		0x50
-#define RPS_PSU0_MICRO_P_ADDR    		0x58
-#define RPS_PSU1_EEPROM_ADDR     		0x51
-#define RPS_PSU1_MICRO_P_ADDR   		0x59
-#define PSU_PMBUS_FAN_STATUS_OFFSET		0x81
-#define RPS_PSU_FAN_SPEED_OFFSET  		0x0A
-#define RPS_PSU_THERMAL_OFFSET  		0x09
+#define FAN_BOARD_PATH	                "/sys/devices/platform/spx70d0_fan/"
+#define FAN_NODE(node)	                FAN_BOARD_PATH#node
 
 #define SFP_START_INDEX         0
 #define NUM_OF_SFPP_PORT        16 /* 16 10G SFP+ Port 1-16  */
@@ -108,13 +56,44 @@ enum onlp_bmc_i2c_id
 #define SFP_PLUS_EEPROM_I2C_ADDR        0x50  /* SFP+ EEPROM Physical Address in the I2C */  
 #define SFP_DOM_EEPROM_I2C_ADDR         0x51
 
-#define POWERCPLD_I2C_BUS_ID			 0
+enum sfp_port
+{
+	SFP_PORT_100G_QSFP28_1 = 0,
+	SFP_PORT_100G_QSFP28_2 = 1,
+	SFP_PORT_25G_SFP28_1 = 2,
+	SFP_PORT_25G_SFP28_2 = 3,
+	SFP_PORT_25G_SFP28_3 = 4,
+	SFP_PORT_25G_SFP28_4 = 5,
+	SFP_PORT_25G_SFP28_5 = 6,
+	SFP_PORT_25G_SFP28_6 = 7,
+	SFP_PORT_10G_SFPP_1 = 8,
+	SFP_PORT_10G_SFPP_2 = 9,
+	SFP_PORT_10G_SFPP_3 = 10,
+	SFP_PORT_10G_SFPP_4 = 11,
+	SFP_PORT_10G_SFPP_5 = 12,
+	SFP_PORT_10G_SFPP_6 = 13,
+	SFP_PORT_10G_SFPP_7 = 14,
+	SFP_PORT_10G_SFPP_8 = 15,	
+	SFP_PORT_10G_SFPP_9 = 16,
+	SFP_PORT_10G_SFPP_10 = 17,
+	SFP_PORT_10G_SFPP_11 = 18,
+	SFP_PORT_10G_SFPP_12 = 19,
+	SFP_PORT_10G_SFPP_13 = 20,
+	SFP_PORT_10G_SFPP_14 = 21,
+	SFP_PORT_10G_SFPP_15 = 22,
+	SFP_PORT_10G_SFPP_16 = 23
+};
 
-#define QSFP28_EEPROM_TXRX_LOS_OFFSET     3
-#define QSFP28_EEPROM_TX_FAULT_OFFSET     4
-#define QSFP28_EEPROM_TX_DISABLE_OFFSET   86
-#define QSFP28_EEPROM_POWERSET_OFFSET     93
-#define QSFP28_EEPROM_PAGE_SELECT_OFFSET  127
+#define SFPP_PORT_INDEX_START				SFP_PORT_10G_SFPP_1
+#define SFPP_PORT_INDEX_END					SFP_PORT_10G_SFPP_16
+#define SFP28_PORT_INDEX_START              SFP_PORT_25G_SFP28_1
+#define SFP28_PORT_INDEX_END                SFP_PORT_25G_SFP28_6
+#define QSFP_PORT_INDEX_START               SFP_PORT_100G_QSFP28_1
+#define QSFP_PORT_INDEX_END                 SFP_PORT_100G_QSFP28_2
+
+#define IS_SFP_PORT(_port)  (_port >= SFPP_PORT_INDEX_START && _port <= SFPP_PORT_INDEX_END)
+#define IS_SFP28_PORT(_port)  (_port >= SFP28_PORT_INDEX_START && _port <= SFP28_PORT_INDEX_END)
+#define IS_QSFP_PORT(_port) (_port >= QSFP_PORT_INDEX_START && _port <= QSFP_PORT_INDEX_END)
 
 typedef long long               I64_T;      /* 64-bit signed   */
 typedef unsigned long long      UI64_T;     /* 64-bit unsigned */
@@ -186,11 +165,6 @@ typedef unsigned char           UI8_T;      /* 8-bit unsigned  */
 #define UTL_SET_BITS8(__var__,__pos__)      (__var__) = UTL_SET_BITS(UI8_T,8,__var__,__pos__)
 #define UTL_RESET_BITS8(__var__,__pos__)    (__var__) = UTL_RESET_BITS(UI8_T,16,__var__,__pos__)
 
-
-int deviceNodeWriteInt(char *filename, int value, int data_len);
-int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len);
-int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_len);
-
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
     PSU_TYPE_AC_F2B,
@@ -199,37 +173,42 @@ typedef enum psu_type {
     PSU_TYPE_DC_48V_B2F
 } psu_type_t;
 
-//psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
-int psu_two_complement_to_int(uint16_t data, uint8_t valid_bit, int mask);
-
 /* THERMAL related data
  */
 enum onlp_thermal_id
 {
     THERMAL_RESERVED = 0,
-    THERMAL_1_ON_MAIN_BROAD_HOT_SPOT,         /* The TMP1075 on Main Board for hot spot */
-    THERMAL_2_ON_MAIN_BROAD_AMBIENT,          /* The TMP1075 on Main Board for ambient */
-    THERMAL_3_ON_MAIN_BROAD_LOCAL_BMC,        /* The TMP435 on Main Board for local monitoring the board temperature near the BMC */
-    THERMAL_3_ON_MAIN_BROAD_REMOTE_BCM88470,  /* The TMP435 on Main Board for remote monitoring BCM88470 on-chip temperature */
-    THERMAL_1_ON_PSU1,
-    THERMAL_1_ON_PSU2
+	THERMAL_CPU_CORE,
+    THERMAL_1_ON_MAIN_BROAD_AMBIENT,          /* 0x48 : The TMP1075 on Main Board for ambient */
+    THERMAL_2_ON_MAIN_BROAD_100G_PORTS,       /* 0x49 : The TMP1075 on Main Board for 100G ports */
+    THERMAL_3_ON_PON_BROAD_PSU_IN,            /* 0x4B : The TMP1075 on PON Board for PSU IN */
+    THERMAL_4_ON_PON_BROAD_PON_MAC,           /* 0x4E : The TMP1075 on PON Board for PON MAC */
+    THERMAL_5_ON_PON_BROAD_PON_PORTS,         /* 0x4C : The TMP1075 on PON Board for PON Ports */
+    THERMAL_6_ON_MAIN_BROAD_TMP435_local,     /* 0x4D : The TMP435 on Main Board */
+    THERMAL_7_ON_MAIN_BROAD_TMP435_remote,    /* 0x4D : The TMP435 on Main Board */
+    THERMAL_8_psu1_temp1,
+    THERMAL_9_psu2_temp1,
+	ONLP_THERMAL_ID_MAX,
 };
+		
+#define CHASSIS_THERMAL_COUNT (ONLP_THERMAL_ID_MAX - CHASSIS_PSU_COUNT - 1)
+
 
 
 /* FAN related data
  */
 enum onlp_fan_id
 {
-    FAN_RESERVED = 0,
-	FAN_0,	
-    FAN_1,
+	FAN_1 = 1,	
     FAN_2,
     FAN_3,
-    FAN_4,
-    FAN_5,
-    FAN_PSU1_1,
-    FAN_PSU2_1
+    FAN_PSU1_0,
+    FAN_PSU2_0,
+	ONLP_FAN_ID_MAX,
 };
+		
+#define CHASSIS_FAN_COUNT (ONLP_FAN_ID_MAX - CHASSIS_PSU_COUNT - 1)
+
 
 /* 
  * LED ID (need to sync with "enum onlp_led_id" defined in ledi.c)
@@ -238,47 +217,12 @@ enum onlp_led_id
 {
     LED_RESERVED = 0,
     LED_POWER,
-    LED_PSU0,
     LED_PSU1,
+    LED_PSU2,
     LED_SYSTEM,
     LED_FAN,
     LED_LOC
 };
-
-/*
-* TLV type code
-*/
-#define TLV_CODE_PRODUCT_NAME   0x21
-#define TLV_CODE_PART_NUMBER    0x22
-#define TLV_CODE_SERIAL_NUMBER  0x23
-#define TLV_CODE_MAC_BASE       0x24
-#define TLV_CODE_MANUF_DATE     0x25
-#define TLV_CODE_DEVICE_VERSION 0x26
-#define TLV_CODE_LABEL_REVISION 0x27
-#define TLV_CODE_PLATFORM_NAME  0x28
-#define TLV_CODE_ONIE_VERSION   0x29
-#define TLV_CODE_MAC_SIZE       0x2A
-#define TLV_CODE_MANUF_NAME     0x2B
-#define TLV_CODE_MANUF_COUNTRY  0x2C
-#define TLV_CODE_VENDOR_NAME    0x2D
-#define TLV_CODE_DIAG_VERSION   0x2E
-#define TLV_CODE_SERVICE_TAG    0x2F
-#define TLV_CODE_VENDOR_EXT     0xFD
-#define TLV_CODE_CRC_32         0xFE 
-
-
-/*
-i2c APIs: access i2c device by ioctl 
-*/ 
-#include <errno.h>
-#include <linux/i2c-dev.h>
-
-int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data);
-
-int bmc_i2c_read_byte(int bus, int devaddr, int offset, char* data);
-int bmc_i2c_write_byte(int bus, int devaddr, int offset, char value);
-int bmc_i2c_pmb_cmd_read_byte(int bus, int devaddr, int pmb_cmd, int offset, char* data);
-
 
 #define DIAG_FLAG_ON 1
 #define DIAG_FLAG_OFF 0
@@ -292,19 +236,14 @@ char diag_debug_trace_check(void);
 char diag_debug_pause_platform_manage_on(void);
 char diag_debug_pause_platform_manage_off(void);
 char diag_debug_pause_platform_manage_check(void);
-/*
-* TLV parsering for specific type code
-*/
-int eeprom_tlv_read(uint8_t *rdata, char type, char *data);
-
 
 #define DIAG_TRACE(fmt,args...) if(diag_debug_trace_check()) printf("\n[TRACE]"fmt"\n", args)
 #define DIAG_PRINT(fmt,args...) DIAG_TRACE(fmt,args);else if(diag_flag_get()) printf("[DIAG]"fmt"\n", args) 
 
 char* sfp_control_to_str(int value);
-psu_type_t get_psu_type(int id, char *model_name, int modelname_len);
-int psu_info_get_model_name(int id, UI8_T *data);
-
-void dump_stack(void);
+psu_type_t psu_type_get(int id, char* modelname, int modelname_len);
+int psu_serial_number_get(int id, char *serial, int serial_len);
+int psu_pmbus_info_get(int id, char *node, int *value);
+int psu_pmbus_info_set(int id, char *node, int value);
 
 #endif  /* __PLATFORM_LIB_H__ */
