@@ -165,7 +165,7 @@ static ssize_t set_ctl(struct device *dev,
 	//struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cpld_data *data = i2c_get_clientdata(client);
-	u8 byte;
+	u8 byte=0;
 
 	u8 temp = simple_strtol(buf, NULL, 10);
     
@@ -209,7 +209,7 @@ static ssize_t set_bios_cs(struct device *dev,
         //struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
         struct i2c_client *client = to_i2c_client(dev);
         struct cpld_data *data = i2c_get_clientdata(client);
-        u8 byte;
+        u8 byte=0;
 
         u8 temp = simple_strtol(buf, NULL, 10);
 

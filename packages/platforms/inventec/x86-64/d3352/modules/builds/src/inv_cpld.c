@@ -145,7 +145,7 @@ static ssize_t show_ctl(struct device *dev, struct device_attribute *da,
 	u32 status;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cpld_data *data = i2c_get_clientdata(client);
-	u8 byte;
+	u8 byte=0;
     
 	mutex_lock(&data->update_lock);
 	
@@ -204,7 +204,7 @@ static ssize_t show_bios_cs(struct device *dev, struct device_attribute *da,
         u32 status;
         struct i2c_client *client = to_i2c_client(dev);
         struct cpld_data *data = i2c_get_clientdata(client);
-        u8 byte;
+        u8 byte=0;
 
         mutex_lock(&data->update_lock);
 	status = cpld_i2c_read(client, &byte, CPLD_BIOS_OFFSET, 1);
@@ -277,7 +277,7 @@ static ssize_t show_sys_led(struct device *dev, struct device_attribute *da,
         u32 status;
         struct i2c_client *client = to_i2c_client(dev);
         struct cpld_data *data = i2c_get_clientdata(client);
-        u8 byte;
+        u8 byte=0;
 
         mutex_lock(&data->update_lock);
 	status = cpld_i2c_read(client, &byte, CPLD_LED_OFFSET, 1);
@@ -378,7 +378,7 @@ static ssize_t show_pwr_led(struct device *dev, struct device_attribute *da,
         u32 status;
         struct i2c_client *client = to_i2c_client(dev);
         struct cpld_data *data = i2c_get_clientdata(client);
-        u8 byte;
+        u8 byte=0;
 
         mutex_lock(&data->update_lock);
 	status = cpld_i2c_read(client, &byte, CPLD_LED_OFFSET, 1);
@@ -479,7 +479,7 @@ static ssize_t show_fan_led(struct device *dev, struct device_attribute *da,
         u32 status;
         struct i2c_client *client = to_i2c_client(dev);
         struct cpld_data *data = i2c_get_clientdata(client);
-        u8 byte;
+        u8 byte=0;
 
         mutex_lock(&data->update_lock);
 	status = cpld_i2c_read(client, &byte, CPLD_LED_OFFSET, 1);
@@ -580,7 +580,7 @@ static ssize_t show_stk_led(struct device *dev, struct device_attribute *da,
         u32 status;
         struct i2c_client *client = to_i2c_client(dev);
         struct cpld_data *data = i2c_get_clientdata(client);
-        u8 byte;
+        u8 byte=0;
 
         mutex_lock(&data->update_lock);
 	status = cpld_i2c_read(client, &byte, CPLD_LED_OFFSET, 1);
@@ -717,7 +717,7 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cpld_data *data = i2c_get_clientdata(client);
-	u8 byte;
+	u8 byte=0;
 	int shift = (attr->index == 1)?0:3;
     
 	mutex_lock(&data->update_lock);
@@ -736,7 +736,7 @@ ssize_t cpld_show_psu(char *buf)
 	u32 status;
 	struct i2c_client *client = NULL;
 	struct cpld_data *data = NULL;
-	u8 byte;
+	u8 byte=0;
 
 	if (!cpld_led_client_dev) {
 		return 0;

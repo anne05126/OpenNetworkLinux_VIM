@@ -24,6 +24,7 @@
  *
  ***********************************************************/
 #include <sys/mman.h>
+#include <sys/ioctl.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -31,6 +32,7 @@
 #include <fcntl.h>
 #include <execinfo.h>  /* for backtrace() */
 #include <AIM/aim.h>
+#include <onlplib/i2c.h>
 #include <onlp/platformi/sfpi.h>
 #include "platform_lib.h"
 

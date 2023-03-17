@@ -20,7 +20,11 @@ export K_TARGET_DIR := $(KERNEL_BUILD_DIR)/$(ONL_DEBIAN_SUITE)
 
 kernel: setup
 	$(MAKE) -C $(ONL)/packages/base/any/kernels/$(KERNEL_LTS_VERSION)-lts/configs/$(KERNEL_CONFIG) $(ONL_MAKE_PARALLEL)
+ifneq "$(KERNEL_LTS_VERSION)" "5.10"
 	cd $(K_TARGET_DIR) && ARCH=$(KERNEL_ARCH) $(ONL)/tools/scripts/kmodbuild.sh linux-*-mbuild "$(wildcard $(ONL)/packages/base/any/kernels/modules/*)" onl/onl/common
+else
+	cd $(K_TARGET_DIR) && ARCH=$(KERNEL_ARCH) $(ONL)/tools/scripts/kmodbuild.sh linux-*-mbuild "$(wildcard $(ONL)/packages/base/any/kernels/modules_510/*)" onl/onl/common
+endif
 
 clean:
 	rm -rf $(K_TARGET_DIR)

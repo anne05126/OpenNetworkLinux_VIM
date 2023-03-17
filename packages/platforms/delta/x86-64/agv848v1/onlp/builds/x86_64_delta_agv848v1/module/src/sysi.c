@@ -500,7 +500,7 @@ int onlp_sysi_platform_info_get(onlp_platform_info_t *pi)
         {
             return ONLP_STATUS_E_INTERNAL;
         }
-        sprintf(buffer, "%s \n\t\t%s: 0x%02x ", buffer, cpld_version_list[cpld_idx].name, cpld_version[cpld_idx]);
+        //sprintf(buffer, "%s \n\t\t%s: 0x%02x ", buffer, cpld_version_list[cpld_idx].name, cpld_version[cpld_idx]);
     }
 
     pi->cpld_versions = aim_fstrdup(buffer);

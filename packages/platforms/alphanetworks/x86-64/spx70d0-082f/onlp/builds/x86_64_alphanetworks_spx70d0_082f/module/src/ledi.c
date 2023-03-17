@@ -451,9 +451,13 @@ static void *set_locator_led_blue_blinking(void *arg)
 		locator_led_reg.bit.locator = (unsigned char)data;
 
       	if (locator_led_reg.bit.locator == 0)
+	{
           	locator_led_reg.bit.locator = 1;
+	}
       	else
+	{
           	locator_led_reg.bit.locator = 0;
+	}
 
 		if (onlp_file_write_int(locator_led_reg.bit.locator, LED_FORMAT, leds[LED_LOC].gpioid_color1) < 0) 
 		{

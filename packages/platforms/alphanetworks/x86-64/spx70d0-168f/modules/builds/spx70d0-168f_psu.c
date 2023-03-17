@@ -688,7 +688,7 @@ static struct spx70d0_168f_psu_data *spx70d0_168f_psu_update_device(struct devic
 
 	status = ipmi_send_message(&data->ipmi, IPMI_SENSOR_READ_CMD,
 				   data->ipmi_tx_data, 1,
-				   &data->ipmi_resp_value[attr->index].ipmi_resp_raw,
+				   data->ipmi_resp_value[attr->index].ipmi_resp_raw,
 				   sizeof(data->ipmi_resp_value[attr->index].ipmi_resp_raw));
 
 	if (unlikely(status != 0))

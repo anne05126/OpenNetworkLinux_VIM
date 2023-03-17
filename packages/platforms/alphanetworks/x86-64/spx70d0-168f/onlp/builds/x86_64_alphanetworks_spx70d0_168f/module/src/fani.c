@@ -149,9 +149,13 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t *info)
     }
 
 	if (value == FAN_DIR_RIGHT_TO_LEFT)
+	{
 		info->status |= ONLP_FAN_STATUS_B2F;
+	}
     else
+	{
         info->status |= ONLP_FAN_STATUS_F2B;
+	}
 
 	return ONLP_STATUS_OK;
 }
