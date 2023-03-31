@@ -37,25 +37,30 @@
 static char* devfiles__[] =  /* must map with onlp_thermal_id (platform_lib.h) */
 {
     "reserved",
-    "/sys/bus/i2c/devices/0-004f*temp1_input",
-    "/sys/bus/i2c/devices/3-004d*temp1_input",
-    "/sys/bus/i2c/devices/4-004c*temp1_input",
-    PSU1_AC_PMBUS_PREFIX"psu_temp1_input",
-    PSU2_AC_PMBUS_PREFIX"psu_temp1_input",
+	"/sys/bus/platform/devices/8730_thermal/temp1_input",
+	"/sys/bus/platform/devices/8730_thermal/temp2_input",
+	"/sys/bus/platform/devices/8730_thermal/temp3_input",
+	"/sys/bus/platform/devices/8730_thermal/temp4_input",
+	"/sys/bus/platform/devices/8730_psu/psu_temp1_input",
+	"/sys/bus/platform/devices/8730_psu/psu_temp2_input",
 };
 
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
     { }, /* Not used */
-    {   { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAINBOARD), "TMP75(0x48)", 0},
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAINBOARD), "CPU Core", 0},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
-    {   { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAINBOARD), "TMP75(0x49)", 0},
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAINBOARD), "Chassis Thermal Sensor 1 (AFO)", 0},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
-    {   { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAINBOARD), "TMP75(0x4A)", 0},
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAINBOARD), "Chassis Thermal Sensor 2 (Hot Spot)", 0},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_MAINBOARD), "Chassis Thermal Sensor 3 (AFI)", 0},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },

@@ -158,9 +158,10 @@ int psu_two_complement_to_int(uint16_t data, uint8_t valid_bit, int mask);
 enum onlp_thermal_id
 {
     THERMAL_RESERVED = 0,
-    THERMAL_1_ON_MAINBOARD,  /* Main Board Bottom TMP75 Temp (AFO) */
-    THERMAL_2_ON_MAINBOARD,  /* Main Board Bottom TMP75 Temp (HOT Spot)*/
-    THERMAL_3_ON_MAINBOARD,  /* Main Board Bottom TMP75 Temp (AFT) */
+    THERMAL_1_ON_MAINBOARD,  /* Main Board Bottom CPU Temp */
+    THERMAL_2_ON_MAINBOARD,  /* Main Board Bottom TMP75_0 Temp (AFO)*/
+    THERMAL_3_ON_MAINBOARD,  /* Main Board Bottom TMP75_1 Temp (HOT Spot) */
+    THERMAL_4_ON_MAINBOARD,  /* Main Board Bottom TMP75_2 Temp (AFI) */
     THERMAL_1_ON_PSU1,
     THERMAL_1_ON_PSU2,
     ONLP_THERMAL_ID_MAX,

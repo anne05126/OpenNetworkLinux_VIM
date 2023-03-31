@@ -10,6 +10,7 @@ class OnlPlatform_x86_64_extremenetworks_8730_32d_r0(OnlPlatformExtremeNetworks,
     def baseconfig(self):
         self.insmod('8730-32d_onie_eeprom')
         self.insmod('8730-32d_cpld')
+        self.insmod('8730-32d_thermal')
 
         ########### initialize I2C bus 0 ###########
         self.new_i2c_devices([            
