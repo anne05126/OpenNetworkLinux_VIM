@@ -27,42 +27,35 @@
 #include <onlp/platformi/ledi.h>
 #include "platform_lib.h"
 
-#define LED_FORMAT "/sys/bus/i2c/devices/0-005e/%s"
+#define LED_FORMAT "/sys/bus/platform/devices/8730_led/%s"
 
-/* PSU1_LED (PSU1 LED) */
-#define PSU1_LED_MODE_OFF                   0x0
-#define PSU1_LED_MODE_GREEN                 0x1
-#define PSU1_LED_MODE_GREEN_BLINKING        0x2
-#define PSU1_LED_MODE_AMBER                 0x3
-#define PSU1_LED_MODE_AMBER_BLINKING        0x4
+/* PWR_LED(POWER_LED) */
+#define PWR_LED_MODE_OFF               		0x0
+#define PWR_LED_MODE_GREEN                	0x1
 
-/* PSU2_LED (PSU2 LED) */
-#define PSU2_LED_MODE_OFF                   0x0
-#define PSU2_LED_MODE_GREEN                 0x1
-#define PSU2_LED_MODE_GREEN_BLINKING        0x2
-#define PSU2_LED_MODE_AMBER                 0x3
-#define PSU2_LED_MODE_AMBER_BLINKING        0x4
-
-/* LOC_LED (Locator LED) */
-#define LOC_LED_MODE_OFF                    0x0
-#define LOC_LED_MODE_BLUE                   0x1
-#define LOC_LED_MODE_BLUE_BLINKING          0x2
-#define LOC_LED_MODE_GREEN                  0x3
-#define LOC_LED_MODE_GREEN_BLINKING         0x4
+/* STAT_LED(STATUS_LED) */
+#define STAT_LED_MODE_OFF                 	0x0
+#define STAT_LED_MODE_GREEN               	0x1
+#define STAT_LED_MODE_AMBER               	0x2
+#define STAT_LED_MODE_GREEN_AMBER_BLINKING 	0x3
 
 /* FAN_LED */
 #define FAN_LED_MODE_OFF                    0x0
 #define FAN_LED_MODE_GREEN                  0x1
-#define FAN_LED_MODE_GREEN_BLINKING         0x2
-#define FAN_LED_MODE_AMBER                  0x3
-#define FAN_LED_MODE_AMBER_BLINKING         0x4
+#define FAN_LED_MODE_AMBER                  0x2
+#define FAN_LED_MODE_GREEN_AMBER_BLINKING   0x3
 
-/* SYS_LED (SYSTEM LED) */
-#define SYS_LED_MODE_OFF                    0x0
-#define SYS_LED_MODE_GREEN                  0x1
-#define SYS_LED_MODE_GREEN_BLINKING         0x2
-#define SYS_LED_MODE_AMBER                  0x3
-#define SYS_LED_MODE_AMBER_BLINKING         0x4
+/* PSU_LED */
+#define PSU_LED_MODE_OFF                   	0x0
+#define PSU_LED_MODE_GREEN_BLINKING        	0x1
+#define PSU_LED_MODE_GREEN			        0x2
+#define PSU_LED_MODE_AMBER_BLINKING        	0x3
+#define PSU_LED_MODE_AMBER        			0x4
+#define PSU_LED_MODE_GREEN_AMBER_BLINKING  	0x5
+
+/* SEC_LED(Security_LED) */
+#define SEC_LED_MODE_OFF               		0x0
+#define SEC_LED_MODE_BLUE              		0x1
 
 
 #define VALIDATE(_id)                           \
@@ -80,46 +73,39 @@ typedef struct led_light_mode_map {
 } led_light_mode_map_t;
 
 led_light_mode_map_t led_map[] = {
-    {LED_SYSTEM,  SYS_LED_MODE_OFF,             ONLP_LED_MODE_OFF},
-    {LED_SYSTEM,  SYS_LED_MODE_GREEN,           ONLP_LED_MODE_GREEN},
-    {LED_SYSTEM,  SYS_LED_MODE_GREEN_BLINKING,  ONLP_LED_MODE_GREEN_BLINKING},
-    {LED_SYSTEM,  SYS_LED_MODE_AMBER,           ONLP_LED_MODE_ORANGE},
-    {LED_SYSTEM,  SYS_LED_MODE_AMBER_BLINKING,  ONLP_LED_MODE_ORANGE_BLINKING},
+	{LED_PWR,    	PWR_LED_MODE_OFF,            		ONLP_LED_MODE_OFF},
+    {LED_PWR,    	PWR_LED_MODE_GREEN,          		ONLP_LED_MODE_GREEN},
+    
+    {LED_STAT,  	STAT_LED_MODE_OFF,             		ONLP_LED_MODE_OFF},
+    {LED_STAT,  	STAT_LED_MODE_GREEN,           		ONLP_LED_MODE_GREEN},
+    {LED_STAT,  	STAT_LED_MODE_AMBER,           		ONLP_LED_MODE_ORANGE},
+    {LED_STAT,     	STAT_LED_MODE_GREEN_AMBER_BLINKING, ONLP_LED_MODE_BLINKING},   
 
-    {LED_PSU1,    PSU1_LED_MODE_OFF,            ONLP_LED_MODE_OFF},
-    {LED_PSU1,    PSU1_LED_MODE_GREEN,          ONLP_LED_MODE_GREEN},
-    {LED_PSU1,    PSU1_LED_MODE_GREEN_BLINKING, ONLP_LED_MODE_GREEN_BLINKING},
-    {LED_PSU1,    PSU1_LED_MODE_AMBER,          ONLP_LED_MODE_ORANGE},
-    {LED_PSU1,    PSU1_LED_MODE_AMBER_BLINKING, ONLP_LED_MODE_ORANGE_BLINKING},
+    {LED_FAN,     	FAN_LED_MODE_OFF,             		ONLP_LED_MODE_OFF},
+    {LED_FAN,     	FAN_LED_MODE_GREEN,           		ONLP_LED_MODE_GREEN},
+    {LED_FAN,     	FAN_LED_MODE_AMBER,           		ONLP_LED_MODE_ORANGE},
+    {LED_FAN,     	FAN_LED_MODE_GREEN_AMBER_BLINKING,  ONLP_LED_MODE_BLINKING},
 
-    {LED_PSU2,    PSU2_LED_MODE_OFF,            ONLP_LED_MODE_OFF},
-    {LED_PSU2,    PSU2_LED_MODE_GREEN,          ONLP_LED_MODE_GREEN},
-    {LED_PSU2,    PSU2_LED_MODE_GREEN_BLINKING, ONLP_LED_MODE_GREEN_BLINKING},
-    {LED_PSU2,    PSU2_LED_MODE_AMBER,          ONLP_LED_MODE_ORANGE},
-    {LED_PSU2,    PSU2_LED_MODE_AMBER_BLINKING, ONLP_LED_MODE_ORANGE_BLINKING},
+    {LED_PSU,     	PSU_LED_MODE_OFF,             		ONLP_LED_MODE_OFF},
+    {LED_PSU,  		PSU_LED_MODE_GREEN,           		ONLP_LED_MODE_GREEN},
+    {LED_PSU,  		PSU_LED_MODE_GREEN_BLINKING,  		ONLP_LED_MODE_GREEN_BLINKING},
+    {LED_PSU,     	PSU_LED_MODE_AMBER,           		ONLP_LED_MODE_ORANGE},
+    {LED_PSU,		PSU_LED_MODE_AMBER_BLINKING,  		ONLP_LED_MODE_ORANGE_BLINKING},
+    {LED_PSU,     	PSU_LED_MODE_GREEN_AMBER_BLINKING,  ONLP_LED_MODE_BLINKING},
 
-    {LED_FAN,     FAN_LED_MODE_OFF,             ONLP_LED_MODE_OFF},
-    {LED_FAN,     FAN_LED_MODE_GREEN,           ONLP_LED_MODE_GREEN},
-    {LED_FAN,     FAN_LED_MODE_GREEN_BLINKING,  ONLP_LED_MODE_GREEN_BLINKING},
-    {LED_FAN,     FAN_LED_MODE_AMBER,           ONLP_LED_MODE_ORANGE},
-    {LED_FAN,     FAN_LED_MODE_AMBER_BLINKING,  ONLP_LED_MODE_ORANGE_BLINKING},
-
-    {LED_LOC,     LOC_LED_MODE_OFF,             ONLP_LED_MODE_OFF},
-    {LED_LOC,     LOC_LED_MODE_BLUE,            ONLP_LED_MODE_BLUE},
-    {LED_LOC,     LOC_LED_MODE_BLUE_BLINKING,   ONLP_LED_MODE_BLUE_BLINKING},
-    {LED_LOC,     LOC_LED_MODE_GREEN,           ONLP_LED_MODE_GREEN},
-    {LED_LOC,     LOC_LED_MODE_GREEN_BLINKING,  ONLP_LED_MODE_GREEN_BLINKING},
+	{LED_SEC,		SEC_LED_MODE_OFF,            		ONLP_LED_MODE_OFF},
+    {LED_SEC,  		SEC_LED_MODE_BLUE,           		ONLP_LED_MODE_BLUE},   
 
 };
 
 static char *leds[] =  /* must map with onlp_led_id (platform_lib.h) */
 {
     "reserved",
-    "sys_status",
-    "sys_psu1_led",
-    "sys_psu2_led",
-    "fan1_led",
-    "sys_locator",
+	"led_pwr",
+	"led_status",
+	"led_fan",    
+    "led_psu",
+    "led_security",
 };
 
 /*
@@ -129,30 +115,29 @@ static onlp_led_info_t linfo[] =
 {
     { }, /* Not used */
     {
-        { ONLP_LED_ID_CREATE(LED_SYSTEM), "Chassis LED 1 (SYSTEM LED)", 0 },
+        { ONLP_LED_ID_CREATE(LED_PWR), "Chassis LED 1 (POWER LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_ORANGE,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN,
     },
     {
-        { ONLP_LED_ID_CREATE(LED_PSU1), "Chassis LED 2 (PSU1 LED)", 0 },
+        { ONLP_LED_ID_CREATE(LED_STAT), "Chassis LED 2 (STATUS LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_ORANGE,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN_BLINKING | ONLP_LED_CAPS_ORANGE_BLINKING,
     },
     {
-        { ONLP_LED_ID_CREATE(LED_PSU2), "Chassis LED 3 (PSU2 LED)", 0 },
+        { ONLP_LED_ID_CREATE(LED_FAN), "Chassis LED 3 (FAN LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_ORANGE,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN_BLINKING | ONLP_LED_CAPS_ORANGE_BLINKING,
     },
     {
-        { ONLP_LED_ID_CREATE(LED_FAN), "Chassis LED 4 (FAN LED)", 0 },
+        { ONLP_LED_ID_CREATE(LED_PSU), "Chassis LED 4 (PSU LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_ORANGE,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN_BLINKING | ONLP_LED_CAPS_ORANGE_BLINKING,
     },
     {
-        { ONLP_LED_ID_CREATE(LED_LOC), "Chassis LED 5 (LOC LED)", 0 },
+        { ONLP_LED_ID_CREATE(LED_SEC), "Chassis LED 5 (SECURITY LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF|
-        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_BLUE,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_BLUE,
     }
 };
 
@@ -196,11 +181,7 @@ static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led
 int
 onlp_ledi_init(void)
 {
-    /*
-     * LED BLUE_BLINKING
-     */
     DIAG_PRINT("%s", __FUNCTION__);
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_BLUE_BLINKING);
 
     return ONLP_STATUS_OK;
 }
@@ -273,6 +254,7 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
             }
         }
     }
+	
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 

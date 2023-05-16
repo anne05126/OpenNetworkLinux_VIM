@@ -32,25 +32,22 @@
 
 #define PSU1_ID 1
 #define PSU2_ID 2
+#define PSU_FAN1_ID 1
+#define PSU_FAN2_ID 2
 
 #define CHASSIS_LED_COUNT       5
 #define CHASSIS_PSU_COUNT       2
+#define PER_PSU_FAN_COUNT   	2
+#define PER_PSU_THERMAL_COUNT   3
 
-#define PSU1_AC_PMBUS_PREFIX            "/sys/bus/i2c/devices/9-0058/"
-#define PSU2_AC_PMBUS_PREFIX            "/sys/bus/i2c/devices/10-0059/"
-#define PSU1_AC_PMBUS_NODE(node)        PSU1_AC_PMBUS_PREFIX#node
-#define PSU2_AC_PMBUS_NODE(node)        PSU2_AC_PMBUS_PREFIX#node
+#define CHASSIS_FAN_COUNT (ONLP_FAN_ID_MAX - (CHASSIS_PSU_COUNT * PER_PSU_FAN_COUNT) - 1)
+#define CHASSIS_THERMAL_COUNT (ONLP_THERMAL_ID_MAX - (CHASSIS_PSU_COUNT * PER_PSU_THERMAL_COUNT) - 1)
 
-#define PSU1_AC_HWMON_PREFIX            "/sys/bus/i2c/devices/0-005e/"
-#define PSU2_AC_HWMON_PREFIX            "/sys/bus/i2c/devices/0-005e/"
 
-#define PSU1_AC_EEPROM_PREFIX           "/sys/bus/i2c/devices/9-0050/"
-#define PSU2_AC_EEPROM_PREFIX           "/sys/bus/i2c/devices/10-0051/"
-#define PSU1_AC_EEPROM_NODE(node)       PSU1_AC_EEPROM_PREFIX#node
-#define PSU2_AC_EEPROM_NODE(node)       PSU2_AC_EEPROM_PREFIX#node
+#define PSU_HWMON_PREFIX            	"/sys/bus/platform/devices/8730_psu/"
+#define PSU_EEPROM_PREFIX            	"/sys/bus/platform/devices/8730_psu/"
 
-#define FAN_BOARD_PATH	                "/sys/bus/i2c/devices/0-005e/"
-#define FAN_NODE(node)	                FAN_BOARD_PATH#node
+#define FAN_BOARD_PATH	                "/sys/bus/platform/devices/8730_fan/"
 
 #define ONIE_EEPROM_PATH                "/sys/bus/i2c/devices/41-0055/eeprom"
 
@@ -66,84 +63,8 @@
 #define QSFP_PORT_INDEX_START               0
 #define QSFP_PORT_INDEX_END                 31
 
-
 #define IS_QSFP_PORT(_port) (_port >= QSFP_PORT_INDEX_START && _port <= QSFP_PORT_INDEX_END)
 
-
-typedef long long               I64_T;      /* 64-bit signed   */
-typedef unsigned long long      UI64_T;     /* 64-bit unsigned */
-typedef long                    I32_T;      /* 32-bit signed   */
-typedef unsigned long           UI32_T;     /* 32-bit unsigned */
-typedef short int               I16_T;      /* 16-bit signed   */
-typedef unsigned short int      UI16_T;     /* 16-bit unsigned */
-typedef char                    I8_T;       /* 8-bit signed    */
-typedef unsigned char           UI8_T;      /* 8-bit unsigned  */
-
-/*----------------------------------------------------------*/
-/*  BIT operation                                           */
-/*----------------------------------------------------------*/
-#define UTL_TEST_BITS(__type__,__var__,__pos__)                         \
-        (__type__)((((__type__)(__var__)>>(__type__)(__pos__))&(__type__)1)?(__type__)1:(__type__)0)
-
-#define UTL_LEFT_SHIFT_BITS(__type__,__range__,__var__,__sft_bits__)    \
-        (((__type__)(__sft_bits__)>=(__range__))?0:((__type__)(__var__)<<(__type__)(__sft_bits__)))
-
-#define UTL_RIGHT_SHIFT_BITS(__type__,__range__,__var__,__sft_bits__)   \
-        (((__type__)__sft_bits__>=(__range__))?(__type__)(__var__):((__type__)(__var__)>>(__type__)(__sft_bits__)))
-
-#define UTL_SET_BITS(__type__,__range__,__var__,__pos__)                \
-        ((__type__)(__var__)|UTL_LEFT_SHIFT_BITS(__type__,__range__,(__type__)1U,(__type__)(__pos__)))
-
-#define UTL_RESET_BITS(__type__,__range__,__var__,__pos__)              \
-        ((__type__)(__var__)&~UTL_LEFT_SHIFT_BITS(__type__,__range__,(__type__)1U,(__type__)(__pos__)))
-
-/*----------------------------------------------------------*/
-/*  64 BIT operation                                        */
-/*----------------------------------------------------------*/
-#define UTL_TEST_BITS64(__var__,__pos__)     UTL_TEST_BITS(UI64_T,__var__,__pos__)
-
-#define UTL_SET_BITS64(__var__,__pos__)      (__var__) = UTL_SET_BITS(UI64_T,64,__var__,__pos__)
-#define UTL_RESET_BITS64(__var__,__pos__)    (__var__) = UTL_RESET_BITS(UI64_T,64,__var__,__pos__)
-
-/*----------------------------------------------------------*/
-/*  32 BIT operation                                        */
-/*----------------------------------------------------------*/
-/*   Usage: if( UTL_TEST_BITS32(val,2) )*/
-/*   pos = 0~7, 0~15, 0~31              */
-/*   0x1234 = 0001 0010 0011 0100       */
-/*   UTL_TEST_BITS32( 0x1234, 2 ) ==> 1 */
-/*   UTL_TEST_BITS32( 0x1234, 1 ) ==> 0 */
-#define UTL_TEST_BITS32(__var__,__pos__)     UTL_TEST_BITS(UI32_T,__var__,__pos__)
-
-
-/*   Usage: UTL_SET_BITS32( val, 6 )                    */
-/*   pos = 0~7, 0~15, 0~31                                  */
-/*   val = 0x0100 =               0000 0001 0000 0000       */
-/*   UTL_SET_BITS32( val,6 )==>   0000 0001 0100 0000   */
-/*   UTL_RESET_BITS32( val,8 )=>  0000 0000 0000 0000   */
-#define UTL_SET_BITS32(__var__,__pos__)      (__var__) = UTL_SET_BITS(UI32_T,32,__var__,__pos__)
-#define UTL_RESET_BITS32(__var__,__pos__)    (__var__) = UTL_RESET_BITS(UI32_T,32,__var__,__pos__)
-
-/*----------------------------------------------------------*/
-/*  16 BIT operation                                        */
-/*----------------------------------------------------------*/
-#define UTL_TEST_BITS16(__var__,__pos__)     UTL_TEST_BITS(UI16_T,__var__,__pos__)
-
-#define UTL_SET_BITS16(__var__,__pos__)      (__var__) = UTL_SET_BITS(UI16_T,16,__var__,__pos__)
-#define UTL_RESET_BITS16(__var__,__pos__)    (__var__) = UTL_RESET_BITS(UI16_T,16,__var__,__pos__)
-
-/*----------------------------------------------------------*/
-/*  8 BIT operation                                         */
-/*----------------------------------------------------------*/
-#define UTL_TEST_BITS8(__var__,__pos__)     UTL_TEST_BITS(UI8_T,__var__,__pos__)
-
-#define UTL_SET_BITS8(__var__,__pos__)      (__var__) = UTL_SET_BITS(UI8_T,8,__var__,__pos__)
-#define UTL_RESET_BITS8(__var__,__pos__)    (__var__) = UTL_RESET_BITS(UI8_T,16,__var__,__pos__)
-
-
-int deviceNodeWriteInt(char *filename, int value, int data_len);
-int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len);
-int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_len);
 
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
@@ -153,8 +74,7 @@ typedef enum psu_type {
     PSU_TYPE_DC_48V_B2F
 } psu_type_t;
 
-//psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
-int psu_two_complement_to_int(uint16_t data, uint8_t valid_bit, int mask);
+
 enum onlp_thermal_id
 {
     THERMAL_RESERVED = 0,
@@ -163,11 +83,14 @@ enum onlp_thermal_id
     THERMAL_3_ON_MAINBOARD,  /* Main Board Bottom TMP75_1 Temp (HOT Spot) */
     THERMAL_4_ON_MAINBOARD,  /* Main Board Bottom TMP75_2 Temp (AFI) */
     THERMAL_1_ON_PSU1,
+    THERMAL_2_ON_PSU1,
+    THERMAL_3_ON_PSU1,
     THERMAL_1_ON_PSU2,
+    THERMAL_2_ON_PSU2,
+    THERMAL_3_ON_PSU2,
     ONLP_THERMAL_ID_MAX,
 };
 
-#define CHASSIS_THERMAL_COUNT (ONLP_THERMAL_ID_MAX - CHASSIS_PSU_COUNT - 1)
 
 enum fan_id {
     FAN_1_ON_FAN_BOARD = 1,
@@ -178,12 +101,11 @@ enum fan_id {
     FAN_6_ON_FAN_BOARD,
     FAN_7_ON_FAN_BOARD,
     FAN_1_ON_PSU_1,
+    FAN_2_ON_PSU_1,
     FAN_1_ON_PSU_2,
+    FAN_2_ON_PSU_2,
     ONLP_FAN_ID_MAX,
 };
-
-#define CHASSIS_FAN_COUNT (ONLP_FAN_ID_MAX - CHASSIS_PSU_COUNT - 1)
-
 
 /* FAN related data
  */
@@ -198,6 +120,7 @@ enum onlp_fan_id
     FAN_1_ON_PSU2,
 };
 
+
 /* 
  * LED ID (need to sync with "enum onlp_led_id" defined in ledi.c)
  */
@@ -205,52 +128,13 @@ enum onlp_fan_id
 enum onlp_led_id
 {
     LED_RESERVED = 0,
-    LED_SYSTEM,
-    LED_PSU1,
-    LED_PSU2,
+	LED_PWR,
+    LED_STAT,
     LED_FAN,
-    LED_LOC
+    LED_PSU,
+    LED_SEC  
 };
 
-/*
-* TLV type code
-*/
-#define TLV_CODE_PRODUCT_NAME   0x21
-#define TLV_CODE_PART_NUMBER    0x22
-#define TLV_CODE_SERIAL_NUMBER  0x23
-#define TLV_CODE_MAC_BASE       0x24
-#define TLV_CODE_MANUF_DATE     0x25
-#define TLV_CODE_DEVICE_VERSION 0x26
-#define TLV_CODE_LABEL_REVISION 0x27
-#define TLV_CODE_PLATFORM_NAME  0x28
-#define TLV_CODE_ONIE_VERSION   0x29
-#define TLV_CODE_MAC_SIZE       0x2A
-#define TLV_CODE_MANUF_NAME     0x2B
-#define TLV_CODE_MANUF_COUNTRY  0x2C
-#define TLV_CODE_VENDOR_NAME    0x2D
-#define TLV_CODE_DIAG_VERSION   0x2E
-#define TLV_CODE_SERVICE_TAG    0x2F
-#define TLV_CODE_VENDOR_EXT     0xFD
-#define TLV_CODE_CRC_32         0xFE 
-
-
-/*
-i2c APIs: access i2c device by ioctl 
-*/ 
-#include <errno.h>
-#include <linux/i2c-dev.h>
-
-int i2c_read(int i2cbus, int addr, int offset, int length, char* data);
-int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data);
-int i2c_read_byte(int i2cbus, int addr, int offset, char* data);
-
-int i2c_read_word(int i2cbus, int addr, int command);
-int i2c_read_block(int i2cbus, int addr, uint8_t offset, uint8_t *data, int length);
-int i2c_read_i2c_block_dump(int i2cbus, int addr, uint8_t *data);
-int i2c_write_byte(int i2cbus, int addr, int offset, char val); 
-
-int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val); 
-int i2c_read_rps_status(int i2cbus, int addr, int offset);
 
 #define DIAG_FLAG_ON 1
 #define DIAG_FLAG_OFF 0
@@ -264,19 +148,14 @@ char diag_debug_trace_check(void);
 char diag_debug_pause_platform_manage_on(void);
 char diag_debug_pause_platform_manage_off(void);
 char diag_debug_pause_platform_manage_check(void);
-/*
-* TLV parsering for specific type code
-*/
-int eeprom_tlv_read(uint8_t *rdata, char type, char *data);
-
 
 #define DIAG_TRACE(fmt,args...) if(diag_debug_trace_check()) printf("\n[TRACE]"fmt"\n", args)
 #define DIAG_PRINT(fmt,args...) DIAG_TRACE(fmt,args);else if(diag_flag_get()) printf("[DIAG]"fmt"\n", args) 
 
 char* sfp_control_to_str(int value);
+char *rtrim(char *str);
+char *ltrim(char *str);
+char *trim(char *str);
 psu_type_t psu_type_get(int id, char* modelname, int modelname_len);
-int psu_serial_number_get(int id, char *serial, int serial_len);
-int psu_yesm1300am_pmbus_info_get(int id, char *node, int *value);
-int psu_yesm1300am_pmbus_info_set(int id, char *node, int value);
 
 #endif  /* __PLATFORM_LIB_H__ */

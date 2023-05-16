@@ -8,9 +8,8 @@ class OnlPlatform_x86_64_extremenetworks_8730_32d_r0(OnlPlatformExtremeNetworks,
     SYS_OBJECT_ID=".6040.8"
 
     def baseconfig(self):
-        self.insmod('8730-32d_onie_eeprom')
-        self.insmod('8730-32d_cpld')
-        self.insmod('8730-32d_thermal')
+    	for m in [ 'onie_eeprom', 'cpld', 'thermal', 'fan', 'psu', 'pwr_cpld', 'led' ]:
+            self.insmod("8730-32d_%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
         self.new_i2c_devices([            

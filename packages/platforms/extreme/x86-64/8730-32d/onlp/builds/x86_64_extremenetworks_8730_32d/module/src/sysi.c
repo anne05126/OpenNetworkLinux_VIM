@@ -40,23 +40,19 @@
 
 #define DEBUG                               0
 #define SYSTEM_CPLD_MAX_STRLEN              8
-#define SYSTEM_CPLD_REVISION_FORMAT         "/sys/bus/i2c/devices/%s/version"
-#define SYSTEM_FPGA_I2C_ADDR                0x5F  /* System FPGA Physical Address in the I2C */
 
-#define FAN_DUTY_MAX  (100)
-#define FAN_DUTY_DEF  (50)
-#define FAN_DUTY_MIN  (33)
-
+#define PORT_CPLD_REVISION_FORMAT		   	"/sys/bus/i2c/devices/%s"
+#define POWER_CPLD_REVISION_FORMAT		    "/sys/bus/platform/devices/8730_pwr_cpld/%s"
 
 #define PLATFORM_STRING "x86-64-extremenetworks-8730-32d-r0"
 
-static char* cpld_path[] =
-{
-    "13-005f",
-    "14-005f",
-    "15-005f",
-    "16-005f"
-};
+typedef struct cpld_version {
+	char *cpld_path_format;
+	char *attr_name;
+	int   version;
+	char *description;
+} cpld_version_t;
+
 
 const char*
 onlp_sysi_platform_get(void)
@@ -96,29 +92,33 @@ int
 onlp_sysi_platform_info_get(onlp_platform_info_t *pi)
 {
     DIAG_PRINT("%s", __FUNCTION__);
-    static char cpld_vers[128]={0};
-    int   i, v[AIM_ARRAYSIZE(cpld_path)] = {0};
-    char  vstr[AIM_ARRAYSIZE(cpld_path)][SYSTEM_CPLD_MAX_STRLEN+1] = {{0}};
 
-    pi->cpld_versions = cpld_vers;
-    if (AIM_STRLEN(pi->cpld_versions) > 0) 
-    {
-        return ONLP_STATUS_OK;
-    }
+	int i, ret;
+	cpld_version_t cplds[] = { { PORT_CPLD_REVISION_FORMAT, "4-0057/version", 0, "Port-CPLD#0"},
+				   			   { PORT_CPLD_REVISION_FORMAT, "7-0057/version", 0, "Port-CPLD#1"},
+				   			   { POWER_CPLD_REVISION_FORMAT, "pwr_cpld_ver", 0, "Power-CPLD"} };
 
-    for (i = 0; i < AIM_ARRAYSIZE(cpld_path); i++) 
-    {
-        v[i] = 0;
-        if(onlp_file_read_int(&v[i], SYSTEM_CPLD_REVISION_FORMAT , cpld_path[i]) < 0) 
-        {
-            memset(cpld_vers, 0, sizeof(cpld_vers));
-            return ONLP_STATUS_E_INTERNAL;
-        }
-        ONLPLIB_SNPRINTF(vstr[i], SYSTEM_CPLD_MAX_STRLEN, "%02x.", v[i]);
-        AIM_STRCAT(cpld_vers, vstr[i]);
-    }
-    /*strip off last char, a dot*/
-    cpld_vers[AIM_STRLEN(cpld_vers)-1] = '\0';
+	/* Read CPLD version
+	 */
+	for (i = 0; i < AIM_ARRAYSIZE(cplds); i++) {
+		ret = onlp_file_read_int(&cplds[i].version, 
+					 			cplds[i].cpld_path_format, 
+					 			cplds[i].attr_name);
+
+		if (ret < 0) {
+			AIM_LOG_ERROR("Unable to read version from CPLD(%s)\r\n", cplds[i].attr_name);
+			return ONLP_STATUS_E_INTERNAL;
+		}
+	}
+
+	pi->cpld_versions = aim_fstrdup("%s:%02x, %s:%02x, %s:%02x", 
+									cplds[0].description, 
+									cplds[0].version,
+									cplds[1].description, 
+									cplds[1].version,
+									cplds[2].description, 
+									cplds[2].version);
+
     return ONLP_STATUS_OK;
 }
 
@@ -178,67 +178,6 @@ int onlp_sysi_platform_manage_init(void)
     DIAG_PRINT("%s", __FUNCTION__);
     return 0;
 }
-
-static int
-sysi_fanctrl_fan_fault_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
-                              onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
-                              int *adjusted)
-{
-    int i;
-    *adjusted = 0;
-
-    /* Bring fan speed to FAN_DUTY_MAX if any fan is not operational */
-    for (i = 0; i < CHASSIS_FAN_COUNT; i++) {
-        if (!(fi[i].status & ONLP_FAN_STATUS_FAILED)) {
-            continue;
-        }
-
-        *adjusted = 1;
-        return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_MAX);
-    }
-
-    return ONLP_STATUS_OK;
-}
-
-static int
-sysi_fanctrl_fan_absent_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
-                               onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
-                               int *adjusted)
-{
-    int i;
-    *adjusted = 0;
-
-    /* Bring fan speed to FAN_DUTY_MAX if fan is not present */
-    for (i = 0; i < CHASSIS_FAN_COUNT; i++) {
-        if (fi[i].status & ONLP_FAN_STATUS_PRESENT) {
-            continue;
-        }
-
-        *adjusted = 1;
-        return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_MAX);
-    }
-
-    return ONLP_STATUS_OK;
-}
-
-static int
-sysi_fanctrl_fan_unknown_speed_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
-                                      onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
-                                      int *adjusted)
-{
-    *adjusted = 1;
-    return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_DEF);
-}
-
-typedef int (*fan_control_policy)(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
-                                  onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
-                                  int *adjusted);
-
-fan_control_policy fan_control_policies[] = {
-    sysi_fanctrl_fan_fault_policy,
-    sysi_fanctrl_fan_absent_policy,
-    sysi_fanctrl_fan_unknown_speed_policy,
-};
 
 int
 onlp_sysi_platform_manage_fans(void)
@@ -303,184 +242,106 @@ int onlp_sysi_debug_diag_fan_status(void)
 
 }
 
-int onlp_sysi_debug_diag_fan(void)
-{
-    onlp_fan_info_t fan_info;
-
-    printf("[Set fan speed to 10%% ...]\n");
-    onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(FAN_1), 10);
-    sleep(2);
-    onlp_fani_info_get(ONLP_FAN_ID_CREATE(FAN_1), &fan_info);
-    printf("FAN_1 fan_info.percentage = %d\n", fan_info.percentage);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-
-    printf("[Set fan speed to 30%% ...]\n");
-    onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(FAN_1), 30);
-    sleep(2);
-    onlp_fani_info_get(ONLP_FAN_ID_CREATE(FAN_1), &fan_info);
-    printf("FAN_1 fan_info.percentage = %d\n", fan_info.percentage);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-
-    printf("[Set fan speed to 50%% ...]\n");
-    onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(FAN_1), 50);
-    sleep(2);
-    onlp_fani_info_get(ONLP_FAN_ID_CREATE(FAN_1), &fan_info);
-    printf("FAN_1 fan_info.percentage = %d\n", fan_info.percentage);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-
-    printf("[Set fan speed to 70%% ...]\n");
-    onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(FAN_1), 70);
-    sleep(2);
-    onlp_fani_info_get(ONLP_FAN_ID_CREATE(FAN_1), &fan_info);
-    printf("FAN_1 fan_info.percentage = %d\n", fan_info.percentage);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-
-    printf("[Set fan speed to 100%% ...]\n");
-    onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(FAN_1), 100);
-    sleep(2);
-    onlp_fani_info_get(ONLP_FAN_ID_CREATE(FAN_1), &fan_info);
-    printf("FAN_1 fan_info.percentage = %d\n", fan_info.percentage);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-
-    printf("[Set fan speed to default(50%%) ...]\n");
-    onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(FAN_1), 50);
-
-    return 0;
-}
-
 int onlp_sysi_debug_diag_led(void)
 {
 
 
-    printf("SYSTEM  o     POWER o     FAN o     LOCATOR o   \n");
+    printf("POWER o     STATUS  o     FAN o     PSU o     SECURITY o   \n");
     printf("\n");
 
     printf("[Stop platform manage ...]\n");
-#if 1
+
     diag_debug_pause_platform_manage_on();
-#else
-    onlp_sys_platform_manage_stop(0);
-#endif
+
     sleep(1);
 
     printf("[Set All LED to OFF ...]\n");
-    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_SYSTEM), ONLP_LED_MODE_OFF);
-    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_PSU1), ONLP_LED_MODE_OFF);
-    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_PSU2), ONLP_LED_MODE_OFF);
+    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_PWR), ONLP_LED_MODE_OFF);
+    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_OFF);
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_OFF);
-    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_OFF);
+    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_OFF);
+    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_SEC), ONLP_LED_MODE_OFF);	
     printf("<Press Any Key to Continue>\n");
     getchar();
 
-    /* SYSTEM LED */
-    printf("[Set SYSTEM LED to ONLP_LED_MODE_GREEN ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_SYSTEM), ONLP_LED_MODE_GREEN);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-    printf("[Set SYSTEM LED to ONLP_LED_MODE_GREEN_BLINKING ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_SYSTEM), ONLP_LED_MODE_GREEN_BLINKING);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-    printf("[Set SYSTEM LED to ONLP_LED_MODE_ORANGE ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_SYSTEM), ONLP_LED_MODE_ORANGE);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-    printf("[Set SYSTEM LED to ONLP_LED_MODE_ORANGE_BLINKING ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_SYSTEM), ONLP_LED_MODE_ORANGE_BLINKING);
+    /* POWER LED */
+    printf("[Set POWER LED to ONLP_LED_MODE_GREEN ...]\n");
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PWR), ONLP_LED_MODE_GREEN);
     printf("<Press Any Key to Continue>\n");
     getchar();
 
-    /* PSU1 LED */
-    printf("[Set PSU1 LED to ONLP_LED_MODE_GREEN ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU1), ONLP_LED_MODE_GREEN);
+    /* STATUS LED */
+    printf("[Set STATUS LED to ONLP_LED_MODE_GREEN ...]\n");
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_GREEN);
     printf("<Press Any Key to Continue>\n");
     getchar();
-    printf("[Set PSU1 LED to ONLP_LED_MODE_GREEN_BLINKING ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU1), ONLP_LED_MODE_GREEN_BLINKING);
+	
+    printf("[Set STATUS LED to ONLP_LED_MODE_ORANGE ...]\n");
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_ORANGE);
     printf("<Press Any Key to Continue>\n");
     getchar();
-    printf("[Set PSU1 LED to ONLP_LED_MODE_ORANGE ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU1), ONLP_LED_MODE_ORANGE);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-    printf("[Set PSU1 LED to ONLP_LED_MODE_ORANGE_BLINKING ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU1), ONLP_LED_MODE_ORANGE_BLINKING);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-
-    /* PSU2 LED */
-    printf("[Set PSU2 LED to ONLP_LED_MODE_GREEN ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU2), ONLP_LED_MODE_GREEN);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-    printf("[Set PSU2 LED to ONLP_LED_MODE_GREEN_BLINKING ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU2), ONLP_LED_MODE_GREEN_BLINKING);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-    printf("[SetPSU2 LED to ONLP_LED_MODE_ORANGE ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU2), ONLP_LED_MODE_ORANGE);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-    printf("[Set PSU2 LED to ONLP_LED_MODE_ORANGE_BLINKING ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU2), ONLP_LED_MODE_ORANGE_BLINKING);
+	
+	printf("[Set STATUS LED to ONLP_LED_MODE_BLINKING(Blinking Amber-Green) ...]\n");
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_BLINKING);
     printf("<Press Any Key to Continue>\n");
     getchar();
 
-    /* FAN LED */
+	/* FAN LED */
     printf("[Set FAN LED to ONLP_LED_MODE_GREEN ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_GREEN);
     printf("<Press Any Key to Continue>\n");
     getchar();
-    printf("[Set FAN LED to ONLP_LED_MODE_GREEN_BLINKING ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_GREEN_BLINKING);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
+	
     printf("[Set FAN LED to ONLP_LED_MODE_ORANGE ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_ORANGE);
     printf("<Press Any Key to Continue>\n");
     getchar();
-    printf("[Set FAN LED to ONLP_LED_MODE_ORANGE_BLINKING ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_ORANGE_BLINKING);
+	
+	printf("[Set FAN LED to ONLP_LED_MODE_BLINKING(Blinking Amber-Green) ...]\n");
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_BLINKING);
+    printf("<Press Any Key to Continue>\n");
+    getchar();
+
+    /* PSU LED */
+    printf("[Set PSU LED to ONLP_LED_MODE_GREEN ...]\n");
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_GREEN);
+    printf("<Press Any Key to Continue>\n");
+    getchar();
+    printf("[Set PSU LED to ONLP_LED_MODE_GREEN_BLINKING ...]\n");
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_GREEN_BLINKING);
+    printf("<Press Any Key to Continue>\n");
+    getchar();
+    printf("[Set PSU LED to ONLP_LED_MODE_ORANGE ...]\n");
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_ORANGE);
+    printf("<Press Any Key to Continue>\n");
+    getchar();
+    printf("[Set PSU LED to ONLP_LED_MODE_ORANGE_BLINKING ...]\n");
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_ORANGE_BLINKING);
+    printf("<Press Any Key to Continue>\n");
+    getchar();
+	printf("[Set PSU LED to ONLP_LED_MODE_BLINKING(Blinking Amber-Green) ...]\n");
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_BLINKING);
     printf("<Press Any Key to Continue>\n");
     getchar();
     
-    /* LOC LED */
-    printf("[Set LOC LED to ONLP_LED_MODE_BLUE ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_BLUE);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-    printf("[Set LOC LED to ONLP_LED_MODE_BLUE_BLINKING ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_BLUE_BLINKING);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-    printf("[Set LOC LED to ONLP_LED_MODE_GREEN ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_GREEN);
-    printf("<Press Any Key to Continue>\n");
-    getchar();
-    printf("[Set LOC LED to ONLP_LED_MODE_GREEN_BLINKING ...]\n");
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_GREEN_BLINKING);
+    /* SECURITY LED */
+    printf("[Set SEC LED to ONLP_LED_MODE_BLUE ...]\n");
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_SEC), ONLP_LED_MODE_BLUE);
     printf("<Press Any Key to Continue>\n");
     getchar();
 
     printf("[Set All LED to OFF ...]\n");
-    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_SYSTEM), ONLP_LED_MODE_OFF);
-    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_PSU1), ONLP_LED_MODE_OFF);
-    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_PSU2), ONLP_LED_MODE_OFF);
+    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_PWR), ONLP_LED_MODE_OFF);
+    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_OFF);
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_OFF);
-    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_OFF);
+    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_OFF);
+    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_SEC), ONLP_LED_MODE_OFF);
 
     printf("[Restart platform manage ...]\n");
     onlp_ledi_init();
-#if 1
+
     diag_debug_pause_platform_manage_off();
-#else
-    onlp_sys_platform_manage_start(0);
-#endif
+
     return 0;
 }
 
@@ -757,45 +618,11 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
         onlp_sysi_platform_manage_init();
         diag_flag_set(DIAG_FLAG_OFF);
     }
-    else if (argc > 0 && !strcmp(argv[0], "fan_rpm"))
-    {
-        onlp_fan_info_t fan_info;
-        int i = 0;
-        diag_flag_set(DIAG_FLAG_ON);
-        printf("DIAG for FAN rpm: \n");
-
-        int rpm = 0;
-        if (argc != 2)
-        {
-            printf("Parameter error, format: onlpdump debugi fan_rpm [RPM]\n");
-            return -1;
-        }
-        rpm = atoi(argv[1]);
-        for (i = 1; i <= CHASSIS_FAN_COUNT; i++)
-        {
-            onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(i), rpm);
-        }
-
-        sleep(5);
-        for (i = 1; i <= CHASSIS_FAN_COUNT; i++)
-        {
-            onlp_fani_info_get(ONLP_FAN_ID_CREATE(i), &fan_info);
-            printf("FAN#%d RPM:%d\n", i, fan_info.rpm);
-        }
-
-        diag_flag_set(DIAG_FLAG_OFF);
-    }
     else if (argc > 0 && !strcmp(argv[0], "fan_status"))
     {
         diag_flag_set(DIAG_FLAG_ON);
         printf("DIAG for FAN status: \n");
         onlp_sysi_debug_diag_fan_status();
-        diag_flag_set(DIAG_FLAG_OFF);
-    }
-    else if (argc > 0 && !strcmp(argv[0], "fan"))
-    {
-        diag_flag_set(DIAG_FLAG_ON);
-        onlp_sysi_debug_diag_fan();
         diag_flag_set(DIAG_FLAG_OFF);
     }
     else if (argc > 0 && !strcmp(argv[0], "psu"))
@@ -1070,9 +897,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
         printf("    trace_on            : turn on ONLPI debug trace message output on screen.\n");
         printf("    trace_off           : turn off ONLPI debug trace message output on screen.\n");
         printf("    sys                 : run system ONLPI diagnostic function.\n");
-        printf("    fan                 : run fan ONLPI diagnostic function.\n");
         printf("    fan_status          : run fan status ONLPI diagnostic function.\n");
-        printf("    fan_rpm             : run fan RPM ONLPI diagnostic function.\n");
         printf("    led                 : run LED ONLPI diagnostic function.\n");
         printf("    psu                 : run psu ONLPI diagnostic function.\n");
         printf("    thermal             : run thermal ONLPI diagnostic function.\n");
@@ -1097,7 +922,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
     else if (argc > 0 && !strcmp(argv[0], "test")) //for RD debug test
     {
         diag_flag_set(DIAG_FLAG_ON);
-        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_SYSTEM), ONLP_LED_MODE_GREEN_BLINKING);
+        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_BLINKING);
     }
     else
     {}

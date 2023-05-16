@@ -41,8 +41,12 @@ static char* devfiles__[] =  /* must map with onlp_thermal_id (platform_lib.h) *
 	"/sys/bus/platform/devices/8730_thermal/temp2_input",
 	"/sys/bus/platform/devices/8730_thermal/temp3_input",
 	"/sys/bus/platform/devices/8730_thermal/temp4_input",
-	"/sys/bus/platform/devices/8730_psu/psu_temp1_input",
-	"/sys/bus/platform/devices/8730_psu/psu_temp2_input",
+	"/sys/bus/platform/devices/8730_psu/psu1_temp1_input",
+	"/sys/bus/platform/devices/8730_psu/psu1_temp2_input",
+	"/sys/bus/platform/devices/8730_psu/psu1_temp3_input",
+	"/sys/bus/platform/devices/8730_psu/psu2_temp1_input",
+	"/sys/bus/platform/devices/8730_psu/psu2_temp2_input",
+	"/sys/bus/platform/devices/8730_psu/psu2_temp3_input",
 };
 
 /* Static values */
@@ -68,7 +72,23 @@ static onlp_thermal_info_t linfo[] = {
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_PSU1), "PSU-1 Thermal Sensor 2", ONLP_PSU_ID_CREATE(PSU1_ID)},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_PSU1), "PSU-1 Thermal Sensor 3", ONLP_PSU_ID_CREATE(PSU1_ID)},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
     {   { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID)},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_PSU2), "PSU-2 Thermal Sensor 2", ONLP_PSU_ID_CREATE(PSU2_ID)},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_PSU2), "PSU-2 Thermal Sensor 3", ONLP_PSU_ID_CREATE(PSU2_ID)},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },

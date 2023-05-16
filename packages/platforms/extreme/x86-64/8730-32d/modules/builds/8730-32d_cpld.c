@@ -64,6 +64,8 @@
 #define CPLD_REG_ADDR_MODSELECT_2         0x0c
 #define CPLD_REG_ADDR_PORT_LED_CONTROL    0x0d
 
+#define CPLD_VERSION_BITS_MASK    		  0xF
+
 #define DEBUG_MODE 1
 
 static unsigned int debug = 0;
@@ -918,6 +920,8 @@ static ssize_t show_version(struct device *dev, struct device_attribute *attr, c
         dev_dbg(&client->dev, "cpld(0x%x) reg(CPLD_REG_ADDR_REVISION) err %d\n", client->addr, val);
     }
 
+	val = val & CPLD_VERSION_BITS_MASK;
+
     return sprintf(buf, "%d", val);
 }
 
@@ -1121,7 +1125,7 @@ static void __exit extreme8730_32d_cpld_exit(void)
     i2c_del_driver(&extreme8730_32d_cpld_driver);
 }
 
-MODULE_AUTHOR("Anne Liou <anne_liou@alphanetworks.com>");
+MODULE_AUTHOR("Alpha-SID2");
 MODULE_DESCRIPTION("Extreme 8730_32d CPLD driver");
 MODULE_LICENSE("GPL");
 
