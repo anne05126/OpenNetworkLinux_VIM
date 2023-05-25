@@ -62,6 +62,20 @@ static const int qsfp_port_cpld_bus_index[NUM_OF_QSFP_PORT_CPLD] =
 #define MODULE_LPMODE_QSFP_CPLD_FORMAT      "/sys/bus/i2c/devices/%d-0057/module_lp_mode_%d"
 #define MODULE_PRESENT_ALL_QSFP_CPLD_FORMAT "/sys/bus/i2c/devices/%d-0057/module_present_all"
 
+/* IOBM */
+#define MODULE_PRESENT_IOBM_SFP_FORMAT     	"/sys/bus/platform/devices/8730_iobm_io_eeprom/sfp%d_present"
+#define MODULE_TXFAULT_IOBM_SFP_FORMAT     	"/sys/bus/platform/devices/8730_iobm_io_eeprom/sfp%d_txfault"
+#define MODULE_RXLOS_IOBM_SFP_FORMAT     	"/sys/bus/platform/devices/8730_iobm_io_eeprom/sfp%d_rxlos"
+#define MODULE_TXDIS_IOBM_SFP_FORMAT     	"/sys/bus/platform/devices/8730_iobm_io_eeprom/sfp%d_txdis"
+#define MODULE_EEPROM_IOBM_SFP_FORMAT     	"/sys/bus/platform/devices/8730_iobm_io_eeprom/sfp%d_eeprom"
+#define MODULE_DOM_IOBM_SFP_FORMAT     		"/sys/bus/platform/devices/8730_iobm_io_eeprom/sfp%d_dom"
+
+#define MODULE_PRESENT_IOBM_QSFP28_FORMAT   "/sys/bus/platform/devices/8730_iobm_io_eeprom/qsfp%d_mod_present"
+#define MODULE_RESET_IOBM_QSFP28_FORMAT   	"/sys/bus/platform/devices/8730_iobm_io_eeprom/qsfp%d_rst_mod"
+#define MODULE_LPMODE_IOBM_QSFP28_FORMAT   	"/sys/bus/platform/devices/8730_iobm_io_eeprom/qsfp%d_lp_mode"
+#define MODULE_EEPROM_IOBM_QSFP28_FORMAT   	"/sys/bus/platform/devices/8730_iobm_io_eeprom/qsfp%d_eeprom"
+#define MODULE_DOM_IOBM_QSFP28_FORMAT   	"/sys/bus/platform/devices/8730_iobm_io_eeprom/qsfp%d_dom"
+
 
 /************************************************************
  *
@@ -79,10 +93,15 @@ onlp_sfpi_init(void)
 int
 onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 {
+	/*
+     * Front QSFPDD Ports {0, 31}
+     * IOBM QSFP28 Port {32}
+     * IOBM SFP+ Ports {33, 34}
+     */
     int p;
     AIM_BITMAP_CLR_ALL(bmap);
 
-    for(p = 0; p < NUM_OF_SFP_PORT; p++) {
+    for(p = 0; p < (NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT); p++) {
         AIM_BITMAP_SET(bmap, p);
     }
 
@@ -110,6 +129,34 @@ int onlp_sfpi_is_present(int port)
         }
         DIAG_PRINT("%s, QSFP Port:%d Present value:0x%x, ", __FUNCTION__, port, present);
     }
+	else if (IS_IOBM_PORT(port))
+    {
+    	if(port == IOBM_QSFP28_PORT_INDEX)
+    	{
+    		if (onlp_file_read_int(&present, MODULE_PRESENT_IOBM_QSFP28_FORMAT, 
+                	(port - QSFP_PORT_INDEX_END)) < 0) 
+        	{
+        		char file[64] = {0};
+        		sprintf(file, MODULE_PRESENT_IOBM_QSFP28_FORMAT, (port - QSFP_PORT_INDEX_END)); 
+
+            	AIM_LOG_ERROR("Unable to read present status from port(%d). path: %s\r\n", port, file);
+            	return ONLP_STATUS_E_INTERNAL;
+        	}
+    	}
+		else
+		{
+        	if (onlp_file_read_int(&present, MODULE_PRESENT_IOBM_SFP_FORMAT, 
+                	(port - IOBM_QSFP28_PORT_INDEX)) < 0) 
+        	{
+        		char file[64] = {0};
+        		sprintf(file, MODULE_PRESENT_IOBM_QSFP28_FORMAT, (port - QSFP_PORT_INDEX_END)); 
+				
+            	AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
+            	return ONLP_STATUS_E_INTERNAL;
+        	}
+		}
+        DIAG_PRINT("%s, IOBM Port:%d Present value:0x%x, ", __FUNCTION__, port, present);
+    }
     else
     {
         return ONLP_STATUS_E_INVALID;
@@ -121,6 +168,11 @@ int onlp_sfpi_is_present(int port)
 int
 onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
+	/*
+     * Front QSFPDD Ports {0, 31}
+     * IOBM QSFP28 Port {32}
+     * IOBM SFP+ Ports {33, 34}
+     */
     DIAG_PRINT("%s", __FUNCTION__);
     uint32_t bytes[(NUM_OF_QSFP_PORT_CPLD*NUM_OF_QSFP_PER_PORT_CPLD)] = { 0 };
     int i = 0;
@@ -178,6 +230,15 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
         presence_all >>= 1;
     }
 
+	/* Get IOBM present bitmap */
+	for (i = NUM_OF_SFP_PORT; i <= IOBM_SFP_PORT_INDEX_END; i++)
+    {
+        if (onlp_sfpi_is_present(i))
+        {
+            AIM_BITMAP_SET(dst, i);
+        }
+    }
+
     return ONLP_STATUS_OK;
 }
 
@@ -185,14 +246,16 @@ int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
 	/*
-     * Ports {0, 31}
+     * Front QSFPDD Ports {0, 31}
+     * IOBM QSFP28 Port {32}
+     * IOBM SFP+ Ports {33, 34}
      */
     int p = 0;
 	int supported;
 
     AIM_BITMAP_CLR_ALL(dst);
 
-    for (p = 0; p < NUM_OF_SFP_PORT; p++)
+    for (p = 0; p < (NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT); p++)
     {
 		if(onlp_sfpi_is_present(p) == 0) 
 		{
@@ -222,19 +285,42 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
      * Return OK if eeprom is read
      */
     int size = 0;
-    if(port < 0 || port >= NUM_OF_SFP_PORT)
+    if(port < 0 || port >= (NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT))
         return ONLP_STATUS_E_INTERNAL;
-
-    DIAG_PRINT("%s, port:%d, busid:%d", __FUNCTION__, port, PORT_BUS_INDEX(port));
 
     if (IS_QSFP_PORT(port))
     {
+    	DIAG_PRINT("%s, port:%d, busid:%d", __FUNCTION__, port, PORT_BUS_INDEX(port));
+		
         if(onlp_file_read(data, 256, &size, MODULE_EEPROM_QSFP_FORMAT, 
                 PORT_BUS_INDEX(port)) != ONLP_STATUS_OK) 
         {
             AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
+    }
+	else if (IS_IOBM_PORT(port))
+    {
+    	DIAG_PRINT("%s, port:%d", __FUNCTION__, port);
+		
+    	if(port == IOBM_QSFP28_PORT_INDEX)
+    	{
+    		if(onlp_file_read(data, 256, &size, MODULE_EEPROM_IOBM_QSFP28_FORMAT, 
+                	(port - QSFP_PORT_INDEX_END)) != ONLP_STATUS_OK) 
+        	{
+            	AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
+            	return ONLP_STATUS_E_INTERNAL;
+        	}
+    	}
+		else
+		{
+        	if (onlp_file_read(data, 256, &size, MODULE_EEPROM_IOBM_SFP_FORMAT, 
+                	(port - IOBM_QSFP28_PORT_INDEX)) < 0) 
+        	{
+            	AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
+            	return ONLP_STATUS_E_INTERNAL;
+        	}
+		}
     }
     else
     {
@@ -252,10 +338,54 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 int
 onlp_sfpi_dom_read(int port, uint8_t data[256])
 {
-    DIAG_PRINT("%s, port:%d, busid:%d", __FUNCTION__, port, PORT_BUS_INDEX(port));
-    
+	/*
+     * Read the IOBM dom(A2h) into data[]
+     *
+     * Return OK if dom is read
+     */     
+    int size = 0;
+    if(port < 0 || port >= (NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT))
+        return ONLP_STATUS_E_INTERNAL;
+
+    if (IS_QSFP_PORT(port))
+    {
+    	DIAG_PRINT("%s, port:%d, busid:%d", __FUNCTION__, port, PORT_BUS_INDEX(port));
+		
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+	else if (IS_IOBM_PORT(port))
+    {
+    	DIAG_PRINT("%s, port:%d", __FUNCTION__, port);
+		
+    	if(port == IOBM_QSFP28_PORT_INDEX)
+    	{
+        	if (onlp_file_read(data, 256, &size, MODULE_DOM_IOBM_QSFP28_FORMAT, 
+                	(port - QSFP_PORT_INDEX_END)) < 0) 
+        	{
+            	return ONLP_STATUS_E_UNSUPPORTED;
+        	}
+    	}
+		else
+		{
+        	if (onlp_file_read(data, 256, &size, MODULE_DOM_IOBM_SFP_FORMAT, 
+                	(port - IOBM_QSFP28_PORT_INDEX)) < 0) 
+        	{
+            	return ONLP_STATUS_E_UNSUPPORTED;
+        	}
+		}
+    }
+    else
+    {
+        return ONLP_STATUS_E_INVALID;
+    }
+
+    if(size != 256) 
+    {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
     return ONLP_STATUS_OK;
-}
+}  
 
 int
 onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
@@ -315,7 +445,7 @@ int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int *suppo
         case ONLP_SFP_CONTROL_RESET:
         case ONLP_SFP_CONTROL_LP_MODE:
         {
-            if(IS_QSFP_PORT(port))
+            if(IS_QSFP_PORT(port) || IS_IOBM_QSFP28_PORT(port))
             {
                 *supported = 1;
             }
@@ -329,7 +459,14 @@ int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int *suppo
         case ONLP_SFP_CONTROL_TX_FAULT:
         case ONLP_SFP_CONTROL_TX_DISABLE:
         {
-            *supported = 0;
+            if(IS_IOBM_SFP_PORT(port))
+            {
+                *supported = 1;
+            }
+            else
+            {
+                *supported = 0;
+            }
         }
             break;
 
@@ -377,6 +514,20 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 }
                 DIAG_PRINT("%s, Write QSFP port:%d RESET value:0x%x, ", __FUNCTION__, port, value);
             }
+			else if(IS_IOBM_QSFP28_PORT(port))
+			{
+				if(onlp_file_write_int(value, MODULE_RESET_IOBM_QSFP28_FORMAT, 
+                		(port - QSFP_PORT_INDEX_END)) < 0) 
+        		{
+            		AIM_LOG_ERROR("Unable to set reset status to port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+        		}
+				else 
+                {
+                    rv = ONLP_STATUS_OK;
+                }
+                DIAG_PRINT("%s, Write IOBM QSFP28 port:%d RESET value:0x%x, ", __FUNCTION__, port, value);
+			}
             else
             {
                 rv = ONLP_STATUS_E_UNSUPPORTED;
@@ -399,6 +550,20 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 }
                 DIAG_PRINT("%s, Write QSFP port:%d LPMODE value:0x%x, ", __FUNCTION__, port, value);
             }
+			else if(IS_IOBM_QSFP28_PORT(port)) 
+            {
+                if (onlp_file_write_int(value, MODULE_LPMODE_IOBM_QSFP28_FORMAT, 
+                        (port - QSFP_PORT_INDEX_END)) < 0) 
+                {
+                    AIM_LOG_ERROR("Unable to set lp_mode status to port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                else 
+                {
+                    rv = ONLP_STATUS_OK;
+                }
+                DIAG_PRINT("%s, Write IOBM QSFP28 port:%d LPMODE value:0x%x, ", __FUNCTION__, port, value);
+            }
             else
             {
                 rv = ONLP_STATUS_E_UNSUPPORTED;
@@ -406,8 +571,25 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             break;
         }
         case ONLP_SFP_CONTROL_TX_DISABLE:
-        {
-            rv = ONLP_STATUS_E_UNSUPPORTED;
+        {			
+            if(IS_IOBM_SFP_PORT(port)) 
+            {
+                if (onlp_file_write_int(value, MODULE_TXDIS_IOBM_SFP_FORMAT, 
+                        (port - IOBM_QSFP28_PORT_INDEX)) < 0) 
+                {
+                    AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                else 
+                {
+                    rv = ONLP_STATUS_OK;
+                }
+                DIAG_PRINT("%s, Write IOBM SFP port:%d TXDIS value:0x%x, ", __FUNCTION__, port, value);
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
             break;
         }
 
@@ -428,7 +610,7 @@ int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
     int rv;
-    int cpld_val;
+    int val;
     int supported = 0;
 
     if (value == NULL)
@@ -452,7 +634,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         {
             if(IS_QSFP_PORT(port))
             {
-                if (onlp_file_read_int(&cpld_val,  MODULE_RESET_QSFP_CPLD_FORMAT, 
+                if (onlp_file_read_int(&val,  MODULE_RESET_QSFP_CPLD_FORMAT, 
                         PORT_CPLD_BUS_INDEX(port), (port+1)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to read reset status from port(%d)\r\n", port);
@@ -463,8 +645,24 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                     rv = ONLP_STATUS_OK;
                 }
 
-                DIAG_PRINT("%s, Read Current CPLD QSFP RESET value:0x%x, ", __FUNCTION__, cpld_val);
-                *value = cpld_val;
+                DIAG_PRINT("%s, Read Current CPLD QSFP RESET value:0x%x, ", __FUNCTION__, val);
+                *value = val;
+            }
+			else if(IS_IOBM_QSFP28_PORT(port))
+            {
+                if (onlp_file_read_int(&val,  MODULE_RESET_IOBM_QSFP28_FORMAT, 
+                        (port - QSFP_PORT_INDEX_END)) < 0) 
+                {
+                    AIM_LOG_ERROR("Unable to read reset status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                else
+                {
+                    rv = ONLP_STATUS_OK;
+                }
+
+                DIAG_PRINT("%s, Read Current IOBM QSFP28 RESET value:0x%x, ", __FUNCTION__, val);
+                *value = val;
             }
             else
             {
@@ -476,7 +674,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         {
             if(IS_QSFP_PORT(port))
             {
-                if (onlp_file_read_int(&cpld_val,  MODULE_LPMODE_QSFP_CPLD_FORMAT, 
+                if (onlp_file_read_int(&val,  MODULE_LPMODE_QSFP_CPLD_FORMAT, 
                         PORT_CPLD_BUS_INDEX(port), (port+1)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to read lp_mode status from port(%d)\r\n", port);
@@ -487,8 +685,24 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                     rv = ONLP_STATUS_OK;
                 }
 
-                DIAG_PRINT("%s, Read Current CPLD QSFP LPMODE value:0x%x, ", __FUNCTION__, cpld_val);
-                *value = cpld_val;
+                DIAG_PRINT("%s, Read Current CPLD QSFP LPMODE value:0x%x, ", __FUNCTION__, val);
+                *value = val;
+            }
+			else if(IS_IOBM_QSFP28_PORT(port))
+            {
+                if (onlp_file_read_int(&val,  MODULE_LPMODE_IOBM_QSFP28_FORMAT, 
+                        (port - QSFP_PORT_INDEX_END)) < 0) 
+                {
+                    AIM_LOG_ERROR("Unable to read lp_mode status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                else
+                {
+                    rv = ONLP_STATUS_OK;
+                }
+
+                DIAG_PRINT("%s, Read Current IOBM QSFP28 LPMODE value:0x%x, ", __FUNCTION__, val);
+                *value = val;
             }
             else
             {
@@ -496,11 +710,76 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
             }
             break;
         }
-        case ONLP_SFP_CONTROL_RX_LOS:        
+        case ONLP_SFP_CONTROL_RX_LOS: 
+		{
+			if(IS_IOBM_SFP_PORT(port))
+            {
+                if (onlp_file_read_int(&val,  MODULE_RXLOS_IOBM_SFP_FORMAT, 
+                        (port - IOBM_QSFP28_PORT_INDEX)) < 0) 
+                {
+                    AIM_LOG_ERROR("Unable to read rx_los status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                else
+                {
+                    rv = ONLP_STATUS_OK;
+                }
+
+                DIAG_PRINT("%s, Read Current IOBM SFP RXLOS value:0x%x, ", __FUNCTION__, val);
+                *value = val;
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
+			break;
+        }
         case ONLP_SFP_CONTROL_TX_FAULT:
+		{
+			if(IS_IOBM_SFP_PORT(port))
+            {
+                if (onlp_file_read_int(&val,  MODULE_TXFAULT_IOBM_SFP_FORMAT, 
+                        (port - IOBM_QSFP28_PORT_INDEX)) < 0) 
+                {
+                    AIM_LOG_ERROR("Unable to read tx_fault status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                else
+                {
+                    rv = ONLP_STATUS_OK;
+                }
+
+                DIAG_PRINT("%s, Read Current IOBM SFP TXFAULT value:0x%x, ", __FUNCTION__, val);
+                *value = val;
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
+			break;
+        }
         case ONLP_SFP_CONTROL_TX_DISABLE:
         {
-            rv = ONLP_STATUS_E_UNSUPPORTED;
+            if(IS_IOBM_SFP_PORT(port))
+            {
+                if (onlp_file_read_int(&val,  MODULE_TXDIS_IOBM_SFP_FORMAT, 
+                        (port - IOBM_QSFP28_PORT_INDEX)) < 0) 
+                {
+                    AIM_LOG_ERROR("Unable to read tx_disable status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                else
+                {
+                    rv = ONLP_STATUS_OK;
+                }
+
+                DIAG_PRINT("%s, Read Current IOBM SFP TXDIS value:0x%x, ", __FUNCTION__, val);
+                *value = val;
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
             break;
         }
 

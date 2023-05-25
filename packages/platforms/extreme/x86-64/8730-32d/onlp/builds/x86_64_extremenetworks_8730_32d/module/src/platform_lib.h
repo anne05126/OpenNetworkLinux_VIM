@@ -52,6 +52,9 @@
 #define ONIE_EEPROM_PATH                "/sys/bus/i2c/devices/41-0055/eeprom"
 
 #define NUM_OF_SFP_PORT 	                32      /* 32 * 400G */
+#define NUM_OF_IOBM_PORT 	       		 	3       /* 1 * 100G, 2 * 10G */
+#define NUM_OF_IOBM_QSFP28_PORT 	        1       /* 1 * 100G */
+#define NUM_OF_IOBM_SFP_PORT 	            2       /* 2 * 10G */
 #define NUM_OF_QSFP_PORT_CPLD 	            2
 #define NUM_OF_QSFP_PER_PORT_CPLD           2
 
@@ -62,9 +65,16 @@
 
 #define QSFP_PORT_INDEX_START               0
 #define QSFP_PORT_INDEX_END                 31
+#define IOBM_QSFP28_PORT_INDEX              32
+#define IOBM_SFP_PORT_INDEX_START           33
+#define IOBM_SFP_PORT_INDEX_END             34
+
+
 
 #define IS_QSFP_PORT(_port) (_port >= QSFP_PORT_INDEX_START && _port <= QSFP_PORT_INDEX_END)
-
+#define IS_IOBM_PORT(_port) (_port >= IOBM_QSFP28_PORT_INDEX && _port <= IOBM_SFP_PORT_INDEX_END)
+#define IS_IOBM_QSFP28_PORT(_port) (_port == IOBM_QSFP28_PORT_INDEX)
+#define IS_IOBM_SFP_PORT(_port) (_port >= IOBM_SFP_PORT_INDEX_START && _port <= IOBM_SFP_PORT_INDEX_END)
 
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
