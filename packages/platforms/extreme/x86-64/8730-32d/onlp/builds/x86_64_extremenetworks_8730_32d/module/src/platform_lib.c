@@ -217,3 +217,31 @@ psu_type_t psu_type_get(int id, char* modelname, int modelname_len)
 
     return PSU_TYPE_UNKNOWN;
 }
+
+#define EEPROM_SIZE 256
+int eeprom_tlv_read(uint8_t *rdata, int type, char *data)
+{
+    uint8_t i, j, TLV_length;
+    int total_data_length = EEPROM_SIZE;
+    int TLV_type;
+
+    for (i = 0; i < total_data_length;)
+    {
+        TLV_type = ((*(rdata + i)) << 8) + (*(rdata + i + 1));
+        TLV_length = ((*(rdata + i + 2)) << 8) + (*(rdata + i + 3));
+        //printf("Type:%d Len:%d\n", TLV_type, TLV_length);
+        if (TLV_type == type)
+        {
+            for (j = 0; j < TLV_length; j++)
+            {
+                data[j] = *(rdata + i + j + 4);
+                //printf("TLV match\n");
+            }
+            data[j] = '\0';
+            return 0;
+        }
+        i += (TLV_length + 4);
+        //printf("i:%d\n",i);
+    }
+    return 0;
+}

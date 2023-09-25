@@ -159,6 +159,11 @@ char diag_debug_pause_platform_manage_on(void);
 char diag_debug_pause_platform_manage_off(void);
 char diag_debug_pause_platform_manage_check(void);
 
+/*
+* TLV parsering for specific type code
+*/
+int eeprom_tlv_read(uint8_t *rdata, int type, char *data);
+
 #define DIAG_TRACE(fmt,args...) if(diag_debug_trace_check()) printf("\n[TRACE]"fmt"\n", args)
 #define DIAG_PRINT(fmt,args...) DIAG_TRACE(fmt,args);else if(diag_flag_get()) printf("[DIAG]"fmt"\n", args) 
 

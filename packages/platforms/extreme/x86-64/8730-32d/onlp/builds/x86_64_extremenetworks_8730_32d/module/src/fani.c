@@ -33,6 +33,9 @@
 #define FAN_STATUS_GOOD     1
 #define FAN_STATUS_F2B		0
 
+#define TLV_CODE_PART_NUM   0x800d
+#define TLV_CODE_SERIAL_NUM 0x800e
+
 #define CHASSIS_FAN_INFO(fid)		\
     { \
         { ONLP_FAN_ID_CREATE(FAN_##fid##_ON_FAN_BOARD), "Chassis Fan - "#fid, 0 },\
@@ -81,6 +84,8 @@ static int
 _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 {
     int   value;
+    uint8_t rdata[256] = { 0 };
+    int size = 0;
 
     /* get fan present status
      */
@@ -131,6 +136,26 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
     /* get speed percentage from rpm
      */
     info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
+
+    /* get fan eeprom (model name and serial number)
+    */
+    if(onlp_file_read(rdata, 256, &size, "%s""fan%d_eeprom", FAN_BOARD_PATH, fid) != ONLP_STATUS_OK) 
+    {
+        AIM_LOG_ERROR("Unable to read eeprom from fan(%d)\r\n", fid);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+#if 0 /* debug */
+    int i;
+    for(i=0;i<256;i++)
+    {
+        printf("%02X ",rdata[i]);
+    }
+    printf("\n");
+#endif
+
+    eeprom_tlv_read(rdata, TLV_CODE_PART_NUM, (char *)info->model);
+    eeprom_tlv_read(rdata, TLV_CODE_SERIAL_NUM, (char *)info->serial);
 
     return ONLP_STATUS_OK;
 }

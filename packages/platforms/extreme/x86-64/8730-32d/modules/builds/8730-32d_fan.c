@@ -49,6 +49,7 @@
 #define IPMI_FAULT_READ_CMD 		            0x10
 #define IPMI_PWM_READ_CMD 		                0x4
 #define IPMI_PWM_WRITE_CMD 		                0x5
+#define IPMI_EEPROM_READ_CMD 		            0x2
 
 #define IPMI_TIMEOUT                            (20 * HZ)
 #define IPMI_ERR_RETRY_TIMES                    1
@@ -60,6 +61,8 @@
 #define IPMI_SENSOR_OFFSET_FAN5                 0x5
 #define IPMI_SENSOR_OFFSET_FAN6                 0x6
 #define IPMI_SENSOR_OFFSET_FAN7                 0x7
+
+#define EEPROM_SIZE      						256
 
 static unsigned int debug = 0;
 module_param(debug, uint, S_IRUGO);
@@ -75,6 +78,7 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t show_fan(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_fan_speed(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_fan_pwm(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t show_fan_eeprom(struct device *dev, struct device_attribute *da, char *buf);
 static int extreme8730_32d_fan_probe(struct platform_device *pdev);
 static int extreme8730_32d_fan_remove(struct platform_device *pdev);
 
@@ -95,6 +99,7 @@ enum fan_data_index {
 	FAN_FAULT,
 	FAN_SPEED,
 	FAN_PWM,
+	FAN_EEPROM,
 	FAN_DATA_COUNT
 };
 
@@ -128,6 +133,7 @@ struct ipmi_data {
 struct ipmi_fan_resp_data {
     unsigned char   status[4];	/* 4 bytes for each fan. 0: present, 1: air flow */
 	unsigned char   rpm[4];	/* 4 bytes for each fan. */
+	unsigned char   eeprom[EEPROM_SIZE];	/* 256 bytes for each fan. */
 };
 
 struct extreme8730_32d_fan_data {
@@ -135,9 +141,11 @@ struct extreme8730_32d_fan_data {
 	struct mutex                    update_lock;
 	char             				fan_speed_valid[7];         /* 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, 4: FAN5, 5: FAN6, 6: FAN7 */
 	char             				fan_pwm_valid[7];           /* 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, 4: FAN5, 5: FAN6, 6: FAN7 */
+	char             				fan_eeprom_valid[7];        /* 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, 4: FAN5, 5: FAN6, 6: FAN7 */
 	char                            valid[7];                   /* != 0 if registers are valid,
                                                                    0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, 4: FAN5, 5: FAN6, 6: FAN7 */
 	unsigned long                   last_updated[7];            /* In jiffies 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, 4: FAN5, 5: FAN6, 6: FAN7 */
+	unsigned long                   last_updated_eeprom[7];     /* In jiffies 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, 4: FAN5, 5: FAN6, 6: FAN7 */
 	struct ipmi_data                ipmi;
 	struct ipmi_fan_resp_data   	ipmi_resp_fan[7];    		/* 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, 4: FAN5, 5: FAN6, 6: FAN7 */
 	unsigned char					ipmi_resp_fan_fault[7];		/* 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, 4: FAN5, 5: FAN6, 6: FAN7 */
@@ -161,13 +169,15 @@ static struct platform_driver extreme8730_32d_fan_driver = {
 #define FAN_FAULT_ATTR_ID(index)		FAN##index##_FAULT
 #define FAN_RPM_ATTR_ID(index)			FAN##index##_INPUT
 #define FAN_PWM_ATTR_ID(index)			FAN##index##_PWM
+#define FAN_EEPROM_ATTR_ID(index)		FAN##index##_EEPROM
 
 #define FAN_ATTR(fan_id) \
 	FAN_PRESENT_ATTR_ID(fan_id),    	\
 	FAN_DIR_ATTR_ID(fan_id),        	\
 	FAN_FAULT_ATTR_ID(fan_id),    		\
 	FAN_RPM_ATTR_ID(fan_id),			\
-	FAN_PWM_ATTR_ID(fan_id)
+	FAN_PWM_ATTR_ID(fan_id),			\
+	FAN_EEPROM_ATTR_ID(fan_id)
 
 enum extreme8730_32d_fan_sysfs_attrs {
 	/* fan attributes */
@@ -193,7 +203,9 @@ enum extreme8730_32d_fan_sysfs_attrs {
 	static SENSOR_DEVICE_ATTR(fan##index##_input, S_IRUGO, show_fan_speed, NULL, \
 				  FAN##index##_INPUT); \
 	static SENSOR_DEVICE_ATTR(fan##index##_pwm, S_IRUGO, \
-				  show_fan_pwm, NULL, FAN##index##_PWM)
+				  show_fan_pwm, NULL, FAN##index##_PWM); \
+	static SENSOR_DEVICE_ATTR(fan##index##_eeprom, S_IRUGO, \
+				  show_fan_eeprom, NULL, FAN##index##_EEPROM)
                   
                   
 #define DECLARE_FAN_ATTR(index) \
@@ -201,7 +213,8 @@ enum extreme8730_32d_fan_sysfs_attrs {
 	&sensor_dev_attr_fan##index##_dir.dev_attr.attr, \
 	&sensor_dev_attr_fan##index##_fault.dev_attr.attr, \
 	&sensor_dev_attr_fan##index##_input.dev_attr.attr, \
-	&sensor_dev_attr_fan##index##_pwm.dev_attr.attr
+	&sensor_dev_attr_fan##index##_pwm.dev_attr.attr, \
+	&sensor_dev_attr_fan##index##_eeprom.dev_attr.attr
 
 DECLARE_FAN_SENSOR_DEVICE_ATTR(1);
 DECLARE_FAN_SENSOR_DEVICE_ATTR(2);
@@ -543,6 +556,69 @@ exit:
 	return data;
 }
 
+static struct extreme8730_32d_fan_data *
+extreme8730_32d_fan_update_fan_eeprom(struct device_attribute *da)
+{
+	struct sensor_device_attribute 	*attr = to_sensor_dev_attr(da);
+	unsigned char                   fid = attr->index / NUM_OF_PER_FAN_ATTR;
+	int status = 0;
+
+	if (time_before(jiffies, data->last_updated_eeprom[fid] + HZ * 5) && data->fan_eeprom_valid[fid]) {
+		return data;
+	}
+
+	data->fan_eeprom_valid[fid] = 0;
+
+	/* Get FAN EEPROM from ipmi */
+	switch (fid) 
+	{
+		case FAN_1:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN1;
+			break;
+		case FAN_2:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN2;
+			break;
+		case FAN_3:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN3;
+			break;
+		case FAN_4:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN4;
+			break;
+		case FAN_5:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN5;
+			break;
+		case FAN_6:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN6;
+			break;
+		case FAN_7:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN7;
+			break;
+		default:
+			status = -EIO;
+			goto exit;
+	}
+
+	/* Get eeprom from ipmi */
+	status = ipmi_send_message(&data->ipmi, IPMI_EEPROM_READ_CMD,
+				   data->ipmi_tx_data, 1,
+				   data->ipmi_resp_fan[fid].eeprom,
+				   sizeof(data->ipmi_resp_fan[fid].eeprom));
+
+	if (unlikely(status != 0))
+		goto exit;
+
+	if (unlikely(data->ipmi.rx_result != 0)) {
+		status = -EIO;
+		goto exit;
+	}
+
+	data->last_updated_eeprom[fid] = jiffies;
+	data->fan_eeprom_valid[fid] = 1;
+
+exit:
+	return data;
+}
+
 #define VALIDATE_PRESENT_RETURN(id) \
 do { \
 	if (present == 0) { \
@@ -698,6 +774,49 @@ static ssize_t show_fan_pwm(struct device *dev,
 	mutex_unlock(&data->update_lock);
 
 	return sprintf(buf, "%d\n", value);
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return error;
+}
+
+static ssize_t show_fan_eeprom(struct device *dev, 
+                struct device_attribute *da, char *buf)
+{
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+	unsigned char fid = attr->index / NUM_OF_PER_FAN_ATTR;
+	int error = 0;
+	int count = 0;
+
+	mutex_lock(&data->update_lock);
+
+	data = extreme8730_32d_fan_update_fan_eeprom(da);
+	if (!data->fan_eeprom_valid[fid]) {
+		error = -EIO;
+		goto exit;
+	}
+	
+	switch (attr->index) {
+		case FAN1_EEPROM:
+		case FAN2_EEPROM:
+		case FAN3_EEPROM:
+		case FAN4_EEPROM:
+		case FAN5_EEPROM:
+		case FAN6_EEPROM:
+		case FAN7_EEPROM:
+			memcpy(buf, data->ipmi_resp_fan[fid].eeprom, sizeof(data->ipmi_resp_fan[fid].eeprom));
+			count = sizeof(data->ipmi_resp_fan[fid].eeprom);
+			break;
+		default:
+			error = -EINVAL;
+			goto exit;
+	}
+
+	mutex_unlock(&data->update_lock);
+
+	DEBUG_PRINT("\n 8730_32d_fan show_fan_eeprom: fid:%d, attr:%d, count:%d \n", fid, attr->index, count);
+
+	return count;
 
 exit:
 	mutex_unlock(&data->update_lock);
