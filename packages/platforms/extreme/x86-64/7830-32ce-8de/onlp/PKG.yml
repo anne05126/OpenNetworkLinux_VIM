@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/onlp-platform-revision.yml PLATFORM=x86-64-extremenetworks-7830-32ce-8de ARCH=amd64 TOOLCHAIN=x86_64-linux-gnu REVISION=r0

@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-modules.yml ARCH=amd64 VENDOR=extreme BASENAME=x86-64-extremenetworks-7830-32ce-8de KERNELS="onl-kernel-5.10-lts-x86-64-all:amd64"
