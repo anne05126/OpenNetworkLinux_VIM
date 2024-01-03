@@ -33,11 +33,10 @@
 #define PSU1_ID 1
 #define PSU2_ID 2
 #define PSU_FAN1_ID 1
-#define PSU_FAN2_ID 2
 
 #define CHASSIS_LED_COUNT       5
 #define CHASSIS_PSU_COUNT       2
-#define PER_PSU_FAN_COUNT   	2
+#define PER_PSU_FAN_COUNT   	1
 #define PER_PSU_THERMAL_COUNT   3
 
 #define CHASSIS_FAN_COUNT (ONLP_FAN_ID_MAX - (CHASSIS_PSU_COUNT * PER_PSU_FAN_COUNT) - 1)
@@ -95,6 +94,8 @@ enum onlp_thermal_id
     THERMAL_2_ON_MAINBOARD,  /* Main Board Bottom TMP75_0 Temp (AFO)*/
     THERMAL_3_ON_MAINBOARD,  /* Main Board Bottom TMP75_1 Temp (HOT Spot) */
     THERMAL_4_ON_MAINBOARD,  /* Main Board Bottom TMP75_2 Temp (AFI) */
+    THERMAL_5_ON_VIM1,       /* VIM1 TMP75 Temp (VIM1 TMP75) */
+    THERMAL_6_ON_VIM2,       /* VIM1 TMP75 Temp (VIM2 TMP75) */
     THERMAL_1_ON_PSU1,
     THERMAL_2_ON_PSU1,
     THERMAL_3_ON_PSU1,
@@ -111,9 +112,7 @@ enum fan_id {
     FAN_3_ON_FAN_BOARD,
     FAN_4_ON_FAN_BOARD,
     FAN_1_ON_PSU_1,
-    FAN_2_ON_PSU_1,
     FAN_1_ON_PSU_2,
-    FAN_2_ON_PSU_2,
     ONLP_FAN_ID_MAX,
 };
 
@@ -128,6 +127,12 @@ enum onlp_fan_id
     FAN_4,
     FAN_1_ON_PSU1,
     FAN_1_ON_PSU2,
+};
+
+enum onlp_fan_fault_status
+{
+    FAN_FAULT,
+    FAN_OK,
 };
 
 

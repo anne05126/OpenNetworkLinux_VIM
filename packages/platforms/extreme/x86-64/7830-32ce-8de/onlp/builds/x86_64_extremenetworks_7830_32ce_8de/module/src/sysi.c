@@ -382,7 +382,7 @@ int onlp_sysi_debug_diag_sfp(int index)
     aim_free(data);
     data = NULL;
 
-    if (index >= SFP_START_INDEX && index < (SFP_START_INDEX+NUM_OF_SFP_PORT))
+    if (index >= SFP_START_INDEX && index < (SFP_START_INDEX + NUM_OF_SFP_PORT))
     {
 		addr = SFP_PLUS_EEPROM_I2C_ADDR;
 	
@@ -664,7 +664,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
             return -1;
         }
         port_index = atoi(argv[1]);
-        if (port_index <= SFP_START_INDEX || port_index > (SFP_START_INDEX+NUM_OF_SFP_PORT+NUM_OF_IOBM_PORT))
+        if (port_index <= SFP_START_INDEX || port_index > (SFP_START_INDEX + NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT))
         {
             printf("Parameter error, PORT out of range.\n");
             return -1;
@@ -683,7 +683,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
             return -1;
         }
         port_index = atoi(argv[1]);
-        if (port_index <= SFP_START_INDEX || port_index > (SFP_START_INDEX+NUM_OF_SFP_PORT+NUM_OF_IOBM_PORT))
+        if (port_index <= SFP_START_INDEX || port_index > (SFP_START_INDEX + NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT))
         {
             printf("Parameter error, PORT out of range.\n");
             return -1;
@@ -704,7 +704,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
             return -1;
         }
         port_index = atoi(argv[1]);
-        if (port_index <= SFP_START_INDEX || port_index > (SFP_START_INDEX+NUM_OF_SFP_PORT+NUM_OF_IOBM_PORT))
+        if (port_index <= SFP_START_INDEX || port_index > (SFP_START_INDEX + NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT))
         {
             printf("Parameter error, PORT out of range.\n");
             return -1;
@@ -725,7 +725,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
             return -1;
         }
         port_index = atoi(argv[1]);
-        if (port_index <= SFP_START_INDEX || port_index > (SFP_START_INDEX+NUM_OF_SFP_PORT+NUM_OF_IOBM_PORT))
+        if (port_index <= SFP_START_INDEX || port_index > (SFP_START_INDEX + NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT))
         {
             printf("Parameter error, PORT out of range.\n");
             return -1;
@@ -741,7 +741,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
         if (argc > 1)
         {
             int port_index = atoi(argv[1]);
-            if (port_index <= SFP_START_INDEX || port_index > (SFP_START_INDEX+NUM_OF_SFP_PORT))
+            if (port_index <= SFP_START_INDEX || port_index > (SFP_START_INDEX + NUM_OF_SFP_PORT))
             {
                 printf("Parameter error, PORT out of range.\n");
                 return -1;
@@ -786,7 +786,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
             addr = (uint8_t)atoi(argv[2]);
             value = (uint8_t)atoi(argv[3]);
 
-            if (port <= SFP_START_INDEX || port > (SFP_START_INDEX+NUM_OF_SFP_PORT))
+            if (port <= SFP_START_INDEX || port > (SFP_START_INDEX + NUM_OF_SFP_PORT))
             {
                 printf("Parameter error, PORT out of range.\n");
                 return -1;
@@ -812,7 +812,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
             port = atoi(argv[1]);
             addr = (uint8_t)atoi(argv[2]);
 
-            if (port <= SFP_START_INDEX || port > (SFP_START_INDEX+NUM_OF_SFP_PORT))
+            if (port <= SFP_START_INDEX || port > (SFP_START_INDEX + NUM_OF_SFP_PORT))
             {
                 printf("Parameter error, PORT out of range.\n");
                 return -1;
@@ -840,7 +840,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
             addr = (uint8_t)atoi(argv[2]);
             value = (uint16_t)atoi(argv[3]);
 
-            if (port <= SFP_START_INDEX || port > (SFP_START_INDEX+NUM_OF_SFP_PORT))
+            if (port <= SFP_START_INDEX || port > (SFP_START_INDEX + NUM_OF_SFP_PORT))
             {
                 printf("Parameter error, PORT out of range.\n");
                 return -1;
@@ -865,7 +865,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
             port = atoi(argv[1]);
             addr = (uint8_t)atoi(argv[2]);
 
-            if (port <= SFP_START_INDEX || port > (SFP_START_INDEX+NUM_OF_SFP_PORT))
+            if (port <= SFP_START_INDEX || port > (SFP_START_INDEX + NUM_OF_SFP_PORT))
             {
                 printf("Parameter error, PORT out of range.\n");
                 return -1;

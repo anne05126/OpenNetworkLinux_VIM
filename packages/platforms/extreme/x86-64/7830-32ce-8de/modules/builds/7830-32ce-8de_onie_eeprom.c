@@ -76,8 +76,7 @@ static const struct attribute_group extreme7830_onie_group = {
 
 static ssize_t onie_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    int val = 0, res = 0;
-    u8 command;
+    int res = 0;
     __u8 read_write;
     unsigned short offset = 0;
     union i2c_smbus_data temp;
@@ -112,8 +111,7 @@ static ssize_t onie_read(struct device *dev, struct device_attribute *attr, char
 
 static ssize_t onie_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-    struct i2c_client *client = to_i2c_client(dev);
-    int error, write, command, read;
+    int error, write;
 
     error = kstrtoint(buf, 10, &write);
     if (error)

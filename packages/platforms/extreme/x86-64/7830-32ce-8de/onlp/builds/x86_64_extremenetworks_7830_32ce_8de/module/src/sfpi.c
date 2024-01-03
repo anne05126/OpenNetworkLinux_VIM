@@ -95,8 +95,8 @@ int
 onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 {
 	/*
-     * Front QSFPDD Ports {0, 39}
-     * IOBM QSFP28 Port {40}
+     * Front QSFP28 Port {0, 31} {40}
+     * Front QSFPDD Ports {32, 39}
      * IOBM SFP+ Port {41}
      */
     int p;
@@ -170,8 +170,8 @@ int
 onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
 	/*
-     * Front QSFPDD Ports {0, 39}
-     * IOBM QSFP28 Port {40}
+     * Front QSFP28 Port {0, 31} {40}
+     * Front QSFPDD Ports {32, 39}
      * IOBM SFP+ Port {41}
      */
     DIAG_PRINT("%s", __FUNCTION__);
@@ -229,8 +229,8 @@ int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
 	/*
-     * Front QSFPDD Ports {0, 39}
-     * IOBM QSFP28 Port {40}
+     * Front QSFP28 Port {0, 31} {40}
+     * Front QSFPDD Ports {32, 39}
      * IOBM SFP+ Port {41}
      */
     int p = 0;

@@ -8,7 +8,7 @@ class OnlPlatform_x86_64_extremenetworks_7830_32ce_8de_r0(OnlPlatformExtremeNetw
     SYS_OBJECT_ID=".6040.8"
 
     def baseconfig(self):
-    	for m in [ 'onie_eeprom', 'cpld', 'iobm_io_eeprom', 'pwr_cpld' ]:
+    	for m in [ 'onie_eeprom', 'cpld', 'thermal', 'fan', 'psu', 'pwr_cpld', 'bmc_led', 'cpu_led', 'iobm_io_eeprom' ]:
             self.insmod("7830-32ce-8de_%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
@@ -21,7 +21,10 @@ class OnlPlatform_x86_64_extremenetworks_7830_32ce_8de_r0(OnlPlatformExtremeNetw
             #('lm75', 0x4F, 0),
 
             # initialize multiplexer (PCA9548 #8)
-            ('pca9548', 0x77, 0),		
+            ('pca9548', 0x77, 0),
+
+            # power CPLD
+            ('power_cpld', 0x5f, 0),		
 
             ])
 

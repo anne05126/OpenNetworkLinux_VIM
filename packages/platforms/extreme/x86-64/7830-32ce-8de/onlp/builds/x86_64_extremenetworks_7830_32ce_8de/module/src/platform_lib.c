@@ -196,21 +196,21 @@ psu_type_t psu_type_get(int id, char* modelname, int modelname_len)
 
 	/* Check AC model name */
 	strcpy(model_name, trim(model_name));
-	if(strcmp(model_name, "FSJ004EAAG") == 0)
+	if(strcmp(model_name, "ECD15020087") == 0)
 	{
         return PSU_TYPE_AC_B2F;
 	}
-	if(strcmp(model_name, "FSJ001EAAG") == 0)
+	if(strcmp(model_name, "ECD15020089") == 0)
 	{
         return PSU_TYPE_AC_F2B;
 	}
 
 	/* Check DC model name */
-	if(strcmp(model_name, "FSJ036EAAG") == 0)
+	if(strcmp(model_name, "ECD25020025") == 0)
 	{
         return PSU_TYPE_DC_48V_B2F;
 	}
-	if(strcmp(model_name, "FSJ035EAAG") == 0)
+	if(strcmp(model_name, "ECD25020026") == 0)
 	{
         return PSU_TYPE_DC_48V_F2B;
 	}

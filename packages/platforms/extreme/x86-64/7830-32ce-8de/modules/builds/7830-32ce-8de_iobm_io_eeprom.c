@@ -239,14 +239,14 @@ enum extreme7830_32ce_8de_iobm_sysfs_attrs {
 		static SENSOR_DEVICE_ATTR(sfp##index##_present, S_IRUGO, show_io,	 NULL, SFP##index##_PRESENT); \
 		static SENSOR_DEVICE_ATTR(sfp##index##_txfault, S_IRUGO, show_io,  NULL, SFP##index##_TXFAULT); \
 		static SENSOR_DEVICE_ATTR(sfp##index##_rxlos, S_IRUGO, show_io,	 NULL, SFP##index##_RXLOS); \
-		static SENSOR_DEVICE_ATTR(sfp##index##_txdis, S_IWUSR | S_IRUGO, show_io,  set_io, SFP##index##_TXDIS); \	
+		static SENSOR_DEVICE_ATTR(sfp##index##_txdis, S_IWUSR | S_IRUGO, show_io,  set_io, SFP##index##_TXDIS); \
 		static SENSOR_DEVICE_ATTR(sfp##index##_eeprom, S_IRUGO, show_eeprom,	 NULL, SFP##index##_EEPROM); \
 		static SENSOR_DEVICE_ATTR(sfp##index##_dom, S_IRUGO, show_dom,	 NULL, SFP##index##_DOM)
 #define DECLARE_QSFP28_SENSOR_DEVICE_ATTR(index) \
 		static SENSOR_DEVICE_ATTR(qsfp##index##_mod_sel, S_IWUSR | S_IRUGO, show_io,  NULL, QSFP##index##_MOD_SEL); \
 		static SENSOR_DEVICE_ATTR(qsfp##index##_lp_mode, S_IWUSR | S_IRUGO, show_io,  set_io, QSFP##index##_LP_MODE); \
 		static SENSOR_DEVICE_ATTR(qsfp##index##_rst_mod, S_IWUSR | S_IRUGO, show_io,	 set_io, QSFP##index##_RST_MOD); \
-		static SENSOR_DEVICE_ATTR(qsfp##index##_mod_present, S_IRUGO, show_io,  NULL, QSFP##index##_MOD_PRESENT); \	
+		static SENSOR_DEVICE_ATTR(qsfp##index##_mod_present, S_IRUGO, show_io,  NULL, QSFP##index##_MOD_PRESENT); \
 		static SENSOR_DEVICE_ATTR(qsfp##index##_eeprom, S_IRUGO, show_eeprom,	 NULL, QSFP##index##_EEPROM); \
 		static SENSOR_DEVICE_ATTR(qsfp##index##_dom, S_IRUGO, show_dom,	 NULL, QSFP##index##_DOM)
 

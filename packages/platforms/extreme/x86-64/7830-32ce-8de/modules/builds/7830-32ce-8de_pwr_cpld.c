@@ -45,20 +45,20 @@
 #include <linux/ipmi_smi.h>
 #include <linux/platform_device.h>
 
-#define DRVNAME 					"7830_pwr_cpld"
+#define DRVNAME 								"7830_pwr_cpld"
 
 #define IPMI_APP_NETFN							0x6
 #define IPMI_READ_WRITE_CMD						0x52
-#define IPMI_PCPLD_BUS							0x09
-#define IPMI_PCPLD_ADDRESS						0xbc	/* 0x51 << 1 = 0xbc */
+#define IPMI_PWRCPLD_BUS						0x09
+#define IPMI_PWRCPLD_ADDRESS					0xbc	/* 0x5e << 1 = 0xbc */
 #define IPMI_READ_BYTE							0x01 	/* Read */
 
 #define IPMI_PCPLD_VER_OFFSET		        	0x00
 
-#define IPMI_TIMEOUT				(20 * HZ)
-#define IPMI_ERR_RETRY_TIMES		1
+#define IPMI_TIMEOUT							(20 * HZ)
+#define IPMI_ERR_RETRY_TIMES					1
 
-#define CPLD_VERSION_BITS_MASK    	0x7
+#define CPLD_VERSION_BITS_MASK    				0x7
 
 
 static unsigned int debug = 0;
@@ -280,8 +280,8 @@ extreme7830_pwr_cpld_update_cpld_ver(void)
 
 	data->cpld_ver_valid = 0;
 
-	data->ipmi_tx_data[0] = IPMI_PCPLD_BUS;
-	data->ipmi_tx_data[1] = IPMI_PCPLD_ADDRESS;
+	data->ipmi_tx_data[0] = IPMI_PWRCPLD_BUS;
+	data->ipmi_tx_data[1] = IPMI_PWRCPLD_ADDRESS;
 	data->ipmi_tx_data[2] = IPMI_READ_BYTE;
 	data->ipmi_tx_data[3] = IPMI_PCPLD_VER_OFFSET;
 
