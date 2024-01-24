@@ -26,15 +26,16 @@
 #include <onlp/platformi/fani.h>
 #include "platform_lib.h"
 
-#define MAX_FAN_SPEED       30500
-#define MAX_PSU_FAN_SPEED   32000
+#define MAX_FAN_SPEED_INLET     30500
+#define MAX_FAN_SPEED_OUTLET    24600
+#define MAX_PSU_FAN_SPEED       32000
 
-#define FAN_STATUS_PRESENT  1
-#define FAN_STATUS_GOOD     1
-#define FAN_STATUS_F2B		0
+#define FAN_STATUS_PRESENT      1
+#define FAN_STATUS_GOOD         1
+#define FAN_STATUS_F2B		    0
 
-#define TLV_CODE_PART_NUM   0x800d
-#define TLV_CODE_SERIAL_NUM 0x800e
+#define TLV_CODE_PART_NUM       0x800d
+#define TLV_CODE_SERIAL_NUM     0x800e
 
 #define CHASSIS_FAN_INFO(fid)		\
     { \
@@ -83,14 +84,14 @@ onlp_fan_info_t finfo[] = {
 static int
 _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 {
-    int   value;
+    int   value, inlet, outlet, max_speed;
     uint8_t rdata[256] = { 0 };
     int size = 0;
 
     /* get fan present status
      */
     if (onlp_file_read_int(&value, "%s""fan%d_present", FAN_BOARD_PATH, fid) < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
+        AIM_LOG_ERROR("Unable to read present status from (%s)\r\n", FAN_BOARD_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -102,7 +103,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 	/* get fan direction status
      */
     if (onlp_file_read_int(&value, "%s""fan%d_dir", FAN_BOARD_PATH, fid) < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
+        AIM_LOG_ERROR("Unable to read direction status from (%s)\r\n", FAN_BOARD_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -115,27 +116,48 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 
     /* get fan fault status (turn on when any one fails)
      */
-    if (onlp_file_read_int(&value, "%s""fan%d_fault", FAN_BOARD_PATH, fid) < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
+    if (onlp_file_read_int(&inlet, "%s""fan%d_fault_inlet", FAN_BOARD_PATH, fid) < 0) {
+        AIM_LOG_ERROR("Unable to read fault inlet status from (%s)\r\n", FAN_BOARD_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    if (value != FAN_STATUS_GOOD) {
+    if (onlp_file_read_int(&outlet, "%s""fan%d_fault_outlet", FAN_BOARD_PATH, fid) < 0) {
+        AIM_LOG_ERROR("Unable to read fault outlet status from (%s)\r\n", FAN_BOARD_PATH);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (inlet != FAN_STATUS_GOOD || outlet != FAN_STATUS_GOOD) {
         info->status |= ONLP_FAN_STATUS_FAILED;
     }
 
     /* get fan speed
      */
-    if (onlp_file_read_int(&value, "%s""fan%d_input", FAN_BOARD_PATH, fid) < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
+    if (onlp_file_read_int(&inlet, "%s""fan%d_input_inlet", FAN_BOARD_PATH, fid) < 0) {
+        AIM_LOG_ERROR("Unable to read speed inlet from (%s)\r\n", FAN_BOARD_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
-	
+
+    if (onlp_file_read_int(&outlet, "%s""fan%d_input_outlet", FAN_BOARD_PATH, fid) < 0) {
+        AIM_LOG_ERROR("Unable to read speed outlet from (%s)\r\n", FAN_BOARD_PATH);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if(inlet < outlet)
+    {
+        value = inlet;
+        max_speed = MAX_FAN_SPEED_INLET;
+    }
+    else
+    {
+        value = outlet;
+        max_speed = MAX_FAN_SPEED_OUTLET;
+    }
+    
     info->rpm = value;
 	
     /* get speed percentage from rpm
      */
-    info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
+    info->percentage = (info->rpm * 100)/max_speed;
 
     /* get fan eeprom (model name and serial number)
     */

@@ -13,12 +13,6 @@ class OnlPlatform_x86_64_extremenetworks_8730_32d_r0(OnlPlatformExtremeNetworks,
 
         ########### initialize I2C bus 0 ###########
         self.new_i2c_devices([            
-            
-            # 1588 CPLD
-            ('1588_cpld', 0x6E, 0),
-
-            # CPU Board G751 (Ambient)
-            #('lm75', 0x4F, 0),
 
             # initialize multiplexer (PCA9548 #0)
             ('pca9548', 0x70, 0),		

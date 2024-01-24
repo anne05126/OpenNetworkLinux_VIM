@@ -1,7 +1,7 @@
 /*
  * An hwmon driver for extremenetworks 8730-32d AcBel Power Module
  *
- * Copyright (C) 2023 Alphanetworks Technology Corporation.
+ * Copyright (C) 2024 Alphanetworks Technology Corporation.
  * Anne Liou <anne_liou@alphanetworks.com>
  * 
  * Based on:
@@ -694,14 +694,14 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da, char
 		case PSU2_MODEL:
 			strcpy(tmp_str, data->ipmi_resp[pid].fru);
 			str = tmp_str;
-			memmove(str, &tmp_str[NUM_OF_LEN + vendor_length], (NUM_OF_LEN + vendor_length + model_length)-1);
+			memmove(str, &tmp_str[NUM_OF_LEN + vendor_length], model_length);
 			str[model_length] = '\0';
 			break;
 		case PSU1_SERIAL:
 		case PSU2_SERIAL:
 			strcpy(tmp_str, data->ipmi_resp[pid].fru);
 			str = tmp_str;
-			memmove(str, &tmp_str[NUM_OF_LEN + vendor_length + model_length], (NUM_OF_LEN + vendor_length + model_length + serial_length)-1);
+			memmove(str, &tmp_str[NUM_OF_LEN + vendor_length + model_length], serial_length);
 			str[serial_length] = '\0';
 			break;
 		default:

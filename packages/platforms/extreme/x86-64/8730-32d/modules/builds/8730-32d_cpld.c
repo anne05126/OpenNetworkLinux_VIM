@@ -1,7 +1,7 @@
 /*
  * An I2C multiplexer dirver for extremenetworks 8730-32d CPLD
  *
- * Copyright (C) 2023 Alphanetworks Technology Corporation.
+ * Copyright (C) 2024 Alphanetworks Technology Corporation.
  * Anne Liou <anne_liou@alphanetworks.com>
  *
  * Based on:
@@ -48,7 +48,6 @@
 #define I2C_RW_RETRY_COUNT                10
 #define I2C_RW_RETRY_INTERVAL             60 /* ms */
 
-#define CPLD_CHANNEL_SELECT_REG           0x06
 #define CPLD_DESELECT_CHANNEL             0x00
 
 #define CPLD_REG_ADDR_REVISION            0x00

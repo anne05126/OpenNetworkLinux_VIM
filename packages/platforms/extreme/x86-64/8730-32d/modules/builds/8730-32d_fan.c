@@ -1,7 +1,7 @@
 /*
  * A FAN IPMI kernel dirver for extremenetworks 8730-32d
  *
- * Copyright (C) 2023 Alphanetworks Technology Corporation.
+ * Copyright (C) 2024 Alphanetworks Technology Corporation.
  * Anne Liou <anne_liou@alphanetworks.com>
  *
  * Based on:
@@ -61,6 +61,22 @@
 #define IPMI_SENSOR_OFFSET_FAN5                 0x5
 #define IPMI_SENSOR_OFFSET_FAN6                 0x6
 #define IPMI_SENSOR_OFFSET_FAN7                 0x7
+
+#define IPMI_SENSOR_OFFSET_FAN1_INLET           0x1
+#define IPMI_SENSOR_OFFSET_FAN1_OUTLET          0x2
+#define IPMI_SENSOR_OFFSET_FAN2_INLET           0x3
+#define IPMI_SENSOR_OFFSET_FAN2_OUTLET          0x4
+#define IPMI_SENSOR_OFFSET_FAN3_INLET           0x5
+#define IPMI_SENSOR_OFFSET_FAN3_OUTLET          0x6
+#define IPMI_SENSOR_OFFSET_FAN4_INLET           0x7
+#define IPMI_SENSOR_OFFSET_FAN4_OUTLET          0x8
+#define IPMI_SENSOR_OFFSET_FAN5_INLET           0x9
+#define IPMI_SENSOR_OFFSET_FAN5_OUTLET          0xA
+#define IPMI_SENSOR_OFFSET_FAN6_INLET           0xB
+#define IPMI_SENSOR_OFFSET_FAN6_OUTLET          0xC
+#define IPMI_SENSOR_OFFSET_FAN7_INLET           0xD
+#define IPMI_SENSOR_OFFSET_FAN7_OUTLET          0xE
+
 
 #define EEPROM_SIZE      						256
 
@@ -132,7 +148,10 @@ struct ipmi_data {
 
 struct ipmi_fan_resp_data {
     unsigned char   status[4];	/* 4 bytes for each fan. 0: present, 1: air flow */
-	unsigned char   rpm[4];	/* 4 bytes for each fan. */
+	unsigned char   rpm_inlet[4];	/* 4 bytes for each fan. */
+    unsigned char   rpm_outlet[4];	/* 4 bytes for each fan. */
+    unsigned char   fault_inlet;    /* 1 bytes for each fan. */
+    unsigned char   fault_outlet;   /* 1 bytes for each fan. */
 	unsigned char   eeprom[EEPROM_SIZE];	/* 256 bytes for each fan. */
 };
 
@@ -148,7 +167,6 @@ struct extreme8730_32d_fan_data {
 	unsigned long                   last_updated_eeprom[7];     /* In jiffies 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, 4: FAN5, 5: FAN6, 6: FAN7 */
 	struct ipmi_data                ipmi;
 	struct ipmi_fan_resp_data   	ipmi_resp_fan[7];    		/* 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, 4: FAN5, 5: FAN6, 6: FAN7 */
-	unsigned char					ipmi_resp_fan_fault[7];		/* 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, 4: FAN5, 5: FAN6, 6: FAN7 */
 	unsigned char                   ipmi_resp_fan_pwm[7];       /* 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, 4: FAN5, 5: FAN6, 6: FAN7 */
 	unsigned char                   ipmi_tx_data[4];
 };
@@ -166,16 +184,20 @@ static struct platform_driver extreme8730_32d_fan_driver = {
 
 #define FAN_PRESENT_ATTR_ID(index)		FAN##index##_PRESENT
 #define FAN_DIR_ATTR_ID(index)			FAN##index##_DIR
-#define FAN_FAULT_ATTR_ID(index)		FAN##index##_FAULT
-#define FAN_RPM_ATTR_ID(index)			FAN##index##_INPUT
+#define FAN_FAULT_INLET_ATTR_ID(index)	FAN##index##_FAULT_INLET
+#define FAN_FAULT_OUTLET_ATTR_ID(index)	FAN##index##_FAULT_OUTLET
+#define FAN_RPM_INLET_ATTR_ID(index)	FAN##index##_INPUT_INLET
+#define FAN_RPM_OUTLET_ATTR_ID(index)	FAN##index##_INPUT_OUTLET
 #define FAN_PWM_ATTR_ID(index)			FAN##index##_PWM
 #define FAN_EEPROM_ATTR_ID(index)		FAN##index##_EEPROM
 
 #define FAN_ATTR(fan_id) \
 	FAN_PRESENT_ATTR_ID(fan_id),    	\
 	FAN_DIR_ATTR_ID(fan_id),        	\
-	FAN_FAULT_ATTR_ID(fan_id),    		\
-	FAN_RPM_ATTR_ID(fan_id),			\
+	FAN_FAULT_INLET_ATTR_ID(fan_id),	\
+	FAN_FAULT_OUTLET_ATTR_ID(fan_id),	\
+	FAN_RPM_INLET_ATTR_ID(fan_id),		\
+	FAN_RPM_OUTLET_ATTR_ID(fan_id),		\
 	FAN_PWM_ATTR_ID(fan_id),			\
 	FAN_EEPROM_ATTR_ID(fan_id)
 
@@ -198,10 +220,14 @@ enum extreme8730_32d_fan_sysfs_attrs {
                   FAN##index##_PRESENT); \
     static SENSOR_DEVICE_ATTR(fan##index##_dir, S_IRUGO, show_fan, NULL, \
 				  FAN##index##_DIR); \
-	static SENSOR_DEVICE_ATTR(fan##index##_fault, S_IRUGO, show_fan, NULL, \
-				  FAN##index##_FAULT); \
-	static SENSOR_DEVICE_ATTR(fan##index##_input, S_IRUGO, show_fan_speed, NULL, \
-				  FAN##index##_INPUT); \
+	static SENSOR_DEVICE_ATTR(fan##index##_fault_inlet, S_IRUGO, show_fan, NULL, \
+				  FAN##index##_FAULT_INLET); \
+	static SENSOR_DEVICE_ATTR(fan##index##_fault_outlet, S_IRUGO, show_fan, NULL, \
+				  FAN##index##_FAULT_OUTLET); \
+	static SENSOR_DEVICE_ATTR(fan##index##_input_inlet, S_IRUGO, show_fan_speed, NULL, \
+				  FAN##index##_INPUT_INLET); \
+	static SENSOR_DEVICE_ATTR(fan##index##_input_outlet, S_IRUGO, show_fan_speed, NULL, \
+				  FAN##index##_INPUT_OUTLET); \
 	static SENSOR_DEVICE_ATTR(fan##index##_pwm, S_IRUGO, \
 				  show_fan_pwm, NULL, FAN##index##_PWM); \
 	static SENSOR_DEVICE_ATTR(fan##index##_eeprom, S_IRUGO, \
@@ -211,8 +237,10 @@ enum extreme8730_32d_fan_sysfs_attrs {
 #define DECLARE_FAN_ATTR(index) \
 	&sensor_dev_attr_fan##index##_present.dev_attr.attr, \
 	&sensor_dev_attr_fan##index##_dir.dev_attr.attr, \
-	&sensor_dev_attr_fan##index##_fault.dev_attr.attr, \
-	&sensor_dev_attr_fan##index##_input.dev_attr.attr, \
+	&sensor_dev_attr_fan##index##_fault_inlet.dev_attr.attr, \
+	&sensor_dev_attr_fan##index##_fault_outlet.dev_attr.attr, \
+	&sensor_dev_attr_fan##index##_input_inlet.dev_attr.attr, \
+	&sensor_dev_attr_fan##index##_input_outlet.dev_attr.attr, \
 	&sensor_dev_attr_fan##index##_pwm.dev_attr.attr, \
 	&sensor_dev_attr_fan##index##_eeprom.dev_attr.attr
 
@@ -437,10 +465,82 @@ extreme8730_32d_fan_update_device(struct device_attribute *da)
 	}
 
 	/* Get FAN fault from ipmi */
+
+    /* inlet */
+    switch (fid) 
+	{
+		case FAN_1:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN1_INLET;
+			break;
+		case FAN_2:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN2_INLET;
+			break;
+		case FAN_3:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN3_INLET;
+			break;
+		case FAN_4:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN4_INLET;
+			break;
+		case FAN_5:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN5_INLET;
+			break;
+		case FAN_6:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN6_INLET;
+			break;
+		case FAN_7:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN7_INLET;
+			break;
+		default:
+			status = -EIO;
+			goto exit;
+	}
+    
 	status = ipmi_send_message(&data->ipmi, IPMI_FAULT_READ_CMD,
 				   data->ipmi_tx_data, 1,
-				   &data->ipmi_resp_fan_fault[fid],
-				   sizeof(data->ipmi_resp_fan_fault[fid]));
+				   &data->ipmi_resp_fan[fid].fault_inlet,
+				   sizeof(data->ipmi_resp_fan[fid].fault_inlet));
+	
+	if (unlikely(status != 0))
+		goto exit;
+
+	if (unlikely(data->ipmi.rx_result != 0)) {
+		status = -EIO;
+		goto exit;
+	}
+
+    /* outlet */
+    switch (fid) 
+	{
+		case FAN_1:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN1_OUTLET;
+			break;
+		case FAN_2:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN2_OUTLET;
+			break;
+		case FAN_3:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN3_OUTLET;
+			break;
+		case FAN_4:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN4_OUTLET;
+			break;
+		case FAN_5:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN5_OUTLET;
+			break;
+		case FAN_6:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN6_OUTLET;
+			break;
+		case FAN_7:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN7_OUTLET;
+			break;
+		default:
+			status = -EIO;
+			goto exit;
+	}
+    
+	status = ipmi_send_message(&data->ipmi, IPMI_FAULT_READ_CMD,
+				   data->ipmi_tx_data, 1,
+				   &data->ipmi_resp_fan[fid].fault_outlet,
+				   sizeof(data->ipmi_resp_fan[fid].fault_outlet));
 	
 	if (unlikely(status != 0))
 		goto exit;
@@ -467,28 +567,30 @@ extreme8730_32d_fan_update_fan_speed(struct device_attribute *da)
 	data->fan_speed_valid[fid] = 0;
 
 	/* Get FAN SPEED from ipmi */
+
+    /* inlet */
 	switch (fid) 
 	{
 		case FAN_1:
-			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN1;
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN1_INLET;
 			break;
 		case FAN_2:
-			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN2;
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN2_INLET;
 			break;
 		case FAN_3:
-			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN3;
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN3_INLET;
 			break;
 		case FAN_4:
-			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN4;
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN4_INLET;
 			break;
 		case FAN_5:
-			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN5;
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN5_INLET;
 			break;
 		case FAN_6:
-			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN6;
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN6_INLET;
 			break;
 		case FAN_7:
-			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN7;
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN7_INLET;
 			break;
 		default:
 			status = -EIO;
@@ -497,8 +599,50 @@ extreme8730_32d_fan_update_fan_speed(struct device_attribute *da)
 
 	status = ipmi_send_message(&data->ipmi, IPMI_RPM_READ_CMD,
 				   data->ipmi_tx_data, 1,
-				   data->ipmi_resp_fan[fid].rpm,
-				   sizeof(data->ipmi_resp_fan[fid].rpm));
+				   data->ipmi_resp_fan[fid].rpm_inlet,
+				   sizeof(data->ipmi_resp_fan[fid].rpm_inlet));
+
+	if (unlikely(status != 0))
+		goto exit;
+
+	if (unlikely(data->ipmi.rx_result != 0)) {
+		status = -EIO;
+		goto exit;
+	}
+
+    /* outlet */
+	switch (fid) 
+	{
+		case FAN_1:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN1_OUTLET;
+			break;
+		case FAN_2:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN2_OUTLET;
+			break;
+		case FAN_3:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN3_OUTLET;
+			break;
+		case FAN_4:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN4_OUTLET;
+			break;
+		case FAN_5:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN5_OUTLET;
+			break;
+		case FAN_6:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN6_OUTLET;
+			break;
+		case FAN_7:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN7_OUTLET;
+			break;
+		default:
+			status = -EIO;
+			goto exit;
+	}
+
+	status = ipmi_send_message(&data->ipmi, IPMI_RPM_READ_CMD,
+				   data->ipmi_tx_data, 1,
+				   data->ipmi_resp_fan[fid].rpm_outlet,
+				   sizeof(data->ipmi_resp_fan[fid].rpm_outlet));
 
 	if (unlikely(status != 0))
 		goto exit;
@@ -667,15 +811,25 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *da,
 		VALIDATE_PRESENT_RETURN(fid);
 		value = data->ipmi_resp_fan[fid].status[FAN_DIR];
 		break;
-	case FAN1_FAULT:
-	case FAN2_FAULT:
-	case FAN3_FAULT:
-	case FAN4_FAULT:
-	case FAN5_FAULT:
-	case FAN6_FAULT:
-	case FAN7_FAULT:
+	case FAN1_FAULT_INLET:
+	case FAN2_FAULT_INLET:
+	case FAN3_FAULT_INLET:
+	case FAN4_FAULT_INLET:
+	case FAN5_FAULT_INLET:
+	case FAN6_FAULT_INLET:
+	case FAN7_FAULT_INLET:
 		VALIDATE_PRESENT_RETURN(fid);
-		value = data->ipmi_resp_fan_fault[fid];
+		value = data->ipmi_resp_fan[fid].fault_inlet;
+		break;
+    case FAN1_FAULT_OUTLET:
+	case FAN2_FAULT_OUTLET:
+	case FAN3_FAULT_OUTLET:
+	case FAN4_FAULT_OUTLET:
+	case FAN5_FAULT_OUTLET:
+	case FAN6_FAULT_OUTLET:
+	case FAN7_FAULT_OUTLET:
+		VALIDATE_PRESENT_RETURN(fid);
+		value = data->ipmi_resp_fan[fid].fault_outlet;
 		break;
 	default:
 		error = -EINVAL;
@@ -710,17 +864,29 @@ static ssize_t show_fan_speed(struct device *dev,
 	}
 
 	switch (attr->index) {
-	case FAN1_INPUT:
-	case FAN2_INPUT:
-	case FAN3_INPUT:
-	case FAN4_INPUT:
-	case FAN5_INPUT:
-	case FAN6_INPUT:
-	case FAN7_INPUT:
-		value = ((int)data->ipmi_resp_fan[fid].rpm[FAN_BYTE0] | 
-				(int)data->ipmi_resp_fan[fid].rpm[FAN_BYTE1] << 8 |
-				(int)data->ipmi_resp_fan[fid].rpm[FAN_BYTE2] << 16 |
-				(int)data->ipmi_resp_fan[fid].rpm[FAN_BYTE3] << 32);
+	case FAN1_INPUT_INLET:
+	case FAN2_INPUT_INLET:
+	case FAN3_INPUT_INLET:
+	case FAN4_INPUT_INLET:
+	case FAN5_INPUT_INLET:
+	case FAN6_INPUT_INLET:
+	case FAN7_INPUT_INLET:
+		value = ((int)data->ipmi_resp_fan[fid].rpm_inlet[FAN_BYTE0] | 
+				(int)data->ipmi_resp_fan[fid].rpm_inlet[FAN_BYTE1] << 8 |
+				(int)data->ipmi_resp_fan[fid].rpm_inlet[FAN_BYTE2] << 16 |
+				(int)data->ipmi_resp_fan[fid].rpm_inlet[FAN_BYTE3] << 32);
+		break;
+    case FAN1_INPUT_OUTLET:
+	case FAN2_INPUT_OUTLET:
+	case FAN3_INPUT_OUTLET:
+	case FAN4_INPUT_OUTLET:
+	case FAN5_INPUT_OUTLET:
+	case FAN6_INPUT_OUTLET:
+	case FAN7_INPUT_OUTLET:
+		value = ((int)data->ipmi_resp_fan[fid].rpm_outlet[FAN_BYTE0] | 
+				(int)data->ipmi_resp_fan[fid].rpm_outlet[FAN_BYTE1] << 8 |
+				(int)data->ipmi_resp_fan[fid].rpm_outlet[FAN_BYTE2] << 16 |
+				(int)data->ipmi_resp_fan[fid].rpm_outlet[FAN_BYTE3] << 32);
 		break;
 	default:
 		error = -EINVAL;
