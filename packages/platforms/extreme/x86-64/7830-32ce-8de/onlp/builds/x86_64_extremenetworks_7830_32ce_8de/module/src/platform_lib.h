@@ -27,6 +27,8 @@
 #define __PLATFORM_LIB_H__
 
 #include <onlplib/file.h>
+#include <onlplib/shlocks.h>    /* onlp_shmem_create() */
+#include <semaphore.h>          /* sem_init() */
 #include "x86_64_extremenetworks_7830_32ce_8de_log.h"
 
 
@@ -77,6 +79,99 @@
 #define IS_IOBM_SFP_PORT(_port) (_port == IOBM_SFP_PORT_INDEX)
 #define IS_QSFPDD_PORT(_port) (_port >= QSFPDD_PORT_INDEX_START && _port <= QSFPDD_PORT_INDEX_END)
 #define IS_QSFP28_PORT(_port) (_port >= QSFP28_PORT_INDEX_START && _port <= QSFP28_PORT_INDEX_END)
+
+/* For share memory */
+#define ONLP_OID_TYPE_VIM                   8
+#define ONLP_VIMI_SHM_KEY                   (0xF001100 | ONLP_OID_TYPE_VIM)
+#define STORAGE_SIZE                        32
+#define STORAGE_ID                          "i2c_tree_db"
+#define DEBUG_FLAG_SAMPLE                   0   /* 0: Execute Alpha's solution, only for development and testing. 
+                                                 * 1: Execute sample hard code. Example only for this case: insert VIM 1 8DE, VIM 2 not present
+                                                 */
+
+/* For VIM card */
+#define I2C_BUS_CHANNEL_COUNT               8
+#define VIM1_ID                             1
+#define VIM2_ID                             2
+#define VIM_POWER_CPLD_ID                   1
+#define VIM_PORT_CPLD_ID                    2
+#define VIM_START_INDEX                     (NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT)  
+#define VIM_PRESENT                         0
+#define VIM_NOT_PRESENT                     1
+#define VIM_POWER_GOOD                      1
+#define VIM_POWER_FAIL                      0
+#define VIM1_MAX_PCA_COUNT                  4
+#define VIM2_MAX_PCA_COUNT                  4
+#define VIM_MAX_PCA_COUNT                   (VIM1_MAX_PCA_COUNT + VIM2_MAX_PCA_COUNT)
+#define VIM_TYPE_COUNT                      5
+#define PCA9548_NOT_USE                     0
+#define IS_VIM_PORT(_port, _vim_end_index) (_port >= VIM_START_INDEX && _port < _vim_end_index)
+#define VIM_PWR_CTRL_ENA_MP5990             0x02
+#define VIM_PWR_CTRL_ENA_DCDC               0x03
+#define VIM_PWR_CTRL_DIS_PWR                0x1c
+
+/* VIM Power CPLD access from BMC (Board ID) */
+#define VIM_BOARD_ID_PATH                   "/sys/bus/platform/devices/7830_bmc_vim_pwr_cpld/vim_%d_board_id"
+
+/* VIM EEPROM access from BMC */
+#define VIM_EEPROM_PATH                     "/sys/bus/platform/devices/7830_vim_eeprom/vim%d_eeprom"
+
+/* VIM Power CPLD access from CPU (8DE: port 1~8. 16CE: port 1~16. 24CE,24YE: port 1~12) */
+#define VIM_OPTOE_PRESENT_PWR_CPLD_PATH     "/sys/bus/i2c/devices/%d-005c/present_%d"
+#define VIM_OPTOE_RESET_PWR_CPLD_PATH       "/sys/bus/i2c/devices/%d-005c/rst_mod_%d"
+#define VIM_OPTOE_LP_MODE_PWR_CPLD_PATH     "/sys/bus/i2c/devices/%d-005c/lp_mode_%d"
+#define VIM_OPTOE_MOD_SEL_PWR_CPLD_PATH     "/sys/bus/i2c/devices/%d-005c/mod_sel_%d"
+#define VIM_OPTOE_TX_FAULT_PWR_CPLD_PATH    "/sys/bus/i2c/devices/%d-005c/tx_fault_%d"
+#define VIM_OPTOE_TX_DIS_PWR_CPLD_PATH      "/sys/bus/i2c/devices/%d-005c/tx_dis_%d"
+#define VIM_OPTOE_RX_LOSS_PWR_CPLD_PATH     "/sys/bus/i2c/devices/%d-005c/rx_los_%d"
+
+
+/* System CPLD access from CPU */
+#define VIM_PRESENT_PATH                    "/sys/bus/i2c/devices/0-006e/vim_%d_present"
+#define VIM_RESET_PATH                      "/sys/bus/i2c/devices/0-006e/vim_%d_reset"
+#define VIM_POWER_CONTROL_PATH              "/sys/bus/i2c/devices/0-006e/vim_%d_pwr_ctrl"
+#define VIM_POWER_GOOD_PATH                 "/sys/bus/i2c/devices/0-006e/vim_%d_pwr_good"
+
+/* VIM Port CPLD access from CPU (24CE,24YE: port 13~24) */
+#define VIM_OPTOE_PRESENT_PORT_CPLD_PATH    "/sys/bus/i2c/devices/%d-0058/present_%d"
+#define VIM_OPTOE_RESET_PORT_CPLD_PATH      "/sys/bus/i2c/devices/%d-0058/rst_mod_%d"
+#define VIM_OPTOE_LP_MODE_PORT_CPLD_PATH    "/sys/bus/i2c/devices/%d-0058/lp_mode_%d"
+#define VIM_OPTOE_MOD_SEL_PORT_CPLD_PATH    "/sys/bus/i2c/devices/%d-0058/mod_sel_%d"
+#define VIM_OPTOE_TX_FAULT_PORT_CPLD_PATH   "/sys/bus/i2c/devices/%d-0058/tx_fault_%d"
+#define VIM_OPTOE_TX_DIS_PORT_CPLD_PATH     "/sys/bus/i2c/devices/%d-0058/tx_dis_%d"
+#define VIM_OPTOE_RX_LOSS_PORT_CPLD_PATH    "/sys/bus/i2c/devices/%d-0058/rx_los_%d"
+#define VIM_OPTOE_EEPROM_PATH               "/sys/bus/i2c/devices/%d-0050/eeprom"
+#define VIM_OPTOE_DOM_PATH                  "/sys/bus/i2c/devices/%d-0051/eeprom"
+
+/* Create I2C tree echo command */
+#define CMD_SIZE                            128
+#define PCA9548_3_INDEX                     1
+#define PCA9548_4_INDEX                     2
+#define VIM_PWR_CPLD_INDEX                  3
+#define VIM_PROT_CPLD_INDEX                 4
+#define PCA9548_1_ADDR                      0x76
+#define PCA9548_0_ADDR                      0x70
+#define PCA9548_3_ADDR                      0x71
+#define PCA9548_4_ADDR                      0x72
+#define VIM1_PCA9548_1_BUS_ID               1
+#define VIM2_PCA9548_1_BUS_ID               2
+#define VIM_CPLD0_ADDR                      0x5C
+#define VIM_CPLD1_ADDR                      0x58
+#define VIM_SFP_EEPROM_ADDR                 0x50
+
+enum vim_port {
+    NOT_VIM_PORT, 
+    VIM_PORT
+};
+
+enum vim_type_id {
+    VIM_8DE, 
+    VIM_16CE,
+    VIM_24CE,
+    VIM_24YE,
+    VIM_NONE, 
+    VIM_TYPE_ID_MAX
+};
 
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
@@ -168,9 +263,11 @@ char diag_debug_pause_platform_manage_check(void);
 #define DIAG_PRINT(fmt,args...) DIAG_TRACE(fmt,args);else if(diag_flag_get()) printf("[DIAG]"fmt"\n", args) 
 
 char* sfp_control_to_str(int value);
+char* vim_sfp_control_to_str(int value);
 char *rtrim(char *str);
 char *ltrim(char *str);
 char *trim(char *str);
 psu_type_t psu_type_get(int id, char* modelname, int modelname_len);
+uint32_t pltfm_create_sem (sem_t *mutex);
 
 #endif  /* __PLATFORM_LIB_H__ */

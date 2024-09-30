@@ -49,7 +49,7 @@
 #include <linux/printk.h>
 
 
-/* Base on Power CPLD spec v08 */
+/* Base on Power CPLD spec v10 */
 #define DRVNAME 					        	"7830_bmc_led"
 
 #define IPMI_APP_NETFN							0x6

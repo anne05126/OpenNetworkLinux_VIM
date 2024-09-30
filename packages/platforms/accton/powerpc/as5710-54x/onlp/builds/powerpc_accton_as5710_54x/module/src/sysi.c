@@ -254,6 +254,12 @@ onlp_sysi_platform_manage_leds(void)
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
+int
+onlp_sysi_platform_manage_vims(void)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}
+
 #include <onlplib/i2c.h>
 
 int

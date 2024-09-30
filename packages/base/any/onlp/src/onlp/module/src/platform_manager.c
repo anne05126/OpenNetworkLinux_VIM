@@ -71,6 +71,7 @@ typedef struct management_ctrl_s {
 
 /* This is the global control state */
 static management_ctrl_t control__ = { NULL };
+static management_ctrl_t vim_control__ = { NULL };
 
 
 /*
@@ -126,6 +127,19 @@ static management_entry_t management_entries[] =
         }
     };
 
+/* ++++++++++ For VIM card thread ++++++++++ */
+static management_entry_t management_vim_entries[] =
+    {
+        {
+            { },
+            onlp_sysi_platform_manage_vims,
+            /* Every 2 seconds */
+            2*1000*1000,
+            "Vims",
+        }
+    };
+/* ++++++++++ For VIM card thread ++++++++++ */
+
 
 void
 onlp_sys_platform_manage_init(void)
@@ -142,6 +156,20 @@ onlp_sys_platform_manage_init(void)
             timer_wheel_insert(control__.tw,  &e->twe, now + e->rate);
         }
     }
+/* ++++++++++ For VIM card thread ++++++++++ */
+    if(vim_control__.tw == NULL) {
+        int i;
+        uint64_t now = os_time_monotonic();
+
+        onlp_sysi_platform_manage_init();
+        vim_control__.tw = timer_wheel_create(4, 512, now);
+
+        for(i = 0; i < AIM_ARRAYSIZE(management_vim_entries); i++) {
+            management_entry_t* e = management_vim_entries+i;
+            timer_wheel_insert(vim_control__.tw,  &e->twe, now + e->rate);
+        }
+    }
+/* ++++++++++ For VIM card thread ++++++++++ */
 }
 
 
@@ -161,6 +189,27 @@ onlp_sys_platform_manage_now(void)
         timer_wheel_insert(control__.tw, &e->twe, os_time_monotonic() + e->rate);
     }
 }
+
+
+/* ++++++++++ For VIM card thread ++++++++++ */
+void
+onlp_sys_platform_vim_manage_now(void)
+{
+    management_entry_t* e;
+
+    onlp_sys_platform_manage_init();
+
+    while( (e = (management_entry_t*) timer_wheel_next(vim_control__.tw,
+                                                       os_time_monotonic())) ) {
+        if(e->manage) {
+            e->manage();
+        }
+        e->calls++;
+        timer_wheel_insert(vim_control__.tw, &e->twe, os_time_monotonic() + e->rate);
+    }
+}
+/* ++++++++++ For VIM card thread ++++++++++ */
+
 
 static void*
 onlp_sys_platform_manage_thread__(void* vctrl)
@@ -228,11 +277,82 @@ onlp_sys_platform_manage_thread__(void* vctrl)
     }
 }
 
+
+/* ++++++++++ For VIM card thread ++++++++++ */
+static void*
+onlp_sys_platform_vim_manage_thread__(void* vctrl)
+{
+    volatile management_ctrl_t* ctrl = (volatile management_ctrl_t*)(vctrl);
+
+    os_thread_name_set("onlp.sys.vim");
+
+    /*
+     * Wait on the eventfd for the specified timeout period.
+     */
+    for(;;) {
+
+        fd_set fds;
+        uint64_t now;
+        struct timeval tv;
+        timer_wheel_entry_t* twe;
+
+        FD_ZERO(&fds);
+        FD_SET(ctrl->eventfd, &fds);
+
+        /*
+         * Ask the timer wheel if there is an expiration in the next 2 seconds.
+         */
+        now = os_time_monotonic();
+        twe = timer_wheel_peek(ctrl->tw, now + 20000000);
+
+        if(twe == NULL) {
+            /* Nothing in the next two seconds. */
+            tv.tv_sec = 2;
+            tv.tv_usec = 0;
+        }
+        else {
+            if(twe->deadline > now) {
+                /* Sleep until next deadline */
+                tv.tv_sec = (twe->deadline - now) / 1000000;
+                tv.tv_usec = (twe->deadline - now) % 1000000;
+            }
+            else {
+                /* We have surpassed the current deadline */
+                tv.tv_sec = 0;
+                tv.tv_usec = 0;
+            }
+        }
+
+        int rv = select(ctrl->eventfd+1, &fds, NULL, NULL, &tv);
+        if(rv == 1 && FD_ISSET(ctrl->eventfd, &fds)) {
+            /* We've been asked to terminate. */
+            AIM_LOG_MSG("Terminating.");
+            /* Also signifies that we have exit */
+            close(ctrl->eventfd);
+            ctrl->eventfd = -1;
+            return NULL;
+        }
+        if(rv < 0) {
+            AIM_LOG_ERROR("select() returned %d (%{errno})", rv, errno);
+            /* Sleep 1 second, but continue to run */
+            sleep(1);
+        }
+
+        /*
+         * We don't bother to check the result of select() here.
+         */
+        onlp_sys_platform_vim_manage_now();
+    }
+}
+/* ++++++++++ For VIM card thread ++++++++++ */
+
+
 int
 onlp_sys_platform_manage_start(int block)
 {
     onlp_sys_platform_manage_init();
 
+    /* For original thread */
     if(control__.eventfd > 0) {
         /* Already running */
         return 0;
@@ -250,6 +370,26 @@ onlp_sys_platform_manage_start(int block)
         control__.eventfd = -1;
         return -1;
     }
+
+    /* For VIM card thread */
+    if(vim_control__.eventfd > 0) {
+        /* Already running */
+        AIM_LOG_ERROR("vim_control__ Already running");
+        return 0;
+    }
+
+    if( (vim_control__.eventfd = eventfd(0, EFD_SEMAPHORE)) < 0) {
+        AIM_LOG_ERROR("vim eventfd create failed: %{errno}", errno);
+        return -1;
+    }
+
+    if( (pthread_create(&vim_control__.thread, NULL, onlp_sys_platform_vim_manage_thread__,
+                        &vim_control__)) != 0) {
+        AIM_LOG_ERROR("vim pthread create failed.");
+        close(vim_control__.eventfd);
+        vim_control__.eventfd = -1;
+        return -1;
+    }    
 
     if(block) {
         onlp_sys_platform_manage_join();
@@ -270,6 +410,17 @@ onlp_sys_platform_manage_stop(int block)
             onlp_sys_platform_manage_join();
         }
     }
+
+    if(vim_control__.eventfd > 0) {
+        uint64_t zero = 1;
+        /* Tell the thread to exit */
+        write(vim_control__.eventfd, &zero, sizeof(zero));
+
+        if(block) {
+            onlp_sys_platform_manage_join();
+        }
+    }
+
     return 0;
 }
 
@@ -281,6 +432,13 @@ onlp_sys_platform_manage_join(void)
         pthread_join(control__.thread, NULL);
         close(control__.eventfd);
         control__.eventfd = -1;
+    }
+
+    if(vim_control__.eventfd > 0) {
+        /* Wait for the thread to terminate */
+        pthread_join(vim_control__.thread, NULL);
+        close(vim_control__.eventfd);
+        vim_control__.eventfd = -1;
     }
     return 0;
 }

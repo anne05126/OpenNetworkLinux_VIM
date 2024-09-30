@@ -44,6 +44,7 @@
 
 #define DRVNAME 								"7830_psu"
 
+/* Base on Power CPLD spec v10 */
 /* Get PSU Status */
 #define IPMI_APP_NETFN							0x6
 #define IPMI_READ_WRITE_CMD						0x52
@@ -461,7 +462,10 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_dev
 
 	data->valid_status[pid] = 0;
 
-	/* Get status from ipmi */
+	/* Get status from ipmi 
+	 * ipmitool raw 0x06 0x52 0x09 0xbc 0x1 0x11
+	 * ipmitool raw 0x06 0x52 0x09 0xbc 0x1 0x12
+	 */
 	data->ipmi.tx_message.netfn = IPMI_APP_NETFN;
 	data->ipmi_tx_data[0] = IPMI_PWRCPLD_BUS;
 	data->ipmi_tx_data[1] = IPMI_PWRCPLD_ADDRESS;

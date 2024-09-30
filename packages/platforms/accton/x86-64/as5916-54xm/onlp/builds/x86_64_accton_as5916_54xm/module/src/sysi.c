@@ -238,10 +238,10 @@ sysi_fanctrl_single_thermal_sensor_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
     char *desc;
 
     *adjusted = 0;    
-    /* If (LM75_0x4B > 36¢J or
-     *      LM75_0x49 > 39¢J or
-     *      LM75_0x4A > 38¢J or
-     *      LM75_0x4C > 39¢J),
+    /* If (LM75_0x4B > 36ï¿½J or
+     *      LM75_0x49 > 39ï¿½J or
+     *      LM75_0x4A > 38ï¿½J or
+     *      LM75_0x4C > 39ï¿½J),
      * fan duty = 100%.
      */
     for (i = (THERMAL_1_ON_MAIN_BROAD); i <= (CHASSIS_THERMAL_COUNT); i++) {
@@ -275,8 +275,8 @@ typedef int (*fan_control_policy)(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
                                   int *adjusted);
 
 /*   1. default fan duty = 50%
- *   2. if (LM75_0x4B > 36¢J or LM75_0x49 > 39¢J or LM75_0x4A > 38¢J or
- *      LM75_0x4C > 39¢J), fan duty = 100%
+ *   2. if (LM75_0x4B > 36ï¿½J or LM75_0x49 > 39ï¿½J or LM75_0x4A > 38ï¿½J or
+ *      LM75_0x4C > 39ï¿½J), fan duty = 100%
  *   3. Any of 6 fans faults, set duty = 100%.
  */
 fan_control_policy fan_control_policies[] = {
@@ -343,3 +343,8 @@ onlp_sysi_platform_manage_leds(void)
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
+int
+onlp_sysi_platform_manage_vims(void)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}

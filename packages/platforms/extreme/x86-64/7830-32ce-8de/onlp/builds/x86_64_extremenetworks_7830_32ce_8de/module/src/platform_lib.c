@@ -34,6 +34,7 @@
 #include <AIM/aim.h>
 #include <onlp/platformi/sfpi.h>
 #include "platform_lib.h"
+#include "vimi.h"
 #include <ctype.h>
 
 #define DEBUG_FLAG 0
@@ -99,6 +100,27 @@ char* sfp_control_to_str(int value)
             return "LP_MODE";
         case ONLP_SFP_CONTROL_POWER_OVERRIDE:
             return "POWER_OVERRIDE";
+
+        default:
+            return "UNKNOW";
+    }
+    return "";
+}
+
+char* vim_sfp_control_to_str(int value)
+{
+    switch (value)
+    {
+        case ONLP_SFP_CONTROL_RESET:
+            return "VIM_RESET";
+        case ONLP_SFP_CONTROL_RX_LOS:
+            return "VIM_RX_LOS";
+        case ONLP_SFP_CONTROL_TX_FAULT:
+            return "VIM_TX_FAULT";
+        case ONLP_SFP_CONTROL_TX_DISABLE:
+            return "VIM_TX_DISABLE";
+        case ONLP_SFP_CONTROL_LP_MODE:
+            return "VIM_LP_MODE";
 
         default:
             return "UNKNOW";
@@ -216,4 +238,17 @@ psu_type_t psu_type_get(int id, char* modelname, int modelname_len)
 	}
 
     return PSU_TYPE_UNKNOWN;
+}
+
+uint32_t pltfm_create_sem (sem_t *mutex)
+{
+    int rc;
+
+    /* Initialize an unnamed semaphore */
+    rc = sem_init(mutex, 1, 1);
+    if (rc != 0) {
+        AIM_DIE("%s failed, errno %d.", __func__, errno);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    return ONLP_STATUS_OK;
 }

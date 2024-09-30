@@ -497,13 +497,13 @@ static ssize_t show_present_all(struct device *dev, struct device_attribute *da,
             goto exit;
         }
 
-        values[i] = (u8)status;
+        values[i] = ~(u8)status;
     }
 
     mutex_unlock(&data->update_lock);
 
     /* Return values 1 -> 8 in order */
-    status = sprintf(buf, "%.2x %.2x\n", values[0], values[1]);
+    status = sprintf(buf, "%.2x %.2x %.2x\n", values[0], values[1], values[2]);
 
     return status;
 

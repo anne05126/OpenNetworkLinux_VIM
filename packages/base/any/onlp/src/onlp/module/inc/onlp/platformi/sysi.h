@@ -26,7 +26,19 @@
 #define __ONLP_SYSI_H__
 
 #include <onlp/sys.h>
+#include <sys/mman.h>
 
+/* For VIM card I2C tree */
+struct vim_history_status {
+    int  history_vim1_present;      /* 0 = present, 1 = not present */
+    int  history_vim2_present;
+    int  history_vim1_board_id;      /* 0 = 8DE, 1 = 16CE, 2 = 24CE, 3 = 24YE, 4 = VIM_NONE */
+    int  history_vim2_board_id;
+} vim_history_status;
+
+struct vim_history_status history_vim_status;
+
+void vim_history_status_init(void);
 
 /**
  * @brief Return the name of the the platform implementation.
@@ -148,6 +160,13 @@ int onlp_sysi_platform_manage_fans(void);
  * according to the platform conditions.
  */
 int onlp_sysi_platform_manage_leds(void);
+
+/**
+ * @brief Perform necessary platform VIM management.
+ * @note This function should automatically update the VIM's I2C tree 
+ * according to VIM insertion/removal and VIM board ID.
+ */
+int onlp_sysi_platform_manage_vims(void);
 
 /**
  * @brief Return custom platform information.

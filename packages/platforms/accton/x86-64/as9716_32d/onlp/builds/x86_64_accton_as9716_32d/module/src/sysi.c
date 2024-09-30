@@ -143,8 +143,8 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
     aim_free(pi->cpld_versions);
 }
 
-/*Read fanN_direction=1: The air flow of Fan6 is ¡§AFI-Back to Front¡¨
- *                    0: The air flow of Fan6 is ¡§AFO-Front to back¡¨
+/*Read fanN_direction=1: The air flow of Fan6 is ï¿½ï¿½AFI-Back to Frontï¿½ï¿½
+ *                    0: The air flow of Fan6 is ï¿½ï¿½AFO-Front to backï¿½ï¿½
  */
 /*
  Thermal policy:
@@ -712,3 +712,8 @@ onlp_sysi_platform_manage_leds(void)
     return ONLP_STATUS_E_UNSUPPORTED;
 }
    
+int
+onlp_sysi_platform_manage_vims(void)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}

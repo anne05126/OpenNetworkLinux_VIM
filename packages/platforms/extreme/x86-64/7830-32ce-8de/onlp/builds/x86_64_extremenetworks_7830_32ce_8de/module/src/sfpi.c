@@ -27,6 +27,7 @@
 #include <onlplib/i2c.h>
 #include <onlplib/file.h>
 #include "platform_lib.h"
+#include "vimi.h"
 
 #define CPLD_MAX_PORT_NUM       16
 
@@ -57,25 +58,25 @@ static const int qsfp_port_cpld_bus_index[NUM_OF_QSFP_PORT_CPLD] =
 #define QSFP_PORT_CPLD_BUS_INDEX(port_cpld) (qsfp_port_cpld_bus_index[port_cpld])
 
 /* QSFP */
-#define MODULE_EEPROM_QSFP_FORMAT           "/sys/bus/i2c/devices/%d-0050/eeprom"
-#define MODULE_PRESENT_QSFP_CPLD_FORMAT     "/sys/bus/i2c/devices/%d-0057/module_present_%d"
-#define MODULE_RESET_QSFP_CPLD_FORMAT       "/sys/bus/i2c/devices/%d-0057/module_reset_%d"
-#define MODULE_LPMODE_QSFP_CPLD_FORMAT      "/sys/bus/i2c/devices/%d-0057/module_lp_mode_%d"
-#define MODULE_PRESENT_ALL_QSFP_CPLD_FORMAT "/sys/bus/i2c/devices/%d-0057/module_present_all"
+#define MODULE_EEPROM_QSFP_PATH             "/sys/bus/i2c/devices/%d-0050/eeprom"
+#define MODULE_PRESENT_QSFP_CPLD_PATH       "/sys/bus/i2c/devices/%d-0057/module_present_%d"
+#define MODULE_RESET_QSFP_CPLD_PATH         "/sys/bus/i2c/devices/%d-0057/module_reset_%d"
+#define MODULE_LPMODE_QSFP_CPLD_PATH        "/sys/bus/i2c/devices/%d-0057/module_lp_mode_%d"
+#define MODULE_PRESENT_ALL_QSFP_CPLD_PATH   "/sys/bus/i2c/devices/%d-0057/module_present_all"
 
 /* IOBM */
-#define MODULE_PRESENT_IOBM_SFP_FORMAT     	"/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp%d_present"
-#define MODULE_TXFAULT_IOBM_SFP_FORMAT     	"/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp%d_txfault"
-#define MODULE_RXLOS_IOBM_SFP_FORMAT     	"/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp%d_rxlos"
-#define MODULE_TXDIS_IOBM_SFP_FORMAT     	"/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp%d_txdis"
-#define MODULE_EEPROM_IOBM_SFP_FORMAT     	"/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp%d_eeprom"
-#define MODULE_DOM_IOBM_SFP_FORMAT     		"/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp%d_dom"
+#define MODULE_PRESENT_IOBM_SFP_PATH     	"/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp%d_present"
+#define MODULE_TXFAULT_IOBM_SFP_PATH     	"/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp%d_txfault"
+#define MODULE_RXLOS_IOBM_SFP_PATH     	    "/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp%d_rxlos"
+#define MODULE_TXDIS_IOBM_SFP_PATH     	    "/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp%d_txdis"
+#define MODULE_EEPROM_IOBM_SFP_PATH     	"/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp%d_eeprom"
+#define MODULE_DOM_IOBM_SFP_PATH     		"/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp%d_dom"
 
-#define MODULE_PRESENT_IOBM_QSFP28_FORMAT   "/sys/bus/platform/devices/7830_iobm_io_eeprom/qsfp%d_mod_present"
-#define MODULE_RESET_IOBM_QSFP28_FORMAT   	"/sys/bus/platform/devices/7830_iobm_io_eeprom/qsfp%d_rst_mod"
-#define MODULE_LPMODE_IOBM_QSFP28_FORMAT   	"/sys/bus/platform/devices/7830_iobm_io_eeprom/qsfp%d_lp_mode"
-#define MODULE_EEPROM_IOBM_QSFP28_FORMAT   	"/sys/bus/platform/devices/7830_iobm_io_eeprom/qsfp%d_eeprom"
-#define MODULE_DOM_IOBM_QSFP28_FORMAT   	"/sys/bus/platform/devices/7830_iobm_io_eeprom/qsfp%d_dom"
+#define MODULE_PRESENT_IOBM_QSFP28_PATH     "/sys/bus/platform/devices/7830_iobm_io_eeprom/qsfp%d_mod_present"
+#define MODULE_RESET_IOBM_QSFP28_PATH   	"/sys/bus/platform/devices/7830_iobm_io_eeprom/qsfp%d_rst_mod"
+#define MODULE_LPMODE_IOBM_QSFP28_PATH   	"/sys/bus/platform/devices/7830_iobm_io_eeprom/qsfp%d_lp_mode"
+#define MODULE_EEPROM_IOBM_QSFP28_PATH   	"/sys/bus/platform/devices/7830_iobm_io_eeprom/qsfp%d_eeprom"
+#define MODULE_DOM_IOBM_QSFP28_PATH   	    "/sys/bus/platform/devices/7830_iobm_io_eeprom/qsfp%d_dom"
 
 
 /************************************************************
@@ -98,11 +99,13 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
      * Front QSFP28 Port {0, 31} {40}
      * Front QSFPDD Ports {32, 39}
      * IOBM SFP+ Port {41}
+     * VIM Port {42, vim_end_index-1}
      */
     int p;
+    int vim_end_index = onlp_vimi_get_vim_end_index();
     AIM_BITMAP_CLR_ALL(bmap);
 
-    for(p = 0; p < (NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT); p++) {
+    for(p = 0; p < vim_end_index; p++) {
         AIM_BITMAP_SET(bmap, p);
     }
 
@@ -119,10 +122,13 @@ int onlp_sfpi_is_present(int port)
      * Return < 0 if error.
      */
     int present;
+    int vim_end_index = onlp_vimi_get_vim_end_index();
+    int vim_id, cpld_bus_id, list_index, board_id;
+
 
 	if (IS_QSFP_PORT(port))
     {
-        if (onlp_file_read_int(&present, MODULE_PRESENT_QSFP_CPLD_FORMAT, 
+        if (onlp_file_read_int(&present, MODULE_PRESENT_QSFP_CPLD_PATH, 
                 PORT_CPLD_BUS_INDEX(port), (port+1)) < 0) 
         {
             AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
@@ -134,11 +140,11 @@ int onlp_sfpi_is_present(int port)
     {
     	if(port == IOBM_QSFP28_PORT_INDEX)
     	{
-    		if (onlp_file_read_int(&present, MODULE_PRESENT_IOBM_QSFP28_FORMAT, 
+    		if (onlp_file_read_int(&present, MODULE_PRESENT_IOBM_QSFP28_PATH, 
                 	(port - QSFP_PORT_INDEX_END)) < 0) 
         	{
         		char file[64] = {0};
-        		sprintf(file, MODULE_PRESENT_IOBM_QSFP28_FORMAT, (port - QSFP_PORT_INDEX_END)); 
+        		sprintf(file, MODULE_PRESENT_IOBM_QSFP28_PATH, (port - QSFP_PORT_INDEX_END)); 
 
             	AIM_LOG_ERROR("Unable to read present status from port(%d). path: %s\r\n", port, file);
             	return ONLP_STATUS_E_INTERNAL;
@@ -146,17 +152,61 @@ int onlp_sfpi_is_present(int port)
     	}
 		else
 		{
-        	if (onlp_file_read_int(&present, MODULE_PRESENT_IOBM_SFP_FORMAT, 
+        	if (onlp_file_read_int(&present, MODULE_PRESENT_IOBM_SFP_PATH, 
                 	(port - IOBM_QSFP28_PORT_INDEX)) < 0) 
         	{
         		char file[64] = {0};
-        		sprintf(file, MODULE_PRESENT_IOBM_QSFP28_FORMAT, (port - QSFP_PORT_INDEX_END)); 
+        		sprintf(file, MODULE_PRESENT_IOBM_QSFP28_PATH, (port - QSFP_PORT_INDEX_END)); 
 				
             	AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
             	return ONLP_STATUS_E_INTERNAL;
         	}
 		}
         DIAG_PRINT("%s, IOBM Port:%d Present value:0x%x, ", __FUNCTION__, port, present);
+    }
+    else if(IS_VIM_PORT(port, vim_end_index))
+    {
+        vim_id = onlp_vimi_index_map_to_vim_id(port);
+        if (vim_id == ONLP_STATUS_E_INTERNAL)
+        {
+            DIAG_PRINT("%s, port:%d out of range.", __FUNCTION__, port);
+            return ONLP_STATUS_E_INVALID;
+        }
+        board_id = onlp_vimi_board_id_get(vim_id);
+        list_index = onlp_vimi_get_list_index(vim_id, port);
+
+        if ((board_id == VIM_24CE || board_id == VIM_24YE) && list_index > 12)
+        {
+            /* Access VIM Port CPLD from CPU */
+            cpld_bus_id = onlp_vimi_cpld_bus_id_get(vim_id, VIM_PORT_CPLD_ID); /* Get Port CPLD I2C bus id */
+
+            if (onlp_file_read_int(&present, VIM_OPTOE_PRESENT_PORT_CPLD_PATH, 
+                    cpld_bus_id, list_index) < 0) 
+            {
+                char file[64] = {0};
+                sprintf(file, VIM_OPTOE_PRESENT_PORT_CPLD_PATH, cpld_bus_id, list_index); 
+
+                AIM_LOG_ERROR("Unable to read present status from vim port(%d). path: %s\r\n", port, file);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        }
+        else
+        {
+            /* Access VIM Power CPLD from BMC */
+            cpld_bus_id = onlp_vimi_cpld_bus_id_get(vim_id, VIM_POWER_CPLD_ID); /* Get Power CPLD I2C bus id */
+
+            if (onlp_file_read_int(&present, VIM_OPTOE_PRESENT_PWR_CPLD_PATH, 
+                    cpld_bus_id, list_index) < 0) 
+            {
+                char file[64] = {0};
+                sprintf(file, VIM_OPTOE_PRESENT_PWR_CPLD_PATH, cpld_bus_id, list_index); 
+
+                AIM_LOG_ERROR("Unable to read present status from vim port(%d). path: %s\r\n", port, file);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        }
+
+        DIAG_PRINT("%s, VIM Port:%d Present value:0x%x, ", __FUNCTION__, port, present);
     }
     else
     {
@@ -173,12 +223,14 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
      * Front QSFP28 Port {0, 31} {40}
      * Front QSFPDD Ports {32, 39}
      * IOBM SFP+ Port {41}
+     * VIM Port {42, vim_end_index-1}
      */
     DIAG_PRINT("%s", __FUNCTION__);
     uint32_t bytes[(NUM_OF_QSFP_PORT_CPLD*NUM_OF_QSFP_PER_PORT_CPLD)] = { 0 };
     int i = 0;
 	int j = 0;
     FILE* fp;
+    int vim_end_index = onlp_vimi_get_vim_end_index();
 
     /* Get 4 QSFP PORT CPLD present_all status */
     for (i = 0; i < NUM_OF_QSFP_PORT_CPLD; i++)
@@ -186,7 +238,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
         int count = 0;
         char file[64] = {0};
 
-        sprintf(file, MODULE_PRESENT_ALL_QSFP_CPLD_FORMAT, QSFP_PORT_CPLD_BUS_INDEX(i));      
+        sprintf(file, MODULE_PRESENT_ALL_QSFP_CPLD_PATH, QSFP_PORT_CPLD_BUS_INDEX(i));      
         fp = fopen(file, "r");
 
 		DIAG_PRINT("%s, QSFP PRESENT ALL path: %s", __FUNCTION__, file);
@@ -216,8 +268,23 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
         DIAG_PRINT("%s, bytes[%d]:0x%x", __FUNCTION__, i, bytes[i]);
     }
 
-	/* Get the present bitmap of all ports */
-	for (i = QSFP_PORT_INDEX_START; i <= IOBM_SFP_PORT_INDEX; i++)
+    /* Convert to 64 bit integer in port order */
+    uint64_t presence_all = 0 ;
+    for (i = AIM_ARRAYSIZE(bytes) - 1; i >= 0; i--)
+    {
+        presence_all <<= 8;
+        presence_all |= bytes[i];
+    }
+
+    /* Populate bitmap */
+    for (i = 0; presence_all; i++)
+    {
+        AIM_BITMAP_MOD(dst, i, (presence_all & 1));
+        presence_all >>= 1;
+    }
+
+    /* Get VIM present bitmap */
+	for (i = VIM_START_INDEX; i < vim_end_index; i++)
     {
         AIM_BITMAP_MOD(dst, i, onlp_sfpi_is_present(i));
     }
@@ -232,13 +299,15 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
      * Front QSFP28 Port {0, 31} {40}
      * Front QSFPDD Ports {32, 39}
      * IOBM SFP+ Port {41}
+     * VIM Port {42, vim_end_index-1}
      */
     int p = 0;
 	int supported;
+    int vim_end_index = onlp_vimi_get_vim_end_index();
 
     AIM_BITMAP_CLR_ALL(dst);
 
-    for (p = 0; p < (NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT); p++)
+    for (p = 0; p < vim_end_index; p++)
     {
 		if(onlp_sfpi_is_present(p) == 0) 
 		{
@@ -267,15 +336,19 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
      * Return MISSING if SFP is missing.
      * Return OK if eeprom is read
      */
+    int vim_end_index = onlp_vimi_get_vim_end_index();
     int size = 0;
-    if(port < 0 || port >= (NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT))
+    int *optoe_bus_id;
+    int vim_id, start_port; 
+
+    if(port < 0 || port > vim_end_index)
         return ONLP_STATUS_E_INTERNAL;
 
     if (IS_QSFP_PORT(port))
     {
     	DIAG_PRINT("%s, port:%d, busid:%d", __FUNCTION__, port, PORT_BUS_INDEX(port));
 		
-        if(onlp_file_read(data, 256, &size, MODULE_EEPROM_QSFP_FORMAT, 
+        if(onlp_file_read(data, 256, &size, MODULE_EEPROM_QSFP_PATH, 
                 PORT_BUS_INDEX(port)) != ONLP_STATUS_OK) 
         {
             AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
@@ -288,7 +361,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 		
     	if(port == IOBM_QSFP28_PORT_INDEX)
     	{
-    		if(onlp_file_read(data, 256, &size, MODULE_EEPROM_IOBM_QSFP28_FORMAT, 
+    		if(onlp_file_read(data, 256, &size, MODULE_EEPROM_IOBM_QSFP28_PATH, 
                 	(port - QSFP_PORT_INDEX_END)) != ONLP_STATUS_OK) 
         	{
             	AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
@@ -297,13 +370,32 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     	}
 		else
 		{
-        	if (onlp_file_read(data, 256, &size, MODULE_EEPROM_IOBM_SFP_FORMAT, 
+        	if (onlp_file_read(data, 256, &size, MODULE_EEPROM_IOBM_SFP_PATH, 
                 	(port - IOBM_QSFP28_PORT_INDEX)) < 0) 
         	{
             	AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
             	return ONLP_STATUS_E_INTERNAL;
         	}
 		}
+    }
+    else if(IS_VIM_PORT(port, vim_end_index))
+    {
+        vim_id = onlp_vimi_index_map_to_vim_id(port);
+        if (vim_id == ONLP_STATUS_E_INTERNAL)
+        {
+            DIAG_PRINT("%s, port:%d out of range.", __FUNCTION__, port);
+            return ONLP_STATUS_E_INVALID;
+        }
+        start_port = onlp_vimi_optoe_start_port_get(vim_id);
+        optoe_bus_id = onlp_vimi_get_optoe_bus_id_list(vim_id);
+
+        DIAG_PRINT("%s, port:%d, busid:%d", __FUNCTION__, port, optoe_bus_id[port-start_port]);
+
+        if(onlp_file_read(data, 256, &size, VIM_OPTOE_EEPROM_PATH, 
+                optoe_bus_id[port-start_port]) != ONLP_STATUS_OK) 
+        {
+            return ONLP_STATUS_E_UNSUPPORTED;
+        }
     }
     else
     {
@@ -326,8 +418,14 @@ onlp_sfpi_dom_read(int port, uint8_t data[256])
      *
      * Return OK if dom is read
      */     
+    int vim_end_index = onlp_vimi_get_vim_end_index();
     int size = 0;
-    if(port < 0 || port >= (NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT))
+    int *optoe_bus_id;
+    int vim_id, board_id, start_port;
+    FILE* fp;
+    char file[64] = {0};
+    
+    if(port < 0 || port > vim_end_index)
         return ONLP_STATUS_E_INTERNAL;
 
     if (IS_QSFP_PORT(port))
@@ -342,7 +440,7 @@ onlp_sfpi_dom_read(int port, uint8_t data[256])
 		
     	if(port == IOBM_QSFP28_PORT_INDEX)
     	{
-        	if (onlp_file_read(data, 256, &size, MODULE_DOM_IOBM_QSFP28_FORMAT, 
+        	if (onlp_file_read(data, 256, &size, MODULE_DOM_IOBM_QSFP28_PATH, 
                 	(port - QSFP_PORT_INDEX_END)) < 0) 
         	{
             	return ONLP_STATUS_E_UNSUPPORTED;
@@ -350,12 +448,60 @@ onlp_sfpi_dom_read(int port, uint8_t data[256])
     	}
 		else
 		{
-        	if (onlp_file_read(data, 256, &size, MODULE_DOM_IOBM_SFP_FORMAT, 
+        	if (onlp_file_read(data, 256, &size, MODULE_DOM_IOBM_SFP_PATH, 
                 	(port - IOBM_QSFP28_PORT_INDEX)) < 0) 
         	{
             	return ONLP_STATUS_E_UNSUPPORTED;
         	}
 		}
+    }
+    else if(IS_VIM_PORT(port, vim_end_index))
+    {
+        vim_id = onlp_vimi_index_map_to_vim_id(port);
+        if (vim_id == ONLP_STATUS_E_INTERNAL)
+        {
+            DIAG_PRINT("%s, port:%d out of range.", __FUNCTION__, port);
+            return ONLP_STATUS_E_INVALID;
+        }
+        board_id = onlp_vimi_board_id_get(vim_id);
+        start_port = onlp_vimi_optoe_start_port_get(vim_id);
+        optoe_bus_id = onlp_vimi_get_optoe_bus_id_list(vim_id);
+
+        DIAG_PRINT("%s, port:%d, busid:%d", __FUNCTION__, port, optoe_bus_id[port-start_port]);
+
+        switch (board_id)
+        {
+            case VIM_8DE:
+            case VIM_16CE:
+            case VIM_24CE:
+                return ONLP_STATUS_E_UNSUPPORTED;
+                break;
+            
+            case VIM_24YE:
+                sprintf(file, VIM_OPTOE_EEPROM_PATH, optoe_bus_id[port-start_port]);
+                fp = fopen(file, "r");
+                if(fp == NULL) {
+                    AIM_LOG_ERROR("Unable to open the eeprom device file of port(%d) bus_id(%d)", port, optoe_bus_id[port-start_port]);
+                    return ONLP_STATUS_E_INTERNAL;
+                }
+
+                if (fseek(fp, 256, SEEK_CUR) != 0) {
+                    fclose(fp);
+                    AIM_LOG_ERROR("Unable to set the file position indicator of port(%d)", port);
+                    return ONLP_STATUS_E_INTERNAL;
+                }
+
+                size = fread(data, 1, 256, fp);
+                fclose(fp);
+                if (size != 256) {
+                    AIM_LOG_ERROR("Unable to read the module_eeprom device file of port(%d)", port);
+                    return ONLP_STATUS_E_INTERNAL;
+                }
+                break;
+            default:
+                return ONLP_STATUS_E_UNSUPPORTED;
+                break;
+        }
     }
     else
     {
@@ -416,6 +562,21 @@ onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 
 int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int *supported)
 {
+    int vim_end_index = onlp_vimi_get_vim_end_index();
+    int vim_id, board_id;
+
+    if(IS_VIM_PORT(port, vim_end_index))
+    {
+        vim_id = onlp_vimi_index_map_to_vim_id(port);
+        if (vim_id == ONLP_STATUS_E_INTERNAL)
+        {
+            DIAG_PRINT("%s, port:%d out of range.", __FUNCTION__, port);
+            return ONLP_STATUS_E_INVALID;
+        }
+        board_id = onlp_vimi_board_id_get(vim_id);
+    }
+    
+
     if (supported == NULL)
     {
         AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_PARAM);
@@ -433,6 +594,24 @@ int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int *suppo
             {
                 *supported = 1;
             }
+            else if(IS_VIM_PORT(port, vim_end_index))
+            {
+                switch (board_id)
+                {
+                    case VIM_8DE:
+                    case VIM_16CE:
+                    case VIM_24CE:
+                        /* QSFP28 100G, QSFPDD 400G and SFP-DD */
+                        *supported = 1;
+                        break;
+                    case VIM_24YE:
+                        /* SFP28 (SFF-8472) */
+                        *supported = 0;
+                        break;
+                    default:   
+                        break;
+                }
+            }
             else
             {
                 *supported = 0;
@@ -447,6 +626,24 @@ int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int *suppo
             {
                 *supported = 1;
             }
+            else if(IS_VIM_PORT(port, vim_end_index))
+            {
+                switch (board_id)
+                {
+                    case VIM_8DE:
+                    case VIM_16CE:
+                        /* QSFP28 100G and QSFPDD 400G*/
+                        *supported = 0;
+                        break;
+                    case VIM_24CE:
+                    case VIM_24YE:
+                        /* SFP-DD and SFP28 (SFF-8472) */
+                        *supported = 1;
+                        break;
+                    default:   
+                        break;
+                }
+            }
             else
             {
                 *supported = 0;
@@ -459,7 +656,15 @@ int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int *suppo
             break;
     }
 
-    DIAG_PRINT("%s, port:%d, control:%d(%s), supported:%d", __FUNCTION__, port, control, sfp_control_to_str(control), *supported);
+    if (IS_VIM_PORT(port, vim_end_index))
+    {
+        DIAG_PRINT("%s, port:%d, control:%d(%s), supported:%d", __FUNCTION__, port, control, vim_sfp_control_to_str(control), *supported);
+    }
+    else
+    {
+        DIAG_PRINT("%s, port:%d, control:%d(%s), supported:%d", __FUNCTION__, port, control, sfp_control_to_str(control), *supported);
+    }
+
     return ONLP_STATUS_OK;
 }
 
@@ -469,6 +674,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     int rv;  
     int supported = 0;
+    int vim_end_index = onlp_vimi_get_vim_end_index();
 
     if ((onlp_sfpi_control_supported(port, control, &supported) == ONLP_STATUS_OK) && 
         (supported == 0))
@@ -486,7 +692,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         {
             if(IS_QSFP_PORT(port)) 
             {
-                if (onlp_file_write_int(value, MODULE_RESET_QSFP_CPLD_FORMAT, 
+                if (onlp_file_write_int(value, MODULE_RESET_QSFP_CPLD_PATH, 
                         PORT_CPLD_BUS_INDEX(port), (port+1)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to set reset status to port(%d)\r\n", port);
@@ -500,7 +706,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             }
 			else if(IS_IOBM_QSFP28_PORT(port))
 			{
-				if(onlp_file_write_int(value, MODULE_RESET_IOBM_QSFP28_FORMAT, 
+				if(onlp_file_write_int(value, MODULE_RESET_IOBM_QSFP28_PATH, 
                 		(port - QSFP_PORT_INDEX_END)) < 0) 
         		{
             		AIM_LOG_ERROR("Unable to set reset status to port(%d)\r\n", port);
@@ -512,6 +718,10 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 }
                 DIAG_PRINT("%s, Write IOBM QSFP28 port:%d RESET value:0x%x, ", __FUNCTION__, port, value);
 			}
+            else if(IS_VIM_PORT(port, vim_end_index))
+            {
+                rv = onlp_vim_sfpi_control_set(port, control, value);
+            }
             else
             {
                 rv = ONLP_STATUS_E_UNSUPPORTED;
@@ -522,7 +732,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         {
             if(IS_QSFP_PORT(port)) 
             {
-                if (onlp_file_write_int(value, MODULE_LPMODE_QSFP_CPLD_FORMAT, 
+                if (onlp_file_write_int(value, MODULE_LPMODE_QSFP_CPLD_PATH, 
                         PORT_CPLD_BUS_INDEX(port), (port+1)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to set lp_mode status to port(%d)\r\n", port);
@@ -536,7 +746,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             }
 			else if(IS_IOBM_QSFP28_PORT(port)) 
             {
-                if (onlp_file_write_int(value, MODULE_LPMODE_IOBM_QSFP28_FORMAT, 
+                if (onlp_file_write_int(value, MODULE_LPMODE_IOBM_QSFP28_PATH, 
                         (port - QSFP_PORT_INDEX_END)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to set lp_mode status to port(%d)\r\n", port);
@@ -548,6 +758,10 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 }
                 DIAG_PRINT("%s, Write IOBM QSFP28 port:%d LPMODE value:0x%x, ", __FUNCTION__, port, value);
             }
+            else if(IS_VIM_PORT(port, vim_end_index))
+            {
+                rv = onlp_vim_sfpi_control_set(port, control, value);
+            }
             else
             {
                 rv = ONLP_STATUS_E_UNSUPPORTED;
@@ -558,7 +772,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         {			
             if(IS_IOBM_SFP_PORT(port)) 
             {
-                if (onlp_file_write_int(value, MODULE_TXDIS_IOBM_SFP_FORMAT, 
+                if (onlp_file_write_int(value, MODULE_TXDIS_IOBM_SFP_PATH, 
                         (port - IOBM_QSFP28_PORT_INDEX)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
@@ -569,6 +783,10 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                     rv = ONLP_STATUS_OK;
                 }
                 DIAG_PRINT("%s, Write IOBM SFP port:%d TXDIS value:0x%x, ", __FUNCTION__, port, value);
+            }
+            else if(IS_VIM_PORT(port, vim_end_index))
+            {
+                rv = onlp_vim_sfpi_control_set(port, control, value);
             }
             else
             {
@@ -596,6 +814,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
     int rv;
     int val;
     int supported = 0;
+    int vim_end_index = onlp_vimi_get_vim_end_index();
 
     if (value == NULL)
     {
@@ -618,7 +837,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         {
             if(IS_QSFP_PORT(port))
             {
-                if (onlp_file_read_int(&val,  MODULE_RESET_QSFP_CPLD_FORMAT, 
+                if (onlp_file_read_int(&val,  MODULE_RESET_QSFP_CPLD_PATH, 
                         PORT_CPLD_BUS_INDEX(port), (port+1)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to read reset status from port(%d)\r\n", port);
@@ -634,7 +853,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
             }
 			else if(IS_IOBM_QSFP28_PORT(port))
             {
-                if (onlp_file_read_int(&val,  MODULE_RESET_IOBM_QSFP28_FORMAT, 
+                if (onlp_file_read_int(&val,  MODULE_RESET_IOBM_QSFP28_PATH, 
                         (port - QSFP_PORT_INDEX_END)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to read reset status from port(%d)\r\n", port);
@@ -648,6 +867,10 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                 DIAG_PRINT("%s, Read Current IOBM QSFP28 RESET value:0x%x, ", __FUNCTION__, val);
                 *value = val;
             }
+            else if(IS_VIM_PORT(port, vim_end_index))
+            {
+                rv = onlp_vim_sfpi_control_get(port, control, value);
+            }
             else
             {
                 rv = ONLP_STATUS_E_UNSUPPORTED;
@@ -658,7 +881,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         {
             if(IS_QSFP_PORT(port))
             {
-                if (onlp_file_read_int(&val,  MODULE_LPMODE_QSFP_CPLD_FORMAT, 
+                if (onlp_file_read_int(&val,  MODULE_LPMODE_QSFP_CPLD_PATH, 
                         PORT_CPLD_BUS_INDEX(port), (port+1)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to read lp_mode status from port(%d)\r\n", port);
@@ -674,7 +897,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
             }
 			else if(IS_IOBM_QSFP28_PORT(port))
             {
-                if (onlp_file_read_int(&val,  MODULE_LPMODE_IOBM_QSFP28_FORMAT, 
+                if (onlp_file_read_int(&val,  MODULE_LPMODE_IOBM_QSFP28_PATH, 
                         (port - QSFP_PORT_INDEX_END)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to read lp_mode status from port(%d)\r\n", port);
@@ -688,6 +911,10 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                 DIAG_PRINT("%s, Read Current IOBM QSFP28 LPMODE value:0x%x, ", __FUNCTION__, val);
                 *value = val;
             }
+            else if(IS_VIM_PORT(port, vim_end_index))
+            {
+                rv = onlp_vim_sfpi_control_get(port, control, value);
+            }
             else
             {
                 rv = ONLP_STATUS_E_UNSUPPORTED;
@@ -698,7 +925,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 		{
 			if(IS_IOBM_SFP_PORT(port))
             {
-                if (onlp_file_read_int(&val,  MODULE_RXLOS_IOBM_SFP_FORMAT, 
+                if (onlp_file_read_int(&val,  MODULE_RXLOS_IOBM_SFP_PATH, 
                         (port - IOBM_QSFP28_PORT_INDEX)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to read rx_los status from port(%d)\r\n", port);
@@ -712,6 +939,10 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                 DIAG_PRINT("%s, Read Current IOBM SFP RXLOS value:0x%x, ", __FUNCTION__, val);
                 *value = val;
             }
+            else if(IS_VIM_PORT(port, vim_end_index))
+            {
+                rv = onlp_vim_sfpi_control_get(port, control, value);
+            }
             else
             {
                 rv = ONLP_STATUS_E_UNSUPPORTED;
@@ -722,7 +953,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 		{
 			if(IS_IOBM_SFP_PORT(port))
             {
-                if (onlp_file_read_int(&val,  MODULE_TXFAULT_IOBM_SFP_FORMAT, 
+                if (onlp_file_read_int(&val,  MODULE_TXFAULT_IOBM_SFP_PATH, 
                         (port - IOBM_QSFP28_PORT_INDEX)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to read tx_fault status from port(%d)\r\n", port);
@@ -736,6 +967,10 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                 DIAG_PRINT("%s, Read Current IOBM SFP TXFAULT value:0x%x, ", __FUNCTION__, val);
                 *value = val;
             }
+            else if(IS_VIM_PORT(port, vim_end_index))
+            {
+                rv = onlp_vim_sfpi_control_get(port, control, value);
+            }
             else
             {
                 rv = ONLP_STATUS_E_UNSUPPORTED;
@@ -746,7 +981,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         {
             if(IS_IOBM_SFP_PORT(port))
             {
-                if (onlp_file_read_int(&val,  MODULE_TXDIS_IOBM_SFP_FORMAT, 
+                if (onlp_file_read_int(&val,  MODULE_TXDIS_IOBM_SFP_PATH, 
                         (port - IOBM_QSFP28_PORT_INDEX)) < 0) 
                 {
                     AIM_LOG_ERROR("Unable to read tx_disable status from port(%d)\r\n", port);
@@ -760,6 +995,10 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                 DIAG_PRINT("%s, Read Current IOBM SFP TXDIS value:0x%x, ", __FUNCTION__, val);
                 *value = val;
             }
+            else if(IS_VIM_PORT(port, vim_end_index))
+            {
+                rv = onlp_vim_sfpi_control_get(port, control, value);
+            }
             else
             {
                 rv = ONLP_STATUS_E_UNSUPPORTED;
@@ -770,12 +1009,18 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         default:
             rv = ONLP_STATUS_E_UNSUPPORTED;
     }
-
-    DIAG_PRINT("%s, port:%d, control:%d(%s), value:0x%X", __FUNCTION__, port, control, sfp_control_to_str(control), *value);
+    if (IS_VIM_PORT(port, vim_end_index))
+    {
+        DIAG_PRINT("%s, port:%d, control:%d(%s), value:0x%X", __FUNCTION__, port, control, vim_sfp_control_to_str(control), *value);
+    }
+    else
+    {
+        DIAG_PRINT("%s, port:%d, control:%d(%s), value:0x%X", __FUNCTION__, port, control, sfp_control_to_str(control), *value);
+    }
 
     if (rv == ONLP_STATUS_E_UNSUPPORTED)
     {
-        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
+        AIM_LOG_INFO("%s:%d port = %d, control = %d fail[%d]\n", __FUNCTION__, __LINE__, port, control, ONLP_STATUS_E_UNSUPPORTED);
     }
 
     return rv;

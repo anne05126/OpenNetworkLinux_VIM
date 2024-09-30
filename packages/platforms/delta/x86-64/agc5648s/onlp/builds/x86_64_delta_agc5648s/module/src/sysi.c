@@ -233,3 +233,9 @@ SET_PSU_LED:
         
     return ONLP_STATUS_OK;
 }
+
+int
+onlp_sysi_platform_manage_vims(void)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}

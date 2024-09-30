@@ -30,7 +30,7 @@
 #include "platform_lib.h"
 
 #define PSU_STATUS_PRESENT      1
-#define PSU_STATUS_POWER_GOOD   1
+#define PSU_STATUS_POWER_GOOD   0   /* power CPLD spec version v10 */
 
 #define VALIDATE(_id)                           \
     do {                                        \

@@ -46,6 +46,8 @@
 #include <linux/platform_device.h>
 
 #define DRVNAME                                 	"7830_fan"
+
+/* Base on Power CPLD spec v10 */
 /* PRESENT, Air Flow Direction, PWM */
 #define IPMI_APP_NETFN								0x6
 #define IPMI_READ_WRITE_CMD							0x52
@@ -694,7 +696,7 @@ exit:
 
 #define VALIDATE_PRESENT_RETURN(id) \
 do { \
-	if (present == 0) { \
+	if (present == 1) { \
 		mutex_unlock(&data->update_lock);   \
 		return -ENXIO; \
 	} \

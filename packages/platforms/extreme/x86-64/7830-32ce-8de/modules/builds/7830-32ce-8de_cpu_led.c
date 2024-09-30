@@ -49,7 +49,7 @@
 #include <linux/printk.h>
 
 
-/* Base on Power CPLD spec v08 */
+/* Base on Power CPLD spec v10 */
 #define DRIVER_NAME								"7830_i2c_led"
 #define I2C_RW_RETRY_COUNT                		10
 #define I2C_RW_RETRY_INTERVAL             		60 /* ms */

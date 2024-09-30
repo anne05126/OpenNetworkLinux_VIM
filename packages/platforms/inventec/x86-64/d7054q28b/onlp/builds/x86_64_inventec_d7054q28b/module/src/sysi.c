@@ -108,3 +108,9 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
 {
     aim_free(pi->cpld_versions);
 }
+
+int
+onlp_sysi_platform_manage_vims(void)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}

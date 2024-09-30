@@ -136,6 +136,12 @@ int onlp_sysi_platform_manage_leds(void)
 }
 
 int
+onlp_sysi_platform_manage_vims(void)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}
+
+int
 onlp_sysi_ioctl(int code, va_list vargs)
 {
     switch(code)

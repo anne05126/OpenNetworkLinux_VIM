@@ -80,3 +80,9 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     memset(table, 0, max*sizeof(onlp_oid_t));
     return 0;
 }
+
+int
+onlp_sysi_platform_manage_vims(void)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}

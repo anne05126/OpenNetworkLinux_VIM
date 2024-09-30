@@ -27,8 +27,8 @@
 #include <onlp/platformi/ledi.h>
 #include "platform_lib.h"
 
-#define LED_FORMAT      "/sys/bus/platform/devices/7830_bmc_led/%s"
-#define LED_FORMAT_I2C  "/sys/bus/i2c/devices/0-005f/%s"
+#define LED_PATH      "/sys/bus/platform/devices/7830_bmc_led/%s"
+#define LED_PATH_I2C  "/sys/bus/i2c/devices/0-005f/%s"
 
 /* PWR_LED(POWER_LED) */
 #define PWR_LED_MODE_OFF               		0x0
@@ -205,9 +205,9 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
         case LED_PWR:
         case LED_SEC:
             /* Get LED mode from CPU board */
-            if (onlp_file_read_int(&value, LED_FORMAT_I2C, leds[lid]) < 0) 
+            if (onlp_file_read_int(&value, LED_PATH_I2C, leds[lid]) < 0) 
             {
-                AIM_LOG_ERROR("[CPU] Unable to read status from file "LED_FORMAT, leds[lid]);
+                AIM_LOG_ERROR("[CPU] Unable to read status from file "LED_PATH, leds[lid]);
                 return ONLP_STATUS_E_INTERNAL;
             }
             break;
@@ -215,9 +215,9 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
         case LED_FAN:
         case LED_PSU:
             /* Get LED mode from BMC */
-            if (onlp_file_read_int(&value, LED_FORMAT, leds[lid]) < 0) 
+            if (onlp_file_read_int(&value, LED_PATH, leds[lid]) < 0) 
             {
-                AIM_LOG_ERROR("[BMC] Unable to read status from file "LED_FORMAT, leds[lid]);
+                AIM_LOG_ERROR("[BMC] Unable to read status from file "LED_PATH, leds[lid]);
                 return ONLP_STATUS_E_INTERNAL;
             }
             break;
@@ -297,7 +297,7 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
         case LED_PWR:
         case LED_SEC:
             /* Set from CPU to cpld */
-            if (onlp_file_write_int(onlp_to_driver_led_mode(lid , mode), LED_FORMAT_I2C, leds[lid]) < 0) 
+            if (onlp_file_write_int(onlp_to_driver_led_mode(lid , mode), LED_PATH_I2C, leds[lid]) < 0) 
             {
                 return ONLP_STATUS_E_INTERNAL;
             }
@@ -305,7 +305,7 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
         case LED_FAN:
         case LED_PSU:
             /* Set from BMC to cpld */
-            if (onlp_file_write_int(onlp_to_driver_led_mode(lid , mode), LED_FORMAT, leds[lid]) < 0) 
+            if (onlp_file_write_int(onlp_to_driver_led_mode(lid , mode), LED_PATH, leds[lid]) < 0) 
             {
                 return ONLP_STATUS_E_INTERNAL;
             }

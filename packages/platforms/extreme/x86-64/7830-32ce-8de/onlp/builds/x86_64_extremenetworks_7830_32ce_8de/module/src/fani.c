@@ -32,7 +32,7 @@
 #define MIN_FAN_INLET_SPEED         (MAX_FAN_INLET_SPEED * 0.05)
 #define MIN_FAN_OUTLET_SPEED        (MAX_FAN_OUTLET_SPEED * 0.05)
 
-#define FAN_STATUS_PRESENT  1
+#define FAN_STATUS_PRESENT  0   /* power CPLD spec version v10 */
 #define FAN_STATUS_GOOD     1
 #define FAN_STATUS_F2B		1
 
@@ -214,6 +214,7 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 int
 onlp_fani_init(void)
 {
+    DIAG_PRINT("%s", __FUNCTION__);
     return ONLP_STATUS_OK;
 }
 

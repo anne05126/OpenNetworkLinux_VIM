@@ -379,6 +379,12 @@ _EXIT :
 }
 
 int
+onlp_sysi_platform_manage_vims(void)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}
+
+int
 onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
 {
     int rc;

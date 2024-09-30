@@ -470,6 +470,12 @@ onlp_sysi_platform_manage_leds(void)
 }
 
 int
+onlp_sysi_platform_manage_vims(void)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}
+
+int
 onlp_sysi_init(void)
 {
     DIAG_PRINT("%s", __FUNCTION__);

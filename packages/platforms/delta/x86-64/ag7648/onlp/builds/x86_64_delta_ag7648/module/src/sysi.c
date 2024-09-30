@@ -301,3 +301,9 @@ sys_led	:
         onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_LOCATOR),locator_new_mode);
 		return ONLP_STATUS_OK;
 }
+
+int
+onlp_sysi_platform_manage_vims(void)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}
