@@ -25,12 +25,13 @@
 #define I2C_RW_RETRY_COUNT                      10
 #define I2C_RW_RETRY_INTERVAL                   60 /* ms */
 
-#define DEBUG_MODE                              1
+#define DEBUG_MODE                              0
 
 /* VIM */
 #define VIM_CPLD1_ADDRESS                       0x5C
 #define VIM_CPLD2_ADDRESS                       0x58
 #define VIM_CPLD_REG_ADDR_BOARD_ID         	    0x01
+#define VIM_CPLD_REG_ADDR_REVISION              0x00
 
 #define PCA9548_8_ADDRESS                       0x77
 #define PCA9548_1_ADDRESS                       0x76
@@ -48,15 +49,22 @@
 #define VIM_SFP_LP_MODE_P17_P24                 0x1A 
 #define VIM_SFP_TXFAULT_P13_P16                 0x1C
 #define VIM_SFP_TXFAULT_P17_P24                 0x1D
+#define VIM_SFP_TXFAULT_B_P13_P16               0x1E
+#define VIM_SFP_TXFAULT_B_P17_P24               0x1F
 #define VIM_SFP_TXDIS_P13_P16                   0x21
 #define VIM_SFP_TXDIS_P17_P24                   0x22
+#define VIM_SFP_TXDIS_B_P13_P16                 0x23
+#define VIM_SFP_TXDIS_B_P17_P24                 0x24
 #define VIM_SFP_RXLOS_P13_P16                   0x26
 #define VIM_SFP_RXLOS_P17_P24                   0x27
+#define VIM_SFP_RXLOS_B_P13_P16                 0x29
+#define VIM_SFP_RXLOS_B_P17_P24                 0x2A
 
 #define NUM_OF_SFP_QSFP_ATTR                    24
 #define NOT_SUPPORT                             0xFF
+#define VIM_CPLD_VERSION_BITS_MASK    			0x0F
 
-static unsigned int debug = 0;
+static unsigned int debug = DEBUG_MODE;
 module_param(debug, uint, S_IRUGO);
 MODULE_PARM_DESC(debug, "Set DEBUG mode. Default is disabled.");
 
@@ -113,6 +121,7 @@ static const struct i2c_device_id extreme7830_32ce_8de_vim_port_cpld_id[] = {
 MODULE_DEVICE_TABLE(i2c, extreme7830_32ce_8de_vim_port_cpld_id);
 
 
+#define VIM_CPLD_VERSION_ATTR_ID(index)				VIM_##index##_CPLD_VERSION
 #define VIM_BOARD_ID_ATTR_ID(index)					VIM_##index##_BOARD_ID
 #define PRESENT_ATTR_ID(index)				        PRESENT_##index
 #define RST_MOD_ATTR_ID(index)				        RST_MOD_##index
@@ -121,9 +130,13 @@ MODULE_DEVICE_TABLE(i2c, extreme7830_32ce_8de_vim_port_cpld_id);
 #define TXFAULT_ATTR_ID(index)				        TXFAULT_##index
 #define TXDIS_ATTR_ID(index)				        TXDIS_##index
 #define RXLOS_ATTR_ID(index)				        RXLOS_##index
-
+#define TXFAULT_B_ATTR_ID(index)				    TXFAULT_B_##index
+#define TXDIS_B_ATTR_ID(index)				        TXDIS_B_##index
+#define RXLOS_B_ATTR_ID(index)				        RXLOS_B_##index
 
 enum extreme7830_32ce_8de_sys_cpld_sysfs_attributes {
+    VIM_CPLD_VERSION_ATTR_ID(1), 
+    VIM_CPLD_VERSION_ATTR_ID(2),
     VIM_BOARD_ID_ATTR_ID(1), 
     VIM_BOARD_ID_ATTR_ID(2),
 
@@ -192,6 +205,19 @@ enum extreme7830_32ce_8de_sys_cpld_sysfs_attributes {
     TXFAULT_ATTR_ID(23),
     TXFAULT_ATTR_ID(24),
 
+    TXFAULT_B_ATTR_ID(13), 
+    TXFAULT_B_ATTR_ID(14),
+    TXFAULT_B_ATTR_ID(15),
+    TXFAULT_B_ATTR_ID(16),
+    TXFAULT_B_ATTR_ID(17),
+    TXFAULT_B_ATTR_ID(18),
+    TXFAULT_B_ATTR_ID(19), 
+    TXFAULT_B_ATTR_ID(20),
+    TXFAULT_B_ATTR_ID(21),
+    TXFAULT_B_ATTR_ID(22),
+    TXFAULT_B_ATTR_ID(23),
+    TXFAULT_B_ATTR_ID(24),
+
     TXDIS_ATTR_ID(13), 
     TXDIS_ATTR_ID(14),
     TXDIS_ATTR_ID(15),
@@ -204,6 +230,19 @@ enum extreme7830_32ce_8de_sys_cpld_sysfs_attributes {
     TXDIS_ATTR_ID(22),
     TXDIS_ATTR_ID(23),
     TXDIS_ATTR_ID(24),
+
+    TXDIS_B_ATTR_ID(13), 
+    TXDIS_B_ATTR_ID(14),
+    TXDIS_B_ATTR_ID(15),
+    TXDIS_B_ATTR_ID(16),
+    TXDIS_B_ATTR_ID(17),
+    TXDIS_B_ATTR_ID(18),
+    TXDIS_B_ATTR_ID(19), 
+    TXDIS_B_ATTR_ID(20),
+    TXDIS_B_ATTR_ID(21),
+    TXDIS_B_ATTR_ID(22),
+    TXDIS_B_ATTR_ID(23),
+    TXDIS_B_ATTR_ID(24),
 
     RXLOS_ATTR_ID(13), 
     RXLOS_ATTR_ID(14),
@@ -218,6 +257,19 @@ enum extreme7830_32ce_8de_sys_cpld_sysfs_attributes {
     RXLOS_ATTR_ID(23),
     RXLOS_ATTR_ID(24),
 
+    RXLOS_B_ATTR_ID(13), 
+    RXLOS_B_ATTR_ID(14),
+    RXLOS_B_ATTR_ID(15),
+    RXLOS_B_ATTR_ID(16),
+    RXLOS_B_ATTR_ID(17),
+    RXLOS_B_ATTR_ID(18),
+    RXLOS_B_ATTR_ID(19), 
+    RXLOS_B_ATTR_ID(20),
+    RXLOS_B_ATTR_ID(21),
+    RXLOS_B_ATTR_ID(22),
+    RXLOS_B_ATTR_ID(23),
+    RXLOS_B_ATTR_ID(24),
+
 };
 
 
@@ -230,7 +282,8 @@ static ssize_t show_vim_board_id(struct device *dev, struct device_attribute *da
                            char *buf);
 static ssize_t set_vim_board_id(struct device *dev, struct device_attribute *da, 
                       const char *buf, size_t count);
-
+static ssize_t show_vim_cpld_version(struct device *dev, struct device_attribute *da,
+                            char *buf);
 static int extreme7830_32ce_8de_vim_cpld_read_internal(struct i2c_client *client, u8 reg);
 static int extreme7830_32ce_8de_vim_cpld_write_internal(struct i2c_client *client, u8 reg, u8 value);
 
@@ -249,6 +302,12 @@ static int extreme7830_32ce_8de_vim_cpld_write_internal(struct i2c_client *clien
     static SENSOR_DEVICE_ATTR(tx_dis_##index, S_IWUSR | S_IRUGO, show_vim_sfp_status, set_vim_sfp_status, \
 				  TXDIS_##index); \
     static SENSOR_DEVICE_ATTR(rx_los_##index, S_IRUGO, show_vim_sfp_status, NULL, \
+				  RXLOS_##index); \
+    static SENSOR_DEVICE_ATTR(tx_fault_b_##index, S_IRUGO, show_vim_sfp_status, NULL, \
+                  TXFAULT_##index); \
+    static SENSOR_DEVICE_ATTR(tx_dis_b_##index, S_IWUSR | S_IRUGO, show_vim_sfp_status, set_vim_sfp_status, \
+				  TXDIS_##index); \
+    static SENSOR_DEVICE_ATTR(rx_los_b_##index, S_IRUGO, show_vim_sfp_status, NULL, \
 				  RXLOS_##index);
 
 #define DECLARE_VIM_SFP_ATTR(index) \
@@ -258,7 +317,10 @@ static int extreme7830_32ce_8de_vim_cpld_write_internal(struct i2c_client *clien
 	&sensor_dev_attr_mod_sel_##index.dev_attr.attr, \
 	&sensor_dev_attr_tx_fault_##index.dev_attr.attr, \
 	&sensor_dev_attr_tx_dis_##index.dev_attr.attr, \
-	&sensor_dev_attr_rx_los_##index.dev_attr.attr
+	&sensor_dev_attr_rx_los_##index.dev_attr.attr, \
+    &sensor_dev_attr_tx_fault_b_##index.dev_attr.attr, \
+	&sensor_dev_attr_tx_dis_b_##index.dev_attr.attr, \
+	&sensor_dev_attr_rx_los_b_##index.dev_attr.attr
 
 /* VIM_BOARD_ID attributes */
 #define DECLARE_VIM_BOARD_ID_SENSOR_DEVICE_ATTR(index) \
@@ -266,6 +328,15 @@ static int extreme7830_32ce_8de_vim_cpld_write_internal(struct i2c_client *clien
                   VIM_##index##_BOARD_ID);
 #define DECLARE_VIM_BOARD_ID_ATTR(index)  &sensor_dev_attr_vim_##index##_board_id.dev_attr.attr
 
+/* VIM_CPLD_VERSION attributes */
+#define DECLARE_VIM_CPLD_VERSION_SENSOR_DEVICE_ATTR(index) \
+    static SENSOR_DEVICE_ATTR(vim##index##_cpld_version, S_IRUGO, show_vim_cpld_version, NULL, \
+                  VIM_##index##_CPLD_VERSION);
+#define DECLARE_VIM_CPLD_VERSION_ATTR(index)  &sensor_dev_attr_vim##index##_cpld_version.dev_attr.attr
+
+
+DECLARE_VIM_CPLD_VERSION_SENSOR_DEVICE_ATTR(1);
+DECLARE_VIM_CPLD_VERSION_SENSOR_DEVICE_ATTR(2);
 DECLARE_VIM_BOARD_ID_SENSOR_DEVICE_ATTR(1);
 DECLARE_VIM_BOARD_ID_SENSOR_DEVICE_ATTR(2);
 
@@ -285,7 +356,7 @@ DECLARE_VIM_SFP_SENSOR_DEVICE_ATTR(24);
 
 /* VIM#1 CPLD2 */
 static struct attribute *extreme7830_32ce_8de_vim1_cpld2_attributes[] = {
-    
+    DECLARE_VIM_CPLD_VERSION_ATTR(1),
     DECLARE_VIM_BOARD_ID_ATTR(1), 
 
     /* transceiver attributes */
@@ -311,7 +382,7 @@ static const struct attribute_group extreme7830_32ce_8de_vim1_cpld2_group = {
 
 /* VIM#2 CPLD2 */
 static struct attribute *extreme7830_32ce_8de_vim2_cpld2_attributes[] = {
-
+    DECLARE_VIM_CPLD_VERSION_ATTR(2),
     DECLARE_VIM_BOARD_ID_ATTR(2), 
 
     /* transceiver attributes */
@@ -402,6 +473,16 @@ static ssize_t set_vim_sfp_status(struct device *dev, struct device_attribute *d
                 case TXDIS_17 ... TXDIS_24:
                     reg  = VIM_SFP_TXDIS_P17_P24;
                     mask = 0x1 << (attr->index - TXDIS_17);
+                    break;
+                
+                /* TX_DIS_B */
+                case TXDIS_B_13 ... TXDIS_B_16:
+                    reg  = VIM_SFP_TXDIS_B_P13_P16;
+                    mask = 0x1 << (attr->index - TXDIS_B_13) << 0x4;      /* Shift 4 bits, because TXDIS_B_13 is start at bit 4 */
+                    break;
+                case TXDIS_B_17 ... TXDIS_B_24:
+                    reg  = VIM_SFP_TXDIS_B_P17_P24;
+                    mask = 0x1 << (attr->index - TXDIS_B_17);
                     break;
 
                 default:
@@ -541,6 +622,16 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
                     mask = 0x1 << (attr->index - TXFAULT_17);
                     break;
                 
+                /* TX_FAULT_B */
+                case TXFAULT_B_13 ... TXFAULT_B_16:
+                    reg  = VIM_SFP_TXFAULT_B_P13_P16;
+                    mask = 0x1 << (attr->index - TXFAULT_B_13) << 0x4;    /* Shift 4 bits, because TXFAULT_13 is start at bit 4 */
+                    break;
+                case TXFAULT_B_17 ... TXFAULT_B_24:
+                    reg  = VIM_SFP_TXFAULT_B_P17_P24;
+                    mask = 0x1 << (attr->index - TXFAULT_B_17);
+                    break;
+
                 /* TX_DIS */
                 case TXDIS_13 ... TXDIS_16:
                     reg  = VIM_SFP_TXDIS_P13_P16;
@@ -551,6 +642,16 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
                     mask = 0x1 << (attr->index - TXDIS_17);
                     break;
                 
+                /* TX_DIS_B */
+                case TXDIS_B_13 ... TXDIS_B_16:
+                    reg  = VIM_SFP_TXDIS_B_P13_P16;
+                    mask = 0x1 << (attr->index - TXDIS_B_13) << 0x4;      /* Shift 4 bits, because TXDIS_13 is start at bit 4 */
+                    break;
+                case TXDIS_B_17 ... TXDIS_B_24:
+                    reg  = VIM_SFP_TXDIS_B_P17_P24;
+                    mask = 0x1 << (attr->index - TXDIS_B_17);
+                    break;
+
                 /* RX_LOS */
                 case RXLOS_13 ... RXLOS_16:
                     reg  = VIM_SFP_RXLOS_P13_P16;
@@ -559,6 +660,16 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
                 case RXLOS_17 ... RXLOS_24:
                     reg  = VIM_SFP_RXLOS_P17_P24;
                     mask = 0x1 << (attr->index - RXLOS_17);
+                    break;
+                
+                /* RX_LOS_B */
+                case RXLOS_B_13 ... RXLOS_B_16:
+                    reg  = VIM_SFP_RXLOS_B_P13_P16;
+                    mask = 0x1 << (attr->index - RXLOS_B_13) << 0x4;      /* Shift 4 bits, because RXLOS_13 is start at bit 4 */
+                    break;
+                case RXLOS_B_17 ... RXLOS_B_24:
+                    reg  = VIM_SFP_RXLOS_B_P17_P24;
+                    mask = 0x1 << (attr->index - RXLOS_B_17);
                     break;
                 
                 default:
@@ -685,6 +796,23 @@ static ssize_t show_vim_board_id(struct device *dev, struct device_attribute *da
    
 	return sprintf(buf, "%d\n", data->board_id);
 
+}
+
+static ssize_t show_vim_cpld_version(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    int val = 0;
+    struct i2c_client *client = to_i2c_client(dev);
+
+    val = i2c_smbus_read_byte_data(client, VIM_CPLD_REG_ADDR_REVISION);
+
+    if (val < 0) {
+        dev_dbg(&client->dev, "cpld(0x%x) reg(VIM_CPLD_REG_ADDR_REVISION) err %d\n", client->addr, val);
+    }
+
+	val = val & VIM_CPLD_VERSION_BITS_MASK;
+    DEBUG_PRINT("[show_vim_cpld_version] get vim_cpld_version %d", val);
+
+    return sprintf(buf, "%d\n", val);
 }
 
 /*

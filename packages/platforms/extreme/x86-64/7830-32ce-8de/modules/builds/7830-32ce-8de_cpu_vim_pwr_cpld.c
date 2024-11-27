@@ -25,7 +25,7 @@
 #define I2C_RW_RETRY_COUNT                      10
 #define I2C_RW_RETRY_INTERVAL                   60 /* ms */
 
-#define DEBUG_MODE                              1
+#define DEBUG_MODE                              0
 
 /* VIM */
 #define VIM_CPLD1_ADDRESS                       0x5C
@@ -37,24 +37,34 @@
 #define CHANNEL_1_ADDRESS  				        0x02	/* CH1 */
 #define CHANNEL_3_ADDRESS  				        0x08	/* CH3 */
 
+#define VIM_BOARD_ID_MASK                       0x07    /* bit 0~2 */
+
 /* VIM CPLD1 0x5c */
-#define VIM_SFP_PRESENT_P1_P8                   0x10 
-#define VIM_SFP_PRESENT_P9_P16                  0x12 
-#define VIM_SFP_RST_MOD_P1_P8                   0x15 
-#define VIM_SFP_RST_MOD_P9_P16                  0x16 
-#define VIM_SFP_LP_MODE_P1_P8                   0x18 
-#define VIM_SFP_LP_MODE_P9_P16                  0x19 
-#define VIM_SFP_MOD_SEL_P1_P8                   0x1A 
-#define VIM_SFP_TXFAULT_P1_P8                   0x1B 
+#define VIM_CPLD_REG_ADDR_REVISION              0x00
+#define VIM_SFP_PRESENT_P1_P8                   0x10
+#define VIM_SFP_PRESENT_P9_P16                  0x12
+#define VIM_SFP_RST_MOD_P1_P8                   0x15
+#define VIM_SFP_RST_MOD_P9_P16                  0x16
+#define VIM_SFP_LP_MODE_P1_P8                   0x18
+#define VIM_SFP_LP_MODE_P9_P16                  0x19
+#define VIM_SFP_MOD_SEL_P1_P8                   0x1A
+#define VIM_SFP_TXFAULT_P1_P8                   0x1B
 #define VIM_SFP_TXFAULT_P9_P16                  0x1C
-#define VIM_SFP_TXDIS_P1_P8                     0x20 
+#define VIM_SFP_TXFAULT_B_P1_P8                 0x1D
+#define VIM_SFP_TXFAULT_B_P9_P16                0x1E
+#define VIM_SFP_TXDIS_P1_P8                     0x20
 #define VIM_SFP_TXDIS_P9_P16                    0x21
-#define VIM_SFP_RXLOS_P1_P8                     0x25 
+#define VIM_SFP_TXDIS_B_P1_P8                   0x22
+#define VIM_SFP_TXDIS_B_P9_P16                  0x23
+#define VIM_SFP_RXLOS_P1_P8                     0x25
 #define VIM_SFP_RXLOS_P9_P16                    0x26
+#define VIM_SFP_RXLOS_B_P1_P8                   0x28
+#define VIM_SFP_RXLOS_B_P9_P16                  0x29
 
 #define NOT_SUPPORT                             0xFF
+#define VIM_CPLD_VERSION_BITS_MASK    			0x0F 	/* bit 0~3 */
 
-static unsigned int debug = 0;
+static unsigned int debug = DEBUG_MODE;
 module_param(debug, uint, S_IRUGO);
 MODULE_PARM_DESC(debug, "Set DEBUG mode. Default is disabled.");
 
@@ -127,9 +137,14 @@ MODULE_DEVICE_TABLE(i2c, extreme7830_32ce_8de_vim_cpld_id);
 #define TXFAULT_ATTR_ID(index)				        TXFAULT_##index
 #define TXDIS_ATTR_ID(index)				        TXDIS_##index
 #define RXLOS_ATTR_ID(index)				        RXLOS_##index
-
+#define TXFAULT_B_ATTR_ID(index)				    TXFAULT_B_##index
+#define TXDIS_B_ATTR_ID(index)				        TXDIS_B_##index
+#define RXLOS_B_ATTR_ID(index)				        RXLOS_B_##index
+#define VIM_CPLD_VER_ATTR_ID(index)				    VIM##index##_CPLD_VERSION
 
 enum extreme7830_32ce_8de_sys_cpld_sysfs_attributes {
+    VIM_CPLD_VER_ATTR_ID(1), 
+    VIM_CPLD_VER_ATTR_ID(2),
 
     PRESENT_ATTR_ID(1), 
     PRESENT_ATTR_ID(2),
@@ -216,6 +231,23 @@ enum extreme7830_32ce_8de_sys_cpld_sysfs_attributes {
     TXFAULT_ATTR_ID(15),
     TXFAULT_ATTR_ID(16),
 
+    TXFAULT_B_ATTR_ID(1), 
+    TXFAULT_B_ATTR_ID(2),
+    TXFAULT_B_ATTR_ID(3),
+    TXFAULT_B_ATTR_ID(4),
+    TXFAULT_B_ATTR_ID(5),
+    TXFAULT_B_ATTR_ID(6),
+    TXFAULT_B_ATTR_ID(7), 
+    TXFAULT_B_ATTR_ID(8),
+    TXFAULT_B_ATTR_ID(9),
+    TXFAULT_B_ATTR_ID(10),
+    TXFAULT_B_ATTR_ID(11),
+    TXFAULT_B_ATTR_ID(12),
+    TXFAULT_B_ATTR_ID(13), 
+    TXFAULT_B_ATTR_ID(14),
+    TXFAULT_B_ATTR_ID(15),
+    TXFAULT_B_ATTR_ID(16),
+
     TXDIS_ATTR_ID(1), 
     TXDIS_ATTR_ID(2),
     TXDIS_ATTR_ID(3),
@@ -232,6 +264,23 @@ enum extreme7830_32ce_8de_sys_cpld_sysfs_attributes {
     TXDIS_ATTR_ID(14),
     TXDIS_ATTR_ID(15),
     TXDIS_ATTR_ID(16),
+
+    TXDIS_B_ATTR_ID(1), 
+    TXDIS_B_ATTR_ID(2),
+    TXDIS_B_ATTR_ID(3),
+    TXDIS_B_ATTR_ID(4),
+    TXDIS_B_ATTR_ID(5),
+    TXDIS_B_ATTR_ID(6),
+    TXDIS_B_ATTR_ID(7), 
+    TXDIS_B_ATTR_ID(8),
+    TXDIS_B_ATTR_ID(9),
+    TXDIS_B_ATTR_ID(10),
+    TXDIS_B_ATTR_ID(11),
+    TXDIS_B_ATTR_ID(12),
+    TXDIS_B_ATTR_ID(13), 
+    TXDIS_B_ATTR_ID(14),
+    TXDIS_B_ATTR_ID(15),
+    TXDIS_B_ATTR_ID(16),
 
     RXLOS_ATTR_ID(1), 
     RXLOS_ATTR_ID(2),
@@ -250,6 +299,22 @@ enum extreme7830_32ce_8de_sys_cpld_sysfs_attributes {
     RXLOS_ATTR_ID(15),
     RXLOS_ATTR_ID(16),
 
+    RXLOS_B_ATTR_ID(1), 
+    RXLOS_B_ATTR_ID(2),
+    RXLOS_B_ATTR_ID(3),
+    RXLOS_B_ATTR_ID(4),
+    RXLOS_B_ATTR_ID(5),
+    RXLOS_B_ATTR_ID(6),
+    RXLOS_B_ATTR_ID(7), 
+    RXLOS_B_ATTR_ID(8),
+    RXLOS_B_ATTR_ID(9),
+    RXLOS_B_ATTR_ID(10),
+    RXLOS_B_ATTR_ID(11),
+    RXLOS_B_ATTR_ID(12),
+    RXLOS_B_ATTR_ID(13), 
+    RXLOS_B_ATTR_ID(14),
+    RXLOS_B_ATTR_ID(15),
+    RXLOS_B_ATTR_ID(16),
 };
 
 
@@ -258,7 +323,8 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
                            char *buf);
 static ssize_t set_vim_sfp_status(struct device *dev, struct device_attribute *da, 
                       const char *buf, size_t count);
-
+static ssize_t show_vim_cpld_version(struct device *dev, struct device_attribute *da,
+                           char *buf);
 static int extreme7830_32ce_8de_vim_cpld_read_internal(struct i2c_client *client, u8 reg);
 static int extreme7830_32ce_8de_vim_cpld_write_internal(struct i2c_client *client, u8 reg, u8 value);
 
@@ -277,6 +343,12 @@ static int extreme7830_32ce_8de_vim_cpld_write_internal(struct i2c_client *clien
     static SENSOR_DEVICE_ATTR(tx_dis_##index, S_IWUSR | S_IRUGO, show_vim_sfp_status, set_vim_sfp_status, \
 				  TXDIS_##index); \
     static SENSOR_DEVICE_ATTR(rx_los_##index, S_IRUGO, show_vim_sfp_status, NULL, \
+				  RXLOS_##index); \
+    static SENSOR_DEVICE_ATTR(tx_fault_b_##index, S_IRUGO, show_vim_sfp_status, NULL, \
+                  TXFAULT_##index); \
+    static SENSOR_DEVICE_ATTR(tx_dis_b_##index, S_IWUSR | S_IRUGO, show_vim_sfp_status, set_vim_sfp_status, \
+				  TXDIS_##index); \
+    static SENSOR_DEVICE_ATTR(rx_los_b_##index, S_IRUGO, show_vim_sfp_status, NULL, \
 				  RXLOS_##index);
 
 #define DECLARE_VIM_SFP_ATTR(index) \
@@ -286,8 +358,18 @@ static int extreme7830_32ce_8de_vim_cpld_write_internal(struct i2c_client *clien
 	&sensor_dev_attr_mod_sel_##index.dev_attr.attr, \
 	&sensor_dev_attr_tx_fault_##index.dev_attr.attr, \
 	&sensor_dev_attr_tx_dis_##index.dev_attr.attr, \
-	&sensor_dev_attr_rx_los_##index.dev_attr.attr
+	&sensor_dev_attr_rx_los_##index.dev_attr.attr, \
+    &sensor_dev_attr_tx_fault_b_##index.dev_attr.attr, \
+	&sensor_dev_attr_tx_dis_b_##index.dev_attr.attr, \
+	&sensor_dev_attr_rx_los_b_##index.dev_attr.attr
 
+/* VIM CPLD Version */
+#define DECLARE_VIM_CPLD_VERSION_DEVICE_ATTR(index) \
+	static SENSOR_DEVICE_ATTR(vim##index##_cpld_version, S_IRUGO, show_vim_cpld_version, NULL, VIM##index##_CPLD_VERSION)
+#define DECLARE_VIM_CPLD_VERSION_ATTR(index)  &sensor_dev_attr_vim##index##_cpld_version.dev_attr.attr
+
+DECLARE_VIM_CPLD_VERSION_DEVICE_ATTR(1);
+DECLARE_VIM_CPLD_VERSION_DEVICE_ATTR(2);
 DECLARE_VIM_SFP_SENSOR_DEVICE_ATTR(1);
 DECLARE_VIM_SFP_SENSOR_DEVICE_ATTR(2);
 DECLARE_VIM_SFP_SENSOR_DEVICE_ATTR(3);
@@ -308,7 +390,7 @@ DECLARE_VIM_SFP_SENSOR_DEVICE_ATTR(16);
 
 /* VIM#1 CPLD1 */
 static struct attribute *extreme7830_32ce_8de_vim1_cpld1_attributes[] = {
-
+    DECLARE_VIM_CPLD_VERSION_ATTR(1),
     DECLARE_VIM_SFP_ATTR(1), 
     DECLARE_VIM_SFP_ATTR(2), 
     DECLARE_VIM_SFP_ATTR(3), 
@@ -335,7 +417,7 @@ static const struct attribute_group extreme7830_32ce_8de_vim1_cpld1_group = {
 
 /* VIM#2 CPLD1 */
 static struct attribute *extreme7830_32ce_8de_vim2_cpld1_attributes[] = {
-
+    DECLARE_VIM_CPLD_VERSION_ATTR(2),
     DECLARE_VIM_SFP_ATTR(1), 
     DECLARE_VIM_SFP_ATTR(2), 
     DECLARE_VIM_SFP_ATTR(3), 
@@ -364,6 +446,7 @@ static const struct attribute_group extreme7830_32ce_8de_vim2_cpld1_group = {
  * Attributes function
  *      - show_vim_sfp_status   : Get VIM SFP attribute
  *      - set_vim_sfp_status    : Set VIM SFP attribute
+ *      - show_vim_cpld_version : Get VIM CPLD version
  */
 static ssize_t set_vim_sfp_status(struct device *dev, struct device_attribute *da, 
                       const char *buf, size_t count)
@@ -393,7 +476,7 @@ static ssize_t set_vim_sfp_status(struct device *dev, struct device_attribute *d
 
             status = extreme7830_32ce_8de_vim_cpld_write_internal(client, PCA9548_8_ADDRESS, CHANNEL_0_ADDRESS);
             if (unlikely(status < 0)) {
-                DEBUG_PRINT("Switch channel failed! board_id = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_8_ADDRESS, CHANNEL_0_ADDRESS);
+                DEBUG_PRINT("Switch channel failed! attr->index = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_8_ADDRESS, CHANNEL_0_ADDRESS);
                 goto exit;
             }
             break;
@@ -402,7 +485,7 @@ static ssize_t set_vim_sfp_status(struct device *dev, struct device_attribute *d
 
             status = extreme7830_32ce_8de_vim_cpld_write_internal(client, PCA9548_8_ADDRESS, CHANNEL_1_ADDRESS);
             if (unlikely(status < 0)) {
-                DEBUG_PRINT("Switch channel failed! board_id = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_8_ADDRESS, CHANNEL_1_ADDRESS);
+                DEBUG_PRINT("Switch channel failed! attr->index = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_8_ADDRESS, CHANNEL_1_ADDRESS);
                 goto exit;
             }
             break;
@@ -414,7 +497,7 @@ static ssize_t set_vim_sfp_status(struct device *dev, struct device_attribute *d
 
     status = extreme7830_32ce_8de_vim_cpld_write_internal(client, PCA9548_1_ADDRESS, CHANNEL_3_ADDRESS);
     if (unlikely(status < 0)) {
-        DEBUG_PRINT("Switch channel failed! board_id = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_1_ADDRESS, CHANNEL_3_ADDRESS);
+        DEBUG_PRINT("Switch channel failed! attr->index = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_1_ADDRESS, CHANNEL_3_ADDRESS);
         goto exit;
     }
 
@@ -426,8 +509,8 @@ static ssize_t set_vim_sfp_status(struct device *dev, struct device_attribute *d
         goto exit;
     }
 
-    board_id = status;
-        
+    board_id = status & VIM_BOARD_ID_MASK;
+    DEBUG_PRINT("[VIM CPU PWR CPLD DEBUG]: attr->index:%d, board_id=%d", attr->index, board_id);
     mutex_unlock(&data->update_lock);
     
 
@@ -517,6 +600,16 @@ static ssize_t set_vim_sfp_status(struct device *dev, struct device_attribute *d
                     mask = 0x1 << (attr->index - TXDIS_9);
                     break;
 
+                /* TX_DIS_B */
+                case TXDIS_B_1 ... TXDIS_B_8:
+                    reg  = VIM_SFP_TXDIS_B_P1_P8;
+                    mask = 0x1 << (attr->index - TXDIS_B_1);
+                    break;
+                case TXDIS_B_9 ... TXDIS_B_12:
+                    reg  = VIM_SFP_TXDIS_B_P9_P16;
+                    mask = 0x1 << (attr->index - TXDIS_B_9);
+                    break;
+
                 default:
                     reg  = NOT_SUPPORT;
                     break;
@@ -599,7 +692,7 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
         case extreme7830_32ce_8de_vim1_cpld1:
             status = extreme7830_32ce_8de_vim_cpld_write_internal(client, PCA9548_8_ADDRESS, CHANNEL_0_ADDRESS);
             if (unlikely(status < 0)) {
-                DEBUG_PRINT("Switch channel failed! board_id = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_8_ADDRESS, CHANNEL_0_ADDRESS);
+                DEBUG_PRINT("Switch channel failed! attr->index = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_8_ADDRESS, CHANNEL_0_ADDRESS);
                 goto exit;
             }
             break;
@@ -607,7 +700,7 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
 		case extreme7830_32ce_8de_vim2_cpld1:
             status = extreme7830_32ce_8de_vim_cpld_write_internal(client, PCA9548_8_ADDRESS, CHANNEL_1_ADDRESS);
             if (unlikely(status < 0)) {
-                DEBUG_PRINT("Switch channel failed! board_id = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_8_ADDRESS, CHANNEL_1_ADDRESS);
+                DEBUG_PRINT("Switch channel failed! attr->index = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_8_ADDRESS, CHANNEL_1_ADDRESS);
                 goto exit;
             }
             break;
@@ -619,7 +712,7 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
 
     status = extreme7830_32ce_8de_vim_cpld_write_internal(client, PCA9548_1_ADDRESS, CHANNEL_3_ADDRESS);
     if (unlikely(status < 0)) {
-        DEBUG_PRINT("Switch channel failed! board_id = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_1_ADDRESS, CHANNEL_3_ADDRESS);
+        DEBUG_PRINT("Switch channel failed! attr->index = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_1_ADDRESS, CHANNEL_3_ADDRESS);
         goto exit;
     }
 
@@ -631,7 +724,8 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
         goto exit;
     }
 
-    board_id = status;
+    board_id = status & VIM_BOARD_ID_MASK;
+    DEBUG_PRINT("[VIM CPU PWR CPLD DEBUG]: attr->index:%d, board_id=%d", attr->index, board_id);
     mutex_unlock(&data->update_lock);
 
     /* Show vim sfp attribute */
@@ -748,6 +842,16 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
                     mask = 0x1 << (attr->index - TXFAULT_9);
                     break;
                 
+                /* TX_FAULT_B */
+                case TXFAULT_B_1 ... TXFAULT_B_8:
+                    reg  = VIM_SFP_TXFAULT_B_P1_P8;
+                    mask = 0x1 << (attr->index - TXFAULT_B_1);
+                    break;
+                case TXFAULT_B_9 ... TXFAULT_B_12:
+                    reg  = VIM_SFP_TXFAULT_B_P9_P16;
+                    mask = 0x1 << (attr->index - TXFAULT_B_9);
+                    break;
+
                 /* TX_DIS */
                 case TXDIS_1 ... TXDIS_8:
                     reg  = VIM_SFP_TXDIS_P1_P8;
@@ -758,6 +862,16 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
                     mask = 0x1 << (attr->index - TXDIS_9);
                     break;
                 
+                /* TX_DIS_B */
+                case TXDIS_B_1 ... TXDIS_B_8:
+                    reg  = VIM_SFP_TXDIS_B_P1_P8;
+                    mask = 0x1 << (attr->index - TXDIS_B_1);
+                    break;
+                case TXDIS_B_9 ... TXDIS_B_12:
+                    reg  = VIM_SFP_TXDIS_B_P9_P16;
+                    mask = 0x1 << (attr->index - TXDIS_B_9);
+                    break;
+                
                 /* RX_LOS */
                 case RXLOS_1 ... RXLOS_8:
                     reg  = VIM_SFP_RXLOS_P1_P8;
@@ -766,6 +880,16 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
                 case RXLOS_9 ... RXLOS_12:
                     reg  = VIM_SFP_RXLOS_P9_P16;
                     mask = 0x1 << (attr->index - RXLOS_9);
+                    break;
+                
+                /* RX_LOS_B */
+                case RXLOS_B_1 ... RXLOS_B_8:
+                    reg  = VIM_SFP_RXLOS_B_P1_P8;
+                    mask = 0x1 << (attr->index - RXLOS_B_1);
+                    break;
+                case RXLOS_B_9 ... RXLOS_B_12:
+                    reg  = VIM_SFP_RXLOS_B_P9_P16;
+                    mask = 0x1 << (attr->index - RXLOS_B_9);
                     break;
                 
                 default:
@@ -835,14 +959,14 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
 
         if (attr->index >= PRESENT_1 && attr->index <= PRESENT_16)
         {
+            DEBUG_PRINT("[VIM CPU PWR CPLD DEBUG]: PRESENT attr->index:%d, board_id=%d, status=%d, mask=%d, value=%d", attr->index, board_id, status, mask, !(!!(status & mask)));
             return sprintf(buf, "%d\n", !(!!(status & mask)));
         }
         else
         {
+            DEBUG_PRINT("[VIM CPU PWR CPLD DEBUG]: OTHER attr->index:%d, board_id=%d, status=%d, mask=%d, value=%d", attr->index, board_id, status, mask, !!(status & mask));
             return sprintf(buf, "%d\n", !!(status & mask));
         }
-
-        
     }
     else
     {
@@ -853,6 +977,23 @@ static ssize_t show_vim_sfp_status(struct device *dev, struct device_attribute *
 exit:
     mutex_unlock(&data->update_lock);
     return status;
+}
+
+static ssize_t show_vim_cpld_version(struct device *dev, struct device_attribute *da,
+                           char *buf)
+{
+    int val = 0;
+    struct i2c_client *client = to_i2c_client(dev);
+
+    val = i2c_smbus_read_byte_data(client, VIM_CPLD_REG_ADDR_REVISION);
+
+    if (val < 0) {
+        dev_dbg(&client->dev, "cpld(0x%x) reg(VIM_CPLD_REG_ADDR_REVISION) err %d\n", client->addr, val);
+    }
+
+	val = val & VIM_CPLD_VERSION_BITS_MASK;
+
+    return sprintf(buf, "%d\n", val);
 }
 
 

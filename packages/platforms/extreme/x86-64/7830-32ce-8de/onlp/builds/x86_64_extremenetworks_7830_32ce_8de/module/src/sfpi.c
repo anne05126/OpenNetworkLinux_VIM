@@ -232,7 +232,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     FILE* fp;
     int vim_end_index = onlp_vimi_get_vim_end_index();
 
-    /* Get 4 QSFP PORT CPLD present_all status */
+    /* Get 6 QSFP PORT CPLD present_all status */
     for (i = 0; i < NUM_OF_QSFP_PORT_CPLD; i++)
     {
         int count = 0;
@@ -248,19 +248,19 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
             AIM_LOG_ERROR("Unable to open the module_present_all device file from port_cpld(%d)\r\n", i+1);
             return ONLP_STATUS_E_INTERNAL;
         }
-        count = fscanf(fp, "%x %x", bytes+i+j, bytes+i+(j+1));
+        count = fscanf(fp, "%x %x %x", bytes+i+j, bytes+i+(j+1), bytes+i+(j+2));
         fclose(fp);
         
-        if(count != 2) 
+        if(count != 3) 
         {
             /* Likely a CPLD read timeout. */
             AIM_LOG_ERROR("Unable to read module_present_all status from port_cpld(%d)\r\n", i+1);
             return ONLP_STATUS_E_INTERNAL;
         }
 
-        DIAG_PRINT("%s, port_cpld:%d, present_all:0x%x 0x%x", __FUNCTION__, i+1, bytes[i+j], bytes[i+(j+1)]);
+        DIAG_PRINT("%s, port_cpld:%d, present_all:0x%x 0x%x 0x%x", __FUNCTION__, i+1, bytes[i+j], bytes[i+(j+1)], bytes[i+(j+2)]);
 
-		j++;
+		j += 2;
     }
 
     for (i = 0; i < (NUM_OF_QSFP_PORT_CPLD*NUM_OF_QSFP_PER_PORT_CPLD); i++)
@@ -272,8 +272,18 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     uint64_t presence_all = 0 ;
     for (i = AIM_ARRAYSIZE(bytes) - 1; i >= 0; i--)
     {
-        presence_all <<= 8;
-        presence_all |= bytes[i];
+        if (i % NUM_OF_QSFP_PER_PORT_CPLD == 2)
+        {
+            presence_all <<= 4;
+            bytes[i] &= 0xF;
+            presence_all |= bytes[i];
+        }
+        else
+        {
+            presence_all <<= 8;
+            presence_all |= bytes[i];
+        }
+        
     }
 
     /* Populate bitmap */
@@ -281,6 +291,12 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     {
         AIM_BITMAP_MOD(dst, i, (presence_all & 1));
         presence_all >>= 1;
+    }
+
+    /* Get IOBM present bitmap */
+	for (i = IOBM_QSFP28_PORT_INDEX; i <= IOBM_SFP_PORT_INDEX; i++)
+    {
+        AIM_BITMAP_MOD(dst, i, onlp_sfpi_is_present(i));
     }
 
     /* Get VIM present bitmap */
@@ -807,6 +823,8 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 
     return rv;
 }
+
+
 
 int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)

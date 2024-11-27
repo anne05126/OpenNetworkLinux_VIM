@@ -128,7 +128,7 @@ enum extreme7830_32ce_8de_sys_cpld_sysfs_attributes {
 /* sysfs attributes for hwmon */
 static ssize_t show_vim_status(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t access(struct device *dev, struct device_attribute *da, const char *buf, size_t count);
-static ssize_t show_vim_version(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t show_sys_cpld_version(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_vim_power_control(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t set_vim_power_control(struct device *dev, struct device_attribute *da, const char *buf, size_t count);
 static ssize_t show_vim_power_good(struct device *dev, struct device_attribute *da, char *buf);
@@ -159,8 +159,8 @@ static int extreme7830_32ce_8de_vim_cpld_write_internal(struct i2c_client *clien
 /* access attributes */
 static SENSOR_DEVICE_ATTR(access, S_IWUSR, NULL, access, ACCESS);
 
-/* show_vim_version attributes */
-static SENSOR_DEVICE_ATTR(version, S_IRUGO, show_vim_version, NULL, CPLD_VERSION);
+/* show_sys_cpld_version attributes */
+static SENSOR_DEVICE_ATTR(version, S_IRUGO, show_sys_cpld_version, NULL, CPLD_VERSION);
 
 DECLARE_VIM_PRESENT_SENSOR_DEVICE_ATTR(1);
 DECLARE_VIM_PRESENT_SENSOR_DEVICE_ATTR(2);
@@ -198,7 +198,7 @@ static const struct attribute_group extreme7830_32ce_8de_sys_cpld_group = {
  * Attributes function
  *      - show_vim_status           : VIM present and reset
  *      - access                    : Access cpld register
- *      - show_vim_version          : VIM version
+ *      - show_sys_cpld_version     : Sys cpld version
  *      - show_vim_power_control    : Get VIM power control
  *      - set_vim_power_control     : Set VIM power control
  *      - show_vim_power_good       : Get VIM power good
@@ -408,7 +408,7 @@ exit:
     return status;
 }
 
-static ssize_t show_vim_version(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_sys_cpld_version(struct device *dev, struct device_attribute *attr, char *buf)
 {
     int val = 0;
     struct i2c_client *client = to_i2c_client(dev);
@@ -421,7 +421,7 @@ static ssize_t show_vim_version(struct device *dev, struct device_attribute *att
 
 	val = val & CPLD_VERSION_BITS_MASK;
 
-    return sprintf(buf, "%d", val);
+    return sprintf(buf, "%d\n", val);
 }
 
 

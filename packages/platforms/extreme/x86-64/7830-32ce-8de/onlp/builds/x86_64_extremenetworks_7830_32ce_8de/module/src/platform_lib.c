@@ -128,6 +128,24 @@ char* vim_sfp_control_to_str(int value)
     return "";
 }
 
+/* Private function based on VIM 24CE */
+char* vim_sfp_control_for_b_attr_to_str(int value)
+{
+    switch (value)
+    {
+        case ONLP_SFP_CONTROL_RX_LOS_B:
+            return "VIM_RX_LOS_B";
+        case ONLP_SFP_CONTROL_TX_FAULT_B:
+            return "VIM_TX_FAULT_B";
+        case ONLP_SFP_CONTROL_TX_DISABLE_B:
+            return "VIM_TX_DISABLE_B";
+
+        default:
+            return "UNKNOW";
+    }
+    return "";
+}
+
 char diag_debug_pause_platform_manage_on(void)
 {
     system("echo 1 > /tmp/onlpi_dbg_pause_pm");

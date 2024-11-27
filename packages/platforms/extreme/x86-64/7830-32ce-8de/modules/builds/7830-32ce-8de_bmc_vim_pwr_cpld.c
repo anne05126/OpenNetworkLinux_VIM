@@ -22,6 +22,8 @@
 #include <linux/platform_device.h>
 
 #define DRVNAME 								"7830_bmc_vim_pwr_cpld"
+#define DEBUG_MODE                              0
+
 /* Get VIM Status */
 #define IPMI_APP_NETFN							0x6
 #define IPMI_READ_WRITE_CMD						0x52
@@ -36,11 +38,15 @@
 
 /* VIM CPLD1 0x5D*/
 #define VIM_BOARD_ID_ADDRESS            	    0x01
+#define VIM_CPLD_VERSION_ADDRESS            	0x00
 
 #define IPMI_TIMEOUT							(20 * HZ)
 #define IPMI_ERR_RETRY_TIMES					1
 
-static unsigned int debug = 0;
+#define VIM_BOARD_ID_BITS_MASK 		   			0x07 	/* bit 0~2 */
+#define VIM_CPLD_VERSION_BITS_MASK    			0x0f 	/* bit 0~3 */
+
+static unsigned int debug = DEBUG_MODE;
 module_param(debug, uint, S_IRUGO);
 MODULE_PARM_DESC(debug, "Set DEBUG mode. Default is disabled.");
 
@@ -51,6 +57,7 @@ MODULE_PARM_DESC(debug, "Set DEBUG mode. Default is disabled.");
 
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t show_vim_board_id(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t show_vim_cpld_version(struct device *dev, struct device_attribute *da, char *buf);
 static int extreme7830_32ce_8de_vim_pwr_cpld_probe(struct platform_device *pdev);
 static int extreme7830_32ce_8de_vim_pwr_cpld_remove(struct platform_device *pdev);
 
@@ -115,31 +122,37 @@ static struct platform_driver extreme7830_32ce_8de_vim_pwr_cpld_driver = {
 
 
 #define VIM_BOARD_ID_ATTR_ID(index)					                VIM_##index##_BOARD_ID
+#define VIM_VERSION_ATTR_ID(index)					                VIM_##index##_VERSION
 
-
-enum extreme7830_32ce_8de_sys_cpld_sysfs_attributes {
-
+enum extreme7830_32ce_8de_vim_pwr_cpld_sysfs_attributes {
     /* VIM attributes */
+	VIM_VERSION_ATTR_ID(1),
+    VIM_VERSION_ATTR_ID(2), 
     VIM_BOARD_ID_ATTR_ID(1),
     VIM_BOARD_ID_ATTR_ID(2),  
 };
 
 /* VIM_BOARD_ID attributes */
+#define DECLARE_VIM_VERSION_SENSOR_DEVICE_ATTR(index) \
+    static SENSOR_DEVICE_ATTR(vim_##index##_version, S_IRUGO, show_vim_cpld_version, NULL, VIM_##index##_VERSION)
+#define DECLARE_VIM_VERSION_ATTR(index)  &sensor_dev_attr_vim_##index##_version.dev_attr.attr
+
 #define DECLARE_VIM_BOARD_ID_SENSOR_DEVICE_ATTR(index) \
     static SENSOR_DEVICE_ATTR(vim_##index##_board_id, S_IRUGO, show_vim_board_id, NULL, VIM_##index##_BOARD_ID)
 #define DECLARE_VIM_BOARD_ID_ATTR(index)  &sensor_dev_attr_vim_##index##_board_id.dev_attr.attr
 
-
+DECLARE_VIM_VERSION_SENSOR_DEVICE_ATTR(1);
+DECLARE_VIM_VERSION_SENSOR_DEVICE_ATTR(2);
 DECLARE_VIM_BOARD_ID_SENSOR_DEVICE_ATTR(1);
 DECLARE_VIM_BOARD_ID_SENSOR_DEVICE_ATTR(2);
 
 
 /* VIM#1 power CPLD */
 static struct attribute *extreme7830_32ce_8de_vim_pwr_cpld_attributes[] = {
-
+	DECLARE_VIM_VERSION_ATTR(1),
+    DECLARE_VIM_VERSION_ATTR(2),
     DECLARE_VIM_BOARD_ID_ATTR(1),
     DECLARE_VIM_BOARD_ID_ATTR(2),
-
     NULL
 };
 static const struct attribute_group extreme7830_32ce_8de_vim_pwr_cpld_group = {
@@ -286,11 +299,49 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 	complete(&ipmi->read_complete);
 }
 
+#define VALIDATE_PRESENT_RETURN(id) \
+do { \
+	if (vim_present == 1) { \
+		mutex_unlock(&data->update_lock);   \
+		return -ENXIO; \
+	} \
+} while (0)
+
+static int read_vim_present_from_sysfs(int vim_id)
+{
+    struct file *f;
+    char buf[16];
+	char path[128];  /* Used to store formatted paths */
+    int present;
+	loff_t pos = 0;
+
+	/* Open the formatted sysfs file */
+	snprintf(path, sizeof(path), "/sys/bus/i2c/devices/0-006e/vim_%d_present", vim_id+1);
+    f = filp_open(path, O_RDONLY, 0);
+    if (IS_ERR(f)) {
+        pr_err("Failed to open sysfs file: %s\n", path);
+        return -EIO;
+    }
+
+	/* Read data from file */
+    if (kernel_read(f, buf, sizeof(buf) - 1, &pos) < 0) {
+        pr_err("Failed to read from sysfs file: %s\n", path);
+        filp_close(f, NULL);
+        return -EIO;
+    }
+    buf[sizeof(buf) - 1] = '\0';
+    present = simple_strtol(buf, NULL, 10);
+
+	/* Close the file and restore the memory segment */
+    filp_close(f, NULL);
+
+    return present;
+}
 
 static struct extreme7830_32ce_8de_vim_pwr_cpld_data *extreme7830_32ce_8de_vim_pwr_cpld_update_status_data(struct device_attribute *da)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    unsigned char vid = attr->index;
+    unsigned char vid = attr->index % VIM_ID_MAX;
 	int status = 0;
 
 	if (time_before(jiffies, data->last_updated[vid] + HZ * 5) && data->valid[vid]) {
@@ -363,19 +414,23 @@ static struct extreme7830_32ce_8de_vim_pwr_cpld_data *extreme7830_32ce_8de_vim_p
 		status = -EIO;
 		goto exit;
 	}
-
-    /* Get VIM Board ID from VIM Power CPLD */
+	
+    /* Get VIM Board ID and Version from VIM Power CPLD */
     data->ipmi_tx_data[1] = IPMI_VIM_PWRCPLD_ADDRESS;
 	data->ipmi_tx_data[2] = IPMI_READ_BYTE;
     
 	switch (attr->index) 
 	{
-        /* VIM Board ID */
+		case VIM_1_VERSION:
+        case VIM_2_VERSION:
+			/* Get VIM Version from VIM Power CPLD */
+			data->ipmi_tx_data[3] = VIM_CPLD_VERSION_ADDRESS;
+			break;
 		case VIM_1_BOARD_ID:
         case VIM_2_BOARD_ID:
+			/* Get VIM Board ID from VIM Power CPLD */
             data->ipmi_tx_data[3] = VIM_BOARD_ID_ADDRESS;
             break;
-
         default:
 			status = -EIO;
 			goto exit;
@@ -393,7 +448,6 @@ static struct extreme7830_32ce_8de_vim_pwr_cpld_data *extreme7830_32ce_8de_vim_p
 		status = -EIO;
 		goto exit;
 	}
-	
 
 	data->last_updated[vid] = jiffies;
 	data->valid[vid] = 1;
@@ -404,29 +458,105 @@ exit:
 
 /*
  * Attributes function
+ *		- show_vim_cpld_version	: VIM CPLD version
  *      - show_vim_board_id     : VIM board id
  */
+
+static ssize_t show_vim_cpld_version(struct device *dev, struct device_attribute *da,
+                           char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+	unsigned char vid = attr->index % VIM_ID_MAX;
+	int value = 0;
+    int mask = 0;
+	int error = 0;
+	int vim_present = 0;
+
+	mutex_lock(&data->update_lock);
+
+	switch (vid) {
+		case VIM_1:
+			vim_present = read_vim_present_from_sysfs(VIM_1);
+			break;
+		case VIM_2:
+			vim_present = read_vim_present_from_sysfs(VIM_2);
+			break;
+		default:
+			return -EINVAL;
+	}
+
+	if (vim_present == -EIO)
+	{
+		return -EINVAL;
+	}
+
+	DEBUG_PRINT("7830_32ce_8de show_vim_cpld_version: vim%d_present=%d", vid, vim_present);
+
+	switch (attr->index) {
+		case VIM_1_VERSION:
+        case VIM_2_VERSION:
+			VALIDATE_PRESENT_RETURN(vid);
+			data = extreme7830_32ce_8de_vim_pwr_cpld_update_status_data(da);
+			if (!data->valid[vid]) {
+				error = -EIO;
+				goto exit;
+			}
+			
+			value = data->ipmi_resp[vid] & VIM_CPLD_VERSION_BITS_MASK;
+			break;
+		default:
+			return -EINVAL;
+	}
+
+	mutex_unlock(&data->update_lock);
+	DEBUG_PRINT("7830_32ce_8de show_vim_cpld_version: data->ipmi_resp[%d]:0x%x", vid, data->ipmi_resp[vid]);
+	return sprintf(buf, "%d\n", value);
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return error;    
+}
 
 static ssize_t show_vim_board_id(struct device *dev, struct device_attribute *da,
                            char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-	unsigned char vid = attr->index;
+	unsigned char vid = attr->index % VIM_ID_MAX;
 	int value = 0;
     int mask = 0;
 	int error = 0;
+	int vim_present = 0;
 
 	mutex_lock(&data->update_lock);
 
-	data = extreme7830_32ce_8de_vim_pwr_cpld_update_status_data(da);
-	if (!data->valid[vid]) {
-		error = -EIO;
-		goto exit;
+	switch (vid) {
+		case VIM_1:
+			vim_present = read_vim_present_from_sysfs(VIM_1);
+			break;
+		case VIM_2:
+			vim_present = read_vim_present_from_sysfs(VIM_2);
+			break;
+		default:
+			error = -EINVAL;
+			goto exit;
 	}
+
+	if (vim_present == -EIO)
+	{
+		return -EINVAL;
+	}
+
+	DEBUG_PRINT("7830_32ce_8de show_vim_board_id: vim%d_present=%d", vid, vim_present);
 
 	switch (attr->index) {
 		case VIM_1_BOARD_ID:
 		case VIM_2_BOARD_ID:
+			VALIDATE_PRESENT_RETURN(vid);
+			data = extreme7830_32ce_8de_vim_pwr_cpld_update_status_data(da);
+			if (!data->valid[vid]) {
+				error = -EIO;
+				goto exit;
+			}
 			mask = 0x7; /* bit 0~2 */
             value = data->ipmi_resp[vid] & mask;
 			break;

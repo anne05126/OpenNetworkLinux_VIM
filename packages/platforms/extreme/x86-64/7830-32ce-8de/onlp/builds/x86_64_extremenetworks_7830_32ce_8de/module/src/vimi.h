@@ -305,6 +305,28 @@ int onlp_vim_sfpi_control_set(int port, onlp_sfp_control_t control, int value);
 int onlp_vim_sfpi_control_get(int port, onlp_sfp_control_t control, int* value);
 
 /**
+ * @brief Set an VIM SFP control for _b attribute.
+ * @param port The port.
+ * @param control The control.
+ * @param value The value.
+ * @returns The word if successful, error otherwise.
+ */
+int onlp_vim_sfpi_control_set_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int value);
+
+/**
+ * @brief Get an VIM SFP control for _b attribute.
+ * @param port The port.
+ * @param control The control
+ * @param value [out] Receives the current value.
+ * @returns The word if successful, error otherwise.
+ */
+int onlp_vim_sfpi_control_get_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int* value);
+
+int onlp_sfpi_control_supported_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int *supported);
+int onlp_sfpi_control_set_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int value);
+int onlp_sfpi_control_get_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int* value);
+
+/**
  * @brief On/Off VIM power.
  * @param vim_power_operation ON or OFF.
  * @param vim_id The VIM ID. (VIM 1 = 1, VIM 2 = 2)

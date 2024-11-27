@@ -44,9 +44,6 @@
 #define IPMI_EEPROM_READ_OFFSET			0x01
 #define IPMI_DOM_READ_OFFSET			0x02
 
-#define VIM1_ID                         1
-#define VIM2_ID                         2
-
 #define IPMI_TIMEOUT				(20 * HZ)
 #define IPMI_ERR_RETRY_TIMES		1
 
@@ -89,6 +86,14 @@ struct ipmi_data {
 struct ipmi_vim_eeprom_resp_data {
 	unsigned char   eeprom[EEPROM_SIZE];
 };
+
+enum vim_id
+{
+    VIM_1, 
+    VIM_2,
+    VIM_ID_MAX
+};
+
 
 struct extreme7830_32ce_8de_vim_eeprom_data {
 	struct platform_device *pdev;
@@ -250,6 +255,44 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 	complete(&ipmi->read_complete);
 }
 
+#define VALIDATE_PRESENT_RETURN(id) \
+do { \
+	if (vim_present == 1) { \
+		mutex_unlock(&data->update_lock);   \
+		return -ENXIO; \
+	} \
+} while (0)
+
+static int read_vim_present_from_sysfs(int vim_id)
+{
+    struct file *f;
+    char buf[16];
+	char path[128];  /* Used to store formatted paths */
+    int present;
+	loff_t pos = 0;
+
+	/* Open the formatted sysfs file */
+	snprintf(path, sizeof(path), "/sys/bus/i2c/devices/0-006e/vim_%d_present", vim_id+1);
+    f = filp_open(path, O_RDONLY, 0);
+    if (IS_ERR(f)) {
+        pr_err("Failed to open sysfs file: %s\n", path);
+        return -EIO;
+    }
+
+	/* Read data from file */
+    if (kernel_read(f, buf, sizeof(buf) - 1, &pos) < 0) {
+        pr_err("Failed to read from sysfs file: %s\n", path);
+        filp_close(f, NULL);
+        return -EIO;
+    }
+    buf[sizeof(buf) - 1] = '\0';
+    present = simple_strtol(buf, NULL, 10);
+
+	/* Close the file and restore the memory segment */
+    filp_close(f, NULL);
+
+    return present;
+}
 
 static struct extreme7830_32ce_8de_vim_eeprom_data *extreme7830_32ce_8de_vim_eeprom_update_eeprom(struct device_attribute *da)
 {
@@ -301,20 +344,37 @@ exit:
 static ssize_t show_eeprom(struct device *dev, struct device_attribute *da, char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+	unsigned char vid = attr->index % VIM_ID_MAX;
 	int error = 0;
 	int count = 0;
+	int vim_present = 0;
 
 	mutex_lock(&data->update_lock);
 
-	data = extreme7830_32ce_8de_vim_eeprom_update_eeprom(da);
-	if (!data->valid[attr->index]) {
-		error = -EIO;
-		goto exit;
+	switch (vid) {
+		case VIM_1:
+			vim_present = read_vim_present_from_sysfs(VIM_1);
+			break;
+		case VIM_2:
+			vim_present = read_vim_present_from_sysfs(VIM_2);
+			break;
+		default:
+			error = -EINVAL;
+			goto exit;
 	}
+
+	DEBUG_PRINT("7830_32ce_8de show_vim_board_id: vim%d_present=%d", vid+1, vim_present);
 	
 	switch (attr->index) {
 		case VIM1_EEPROM:
 		case VIM2_EEPROM:
+			VALIDATE_PRESENT_RETURN(vid);
+			data = extreme7830_32ce_8de_vim_eeprom_update_eeprom(da);
+			if (!data->valid[attr->index]) {
+				error = -EIO;
+				goto exit;
+			}
+
 			memcpy(buf, data->ipmi_resp[attr->index].eeprom, sizeof(data->ipmi_resp[attr->index].eeprom));
 			count = sizeof(data->ipmi_resp[attr->index].eeprom);
 			break;

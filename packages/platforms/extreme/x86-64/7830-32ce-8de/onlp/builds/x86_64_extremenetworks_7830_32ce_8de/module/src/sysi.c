@@ -45,8 +45,11 @@
 #define DEBUG                               0
 #define SYSTEM_CPLD_MAX_STRLEN              8
 
-#define PORT_CPLD_REVISION_PATH		   	"/sys/bus/i2c/devices/%s"
+#define PORT_CPLD_REVISION_PATH		   	    "/sys/bus/i2c/devices/%s"
 #define POWER_CPLD_REVISION_PATH		    "/sys/bus/platform/devices/7830_pwr_cpld/%s"
+#define VIM_POWER_CPLD_REVISION_PATH		"/sys/bus/i2c/devices/%d-005c/vim%d_cpld_version"
+#define VIM_PORT_CPLD_REVISION_PATH		   	"/sys/bus/i2c/devices/%d-0058/vim%d_cpld_version"
+#define SYS_CPLD_REVISION_PATH		   	    "/sys/bus/i2c/devices/0-006e/version"
 
 #define PLATFORM_STRING "x86-64-extremenetworks-7830-32ce-8de-r0"
 
@@ -56,6 +59,14 @@ typedef struct cpld_version {
 	int   version;
 	char *description;
 } cpld_version_t;
+
+typedef struct vim_cpld_version {
+	char *cpld_path_format;
+	int   i2c_bus_id;
+    int   vim_id;
+	int   version;
+	char *description;
+} vim_cpld_version_t;
 
 void vim_history_status_init(void)
 {
@@ -269,6 +280,7 @@ onlp_sysi_platform_manage_vims(void)
         {
             /* Enable VIM power */
             onlp_vimi_power_control(ON, VIM1_ID);
+            sleep(1);
         }
 
         /* 
@@ -344,6 +356,7 @@ onlp_sysi_platform_manage_vims(void)
         {
             /* Enable VIM power */
             onlp_vimi_power_control(ON, VIM2_ID);
+            sleep(1);
         }
 
         /* 
@@ -564,6 +577,15 @@ int onlp_sysi_debug_vim_eeprom(int vim_id)
 {
     uint8_t *data = NULL;
     int rv = 0;
+    int vim_present = 0;
+    
+    vim_present = onlp_vimi_present_get(vim_id);
+
+    if(vim_present == VIM_NOT_PRESENT) 
+    {
+        AIM_LOG_ERROR("vim(%d) not present\r\n", vim_id);
+        return ONLP_STATUS_OK;
+    }
 
     data = aim_zmalloc(256);
     if ((rv = onlp_vimi_eeprom_read(vim_id, data)) < 0)
@@ -581,6 +603,7 @@ int onlp_sysi_debug_vim_eeprom(int vim_id)
 }
 
 #define SFP_DIAG_OFFSET             118     /* EXTENDED MODULE CONTROL/STATUS BYTES  in SFF-8472 standard */
+#define SFP28_DIAG_OFFSET           148     /* EXTENDED MODULE CONTROL/STATUS BYTES  in SFF-8472 standard */
 #define QSFP28_DIAG_PAGE_SELECT     127     /* page select byte in SFF-8636 */
 #define QSFP28_DIAG_OFFSET          96      /* the reserved bytes 94~97 of page 00h support r/w in SFF-8636 */
 #define QSFP28_DIAG_PAGE	        0x0	    /* the reserved bytes 94~97 of page 00h support r/w in SFF-8636 */
@@ -895,14 +918,46 @@ int onlp_sysi_debug_diag_sfp_ctrl(int index)
     printf("<Press Any Key to Continue>\n");
     getchar();
 
+
+    /* For VIM 24CE */
+    /* ONLP_SFP_CONTROL_RX_LOS_B (Read only)*/
+    printf("[Option: %d(%s)...Get]\n", ONLP_SFP_CONTROL_RX_LOS_B, vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_RX_LOS_B));
+    printf("[Get %s... ]\n", vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_RX_LOS_B));
+    onlp_sfpi_control_get_for_b_attr(index, ONLP_SFP_CONTROL_RX_LOS_B, &val);
+    printf("<Press Any Key to Continue>\n");
+    getchar();
+
+    /* ONLP_SFP_CONTROL_TX_FAULT_B (Read only)*/ 
+    printf("[Option: %d(%s)...Get]\n", ONLP_SFP_CONTROL_TX_FAULT_B, vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_TX_FAULT_B));
+    printf("[Get %s... ]\n", vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_TX_FAULT_B));
+    onlp_sfpi_control_get_for_b_attr(index, ONLP_SFP_CONTROL_TX_FAULT_B, &val);
+    printf("<Press Any Key to Continue>\n");
+    getchar();
+
+    /* ONLP_SFP_CONTROL_TX_DISABLE_B (Read and Write)*/ 
+    printf("[Option: %d(%s)...Set/Get]\n", ONLP_SFP_CONTROL_TX_DISABLE_B, vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_TX_DISABLE_B));
+    printf("[Set %s... to 1]\n", vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_TX_DISABLE_B));
+    onlp_sfpi_control_set_for_b_attr(index, ONLP_SFP_CONTROL_TX_DISABLE_B, 1);
+    sleep(1);
+    printf("[Get %s... ]\n", vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_TX_DISABLE_B));
+    onlp_sfpi_control_get_for_b_attr(index, ONLP_SFP_CONTROL_TX_DISABLE_B, &val);
+    printf("<Press Any Key to Continue>\n");
+    getchar();
+
+    printf("[Set %s... to 0]\n", vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_TX_DISABLE_B));
+    onlp_sfpi_control_set_for_b_attr(index, ONLP_SFP_CONTROL_TX_DISABLE_B, 0);
+    sleep(1);
+    printf("[Get %s... ]\n", vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_TX_DISABLE_B));
+    onlp_sfpi_control_get_for_b_attr(index, ONLP_SFP_CONTROL_TX_DISABLE_B, &val);
+    printf("<Press Any Key to Continue>\n");
+    getchar();
+
     return 0;
 }
 
 /* For VIM card debug fumction
  *      - onlp_sysi_debug_diag_vim_status
  *      - onlp_sysi_debug_diag_vim_sfp
- * 
- * 
  */
 int onlp_sysi_debug_diag_vim_status(void)
 {
@@ -995,10 +1050,15 @@ int onlp_sysi_debug_diag_vim_sfp(int index, int offset, int page, int page_selec
     vim_id = onlp_vimi_index_map_to_vim_id(index);
     if (vim_id == ONLP_STATUS_E_INTERNAL)
     {
-        DIAG_PRINT("%s, port:%d out of range.", __FUNCTION__, index);
+        /* Port index out of range */
         return ONLP_STATUS_E_INVALID;
     }
     board_id = onlp_vimi_board_id_get(vim_id);
+    if (board_id == ONLP_STATUS_E_INTERNAL)
+    {
+        /* Get board id failed */
+        return ONLP_STATUS_E_INVALID;
+    }
     addr = SFP_PLUS_EEPROM_I2C_ADDR;
 
     switch (board_id)
@@ -1023,7 +1083,8 @@ int onlp_sysi_debug_diag_vim_sfp(int index, int offset, int page, int page_selec
             break;
         case VIM_24YE:
             /* SFP28 (SFF-8472) */
-            offset = SFP_DIAG_OFFSET;
+            addr = SFP_DOM_EEPROM_I2C_ADDR;
+            offset = SFP28_DIAG_OFFSET;
             break;
         default:    
             break;
@@ -1186,6 +1247,100 @@ RESTORE_EEPROM_W:
 }
 
 int
+onlp_sysi_show_cpld_version()
+{
+
+    DIAG_PRINT("%s", __FUNCTION__);
+
+	int i, ret, vim_id = 0, index = 0;
+    int sys_cpld_version = 0;
+    int vim1_present = VIM_NOT_PRESENT;
+    int vim2_present = VIM_NOT_PRESENT;
+    int vim1_board_id = VIM_NONE;
+    int vim2_board_id = VIM_NONE;
+    int vim1_power_cpld_i2c_bus_id = 0;
+    int vim1_port_cpld_i2c_bus_id = 0;
+    int vim2_power_cpld_i2c_bus_id = 0;
+    int vim2_port_cpld_i2c_bus_id = 0;
+
+	vim_cpld_version_t cplds[] = { {},
+                                   {},
+                                   {},
+                                   {} };
+
+    for (vim_id = 1; vim_id <= VIM_ID_MAX; vim_id++)
+    {
+        switch (vim_id)
+        {
+            case VIM1_ID:
+                vim1_present = onlp_vimi_present_get(VIM1_ID);
+                if (vim1_present == VIM_PRESENT)
+                {
+                    vim1_board_id = onlp_vimi_board_id_get(VIM1_ID);
+                    vim1_power_cpld_i2c_bus_id = onlp_vimi_cpld_bus_id_get(VIM1_ID, VIM_POWER_CPLD_ID);
+                    cplds[index] = (vim_cpld_version_t){ VIM_POWER_CPLD_REVISION_PATH, vim1_power_cpld_i2c_bus_id, VIM1_ID, 0, "VIM1-Power-CPLD"};
+                    index++;
+                    if (vim1_board_id == VIM_24CE || vim1_board_id == VIM_24YE)
+                    {
+                        vim1_port_cpld_i2c_bus_id = onlp_vimi_cpld_bus_id_get(VIM1_ID, VIM_PORT_CPLD_ID);
+                        cplds[index] = (vim_cpld_version_t){ VIM_PORT_CPLD_REVISION_PATH, vim1_port_cpld_i2c_bus_id, VIM1_ID, 0, "VIM1-Port-CPLD"};
+                        index++;
+                    }
+                }
+                break;
+            case VIM2_ID:
+                vim2_present = onlp_vimi_present_get(VIM2_ID);
+                if (vim2_present == VIM_PRESENT)
+                {
+                    vim2_board_id = onlp_vimi_board_id_get(VIM2_ID);
+                    vim2_power_cpld_i2c_bus_id = onlp_vimi_cpld_bus_id_get(VIM2_ID, VIM_POWER_CPLD_ID);
+                    cplds[index] = (vim_cpld_version_t){ VIM_POWER_CPLD_REVISION_PATH, vim2_power_cpld_i2c_bus_id, VIM2_ID, 0, "VIM2-Power-CPLD"};
+                    index++;
+                    if (vim2_board_id == VIM_24CE || vim2_board_id == VIM_24YE)
+                    {
+                        vim2_port_cpld_i2c_bus_id = onlp_vimi_cpld_bus_id_get(VIM2_ID, VIM_PORT_CPLD_ID);
+                        cplds[index] = (vim_cpld_version_t){ VIM_PORT_CPLD_REVISION_PATH, vim2_port_cpld_i2c_bus_id, VIM2_ID, 0, "VIM2-Port-CPLD"};
+                        index++;
+                    }
+                }
+                break;
+            
+            default:
+                break;
+        }
+    }
+
+    /* Read SYS CPLD version */
+    ret = onlp_file_read_int(&sys_cpld_version, SYS_CPLD_REVISION_PATH);
+
+	if (ret < 0) {
+		AIM_LOG_ERROR("Unable to read version from CPLD(%s)\r\n", "System-CPLD");
+		return ONLP_STATUS_E_INTERNAL;
+    }
+
+	/* Read VIM CPLD version */
+	for (i = 0; i < index; i++) {
+		ret = onlp_file_read_int(&cplds[i].version, 
+					 			cplds[i].cpld_path_format, 
+					 			cplds[i].i2c_bus_id,
+                                cplds[i].vim_id);
+
+		if (ret < 0) {
+			AIM_LOG_ERROR("Unable to read version from CPLD(%s)\r\n", cplds[i].description);
+			return ONLP_STATUS_E_INTERNAL;
+		}
+	}
+
+    /* Print cpld version */ 
+    printf("%s:%02x\n", "System CPLD", sys_cpld_version);
+    for (i = 0; i < index; i++) {
+        printf("%s:%02x\n", cplds[i].description, cplds[i].version);
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+int
 onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
 {
     int ret = 0;
@@ -1199,6 +1354,13 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
         printf("Platform : %s\n", onlp_sysi_platform_get());
         onlp_sysi_init();
         onlp_sysi_platform_manage_init();
+        diag_flag_set(DIAG_FLAG_OFF);
+    }
+    else if (argc > 0 && !strcmp(argv[0], "cpld_version"))
+    {
+        printf("DIAG for cpld_version: \n");
+        diag_flag_set(DIAG_FLAG_ON);
+        onlp_sysi_show_cpld_version();
         diag_flag_set(DIAG_FLAG_OFF);
     }
     else if (argc > 0 && !strcmp(argv[0], "fan"))
@@ -1753,6 +1915,9 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
         int tx_fault_sup = 0;
         int tx_dis_sup = 0;
         int rx_loss_sup = 0;
+        int tx_fault_b_sup = 0;
+        int tx_dis_b_sup = 0;
+        int rx_loss_b_sup = 0;
 
         vim1_start_port = onlp_vimi_optoe_start_port_get(VIM1_ID);
         vim2_start_port = onlp_vimi_optoe_start_port_get(VIM2_ID);
@@ -1769,8 +1934,8 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
 
             printf("\n");
 
-            printf("SYS_PORT_INDEX    VIM_ID    VIM_PORT_INDEX    RESET    LP_MODE    TX_FAULT    TX_DIS    RX_LOSS\n");
-            printf("--------------    ------    --------------    -----    -------    --------    ------    -------\n");
+            printf("SYS_PORT_INDEX    VIM_ID    VIM_PORT_INDEX    RESET    LP_MODE    TX_FAULT    TX_DIS    RX_LOSS    TX_FAULT_B    TX_DIS_B    RX_LOSS_B\n");
+            printf("--------------    ------    --------------    -----    -------    --------    ------    -------    ----------    --------    ---------\n");
             for (int port = vim1_start_port; port < end_port; port++)
             {
                 vim_id = onlp_vimi_index_map_to_vim_id(port);
@@ -1780,9 +1945,12 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
                 onlp_sfpi_control_supported(port, ONLP_SFP_CONTROL_TX_FAULT, &tx_fault_sup);
                 onlp_sfpi_control_supported(port, ONLP_SFP_CONTROL_TX_DISABLE, &tx_dis_sup);
                 onlp_sfpi_control_supported(port, ONLP_SFP_CONTROL_RX_LOS, &rx_loss_sup);
+                onlp_sfpi_control_supported_for_b_attr(port, ONLP_SFP_CONTROL_TX_FAULT_B, &tx_fault_b_sup);
+                onlp_sfpi_control_supported_for_b_attr(port, ONLP_SFP_CONTROL_TX_DISABLE_B, &tx_dis_b_sup);
+                onlp_sfpi_control_supported_for_b_attr(port, ONLP_SFP_CONTROL_RX_LOS_B, &rx_loss_b_sup);
 
-                printf("%14d    VIM %2d    %14d    %5d    %7d    %8d    %6d    %7d\n", \
-                port, vim_id, list_index, reset_sup, lp_mode_sup, tx_fault_sup, tx_dis_sup, rx_loss_sup);
+                printf("%14d    VIM %2d    %14d    %5d    %7d    %8d    %6d    %7d    %10d    %8d    %9d\n", \
+                port, vim_id, list_index, reset_sup, lp_mode_sup, tx_fault_sup, tx_dis_sup, rx_loss_sup, tx_fault_b_sup, tx_dis_b_sup, rx_loss_b_sup);
             }
         }
         else if (vim1_start_port == -1)
@@ -1792,8 +1960,8 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
 
             printf("\n");
 
-            printf("SYS_PORT_INDEX    VIM_ID    VIM_PORT_INDEX    RESET    LP_MODE    TX_FAULT    TX_DIS    RX_LOSS\n");
-            printf("--------------    ------    --------------    -----    -------    --------    ------    -------\n");
+            printf("SYS_PORT_INDEX    VIM_ID    VIM_PORT_INDEX    RESET    LP_MODE    TX_FAULT    TX_DIS    RX_LOSS    TX_FAULT_B    TX_DIS_B    RX_LOSS_B\n");
+            printf("--------------    ------    --------------    -----    -------    --------    ------    -------    ----------    --------    ---------\n");
             for (int port = vim2_start_port; port < end_port; port++)
             {
                 vim_id = onlp_vimi_index_map_to_vim_id(port);
@@ -1803,9 +1971,12 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
                 onlp_sfpi_control_supported(port, ONLP_SFP_CONTROL_TX_FAULT, &tx_fault_sup);
                 onlp_sfpi_control_supported(port, ONLP_SFP_CONTROL_TX_DISABLE, &tx_dis_sup);
                 onlp_sfpi_control_supported(port, ONLP_SFP_CONTROL_RX_LOS, &rx_loss_sup);
+                onlp_sfpi_control_supported_for_b_attr(port, ONLP_SFP_CONTROL_TX_FAULT_B, &tx_fault_b_sup);
+                onlp_sfpi_control_supported_for_b_attr(port, ONLP_SFP_CONTROL_TX_DISABLE_B, &tx_dis_b_sup);
+                onlp_sfpi_control_supported_for_b_attr(port, ONLP_SFP_CONTROL_RX_LOS_B, &rx_loss_b_sup);
 
-                printf("%14d    VIM %2d    %14d    %5d    %7d    %8d    %6d    %7d\n", \
-                port, vim_id, list_index, reset_sup, lp_mode_sup, tx_fault_sup, tx_dis_sup, rx_loss_sup);
+                printf("%14d    VIM %2d    %14d    %5d    %7d    %8d    %6d    %7d    %10d    %8d    %9d\n", \
+                port, vim_id, list_index, reset_sup, lp_mode_sup, tx_fault_sup, tx_dis_sup, rx_loss_sup, tx_fault_b_sup, tx_dis_b_sup, rx_loss_b_sup);
             }
         }
         else
@@ -1815,8 +1986,8 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
 
             printf("\n");
 
-            printf("SYS_PORT_INDEX    VIM_ID    VIM_PORT_INDEX    RESET    LP_MODE    TX_FAULT    TX_DIS    RX_LOSS\n");
-            printf("--------------    ------    --------------    -----    -------    --------    ------    -------\n");
+            printf("SYS_PORT_INDEX    VIM_ID    VIM_PORT_INDEX    RESET    LP_MODE    TX_FAULT    TX_DIS    RX_LOSS    TX_FAULT_B    TX_DIS_B    RX_LOSS_B\n");
+            printf("--------------    ------    --------------    -----    -------    --------    ------    -------    ----------    --------    ---------\n");
             for (int port = vim1_start_port; port < end_port; port++)
             {
                 vim_id = onlp_vimi_index_map_to_vim_id(port);
@@ -1826,9 +1997,12 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
                 onlp_sfpi_control_supported(port, ONLP_SFP_CONTROL_TX_FAULT, &tx_fault_sup);
                 onlp_sfpi_control_supported(port, ONLP_SFP_CONTROL_TX_DISABLE, &tx_dis_sup);
                 onlp_sfpi_control_supported(port, ONLP_SFP_CONTROL_RX_LOS, &rx_loss_sup);
+                onlp_sfpi_control_supported_for_b_attr(port, ONLP_SFP_CONTROL_TX_FAULT_B, &tx_fault_b_sup);
+                onlp_sfpi_control_supported_for_b_attr(port, ONLP_SFP_CONTROL_TX_DISABLE_B, &tx_dis_b_sup);
+                onlp_sfpi_control_supported_for_b_attr(port, ONLP_SFP_CONTROL_RX_LOS_B, &rx_loss_b_sup);
 
-                printf("%14d    VIM %2d    %14d    %5d    %7d    %8d    %6d    %7d\n", \
-                port, vim_id, list_index, reset_sup, lp_mode_sup, tx_fault_sup, tx_dis_sup, rx_loss_sup);
+                printf("%14d    VIM %2d    %14d    %5d    %7d    %8d    %6d    %7d    %10d    %8d    %9d\n", \
+                port, vim_id, list_index, reset_sup, lp_mode_sup, tx_fault_sup, tx_dis_sup, rx_loss_sup, tx_fault_b_sup, tx_dis_b_sup, rx_loss_b_sup);
             }
             
         }
@@ -1874,6 +2048,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
     {
         printf("\nUsage: onlpdump debugi [OPTION]\n");
         printf("    help                : this message.\n");
+        printf("    cpld_version        : show cpld version.\n");
         printf("    vim_status          : show vim status (present, board id).\n");
         printf("    trace_on            : turn on ONLPI debug trace message output on screen.\n");
         printf("    trace_off           : turn off ONLPI debug trace message output on screen.\n");

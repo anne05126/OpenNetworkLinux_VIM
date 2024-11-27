@@ -1035,7 +1035,7 @@ static ssize_t show_version(struct device *dev, struct device_attribute *attr, c
 
 	val = val & CPLD_VERSION_BITS_MASK;
 
-    return sprintf(buf, "%d", val);
+    return sprintf(buf, "%d\n", val);
 }
 
 /*
@@ -1065,32 +1065,32 @@ static int extreme7830_32ce_8de_cpld_probe(struct i2c_client *client,
     case extreme7830_32ce_8de_cpld1:
         group = &extreme7830_32ce_8de_cpld1_group;
         /* Bring QSFPs out of reset for Port 1-8 */
-        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_RESET_1, 0x0);
+        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_RESET_1, 0xFF);
 		/* Bring QSFPs out of reset for Port 9-16 */
-        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_RESET_2, 0x0);
+        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_RESET_2, 0xFF);
         /* Bring QSFPs out of reset for Port 18-19 */
-        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_RESET_3, 0x0);
+        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_RESET_3, 0xFF);
         /* Set Module Selector for transceiver EEPROM for Port 1-8 */
-        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_MODSELECT_1, 0xFF);
+        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_MODSELECT_1, 0x0);
 		/* Set Module Selector for transceiver EEPROM for Port 9-16 */
-        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_MODSELECT_2, 0xFF);
+        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_MODSELECT_2, 0x0);
         /* Set Module Selector for transceiver EEPROM for Port 17-20 */
-        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_MODSELECT_3, 0xFF);
+        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_MODSELECT_3, 0x0);
         break;
     case extreme7830_32ce_8de_cpld2:
         group = &extreme7830_32ce_8de_cpld2_group;
         /* Bring QSFPs out of reset for Port 21-28 */
-        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_RESET_1, 0x0);
+        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_RESET_1, 0xFF);
 		/* Bring QSFPs out of reset for Port 29-36 */
-        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_RESET_2, 0x0);
+        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_RESET_2, 0xFF);
         /* Bring QSFPs out of reset for Port 37-40, 17, 20 */
-        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_RESET_3, 0x0);
+        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_RESET_3, 0xFF);
         /* Set Module Selector for transceiver EEPROM for Port 21-28 */
-        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_MODSELECT_1, 0xFF);
+        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_MODSELECT_1, 0x0);
 		/* Set Module Selector for transceiver EEPROM for Port 29-36 */
-        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_MODSELECT_2, 0xFF);
+        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_MODSELECT_2, 0x0);
         /* Set Module Selector for transceiver EEPROM for Port 37-40 */
-        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_MODSELECT_3, 0xFF);
+        extreme7830_32ce_8de_cpld_write_internal(client, CPLD_REG_ADDR_MODSELECT_3, 0x0);
         break;
     default:
         break;

@@ -726,10 +726,16 @@ onlp_vimi_init(void)
     vim1_present = onlp_vimi_present_get(VIM1_ID);
     vim2_present = onlp_vimi_present_get(VIM2_ID);
     if (vim1_present == VIM_PRESENT)
+    {
         onlp_vimi_power_control(ON, VIM1_ID);
+        sleep(1);
+    }
 
     if (vim2_present == VIM_PRESENT)
+    {
         onlp_vimi_power_control(ON, VIM2_ID);
+        sleep(1);
+    }
 
     return ONLP_STATUS_OK;
 }
@@ -1141,6 +1147,15 @@ onlp_vimi_eeprom_read(int vim_id, uint8_t data[256])
      * Return OK if VIM eeprom is read
      */
     int size = 0;
+    int vim_present = 0;
+    
+    vim_present = onlp_vimi_present_get(vim_id);
+
+    if(vim_present == VIM_NOT_PRESENT) 
+    {
+        AIM_LOG_ERROR("vim(%d) not present\r\n", vim_id);
+        return ONLP_STATUS_OK;
+    }
 
     if(onlp_file_read(data, 256, &size, VIM_EEPROM_PATH, 
                 	vim_id) != ONLP_STATUS_OK) 
@@ -1461,6 +1476,376 @@ onlp_vim_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
     if (rv == ONLP_STATUS_E_UNSUPPORTED)
     {
         AIM_LOG_INFO("%s, port:%d, control:%d(%s) UNSUPPORTED(%d)\n", __FUNCTION__, port, control, vim_sfp_control_to_str(control), ONLP_STATUS_E_UNSUPPORTED);
+    }
+
+    return rv;
+}
+
+/* Private function based on VIM 24CE */
+int
+onlp_vim_sfpi_control_set_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int value)
+{
+    int rv;  
+    int supported = 0;
+    int cpld_bus_id, list_index;
+    int vim_id, board_id;
+    char format[128];
+
+    if ((onlp_sfpi_control_supported_for_b_attr(port, control, &supported) == ONLP_STATUS_OK) && 
+        (supported == 0))
+    {
+        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+    
+    DIAG_PRINT("%s, port:%d, control:%d(%s), value:0x%X", __FUNCTION__, port, control, vim_sfp_control_for_b_attr_to_str(control), value);
+    
+    vim_id = onlp_vimi_index_map_to_vim_id(port);
+    if (vim_id == ONLP_STATUS_E_INTERNAL)
+    {
+        DIAG_PRINT("%s, port:%d out of range.", __FUNCTION__, port);
+        return ONLP_STATUS_E_INVALID;
+    }
+    list_index = onlp_vimi_get_list_index(vim_id, port);
+    board_id = onlp_vimi_board_id_get(vim_id);
+
+    if (board_id == VIM_24CE && list_index > 12)
+    {
+        /* Access VIM Port CPLD from CPU */
+        cpld_bus_id = onlp_vimi_cpld_bus_id_get(vim_id, VIM_PORT_CPLD_ID);
+
+        switch(control)
+        {
+            case ONLP_SFP_CONTROL_TX_DISABLE_B:			
+                strcpy(format, VIM_OPTOE_TX_DIS_B_PORT_CPLD_PATH);
+                break;
+            default:
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+                break;
+        }
+        if (onlp_file_write_int(value, format, cpld_bus_id, list_index) < 0) 
+        {
+            AIM_LOG_ERROR("Unable to set reset status to port(%d). Path: %s\r\n", port, format);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        else 
+        {
+            rv = ONLP_STATUS_OK;
+        }
+    }
+    else if (board_id == VIM_24CE && list_index <= 12)
+    {
+        /* Access VIM Power CPLD from CPU */
+        cpld_bus_id = onlp_vimi_cpld_bus_id_get(vim_id, VIM_POWER_CPLD_ID);
+
+        switch(control)
+        {
+            case ONLP_SFP_CONTROL_TX_DISABLE_B:	
+                strcpy(format, VIM_OPTOE_TX_DIS_B_PWR_CPLD_PATH);		
+                break;
+
+            default:
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+                break;
+        }
+
+        if (onlp_file_write_int(value, format, cpld_bus_id, list_index) < 0) 
+        {
+            AIM_LOG_ERROR("Unable to set reset status to port(%d). Path: %s\r\n", port, format);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        else 
+        {
+            rv = ONLP_STATUS_OK;
+        }
+    }
+    else
+    {
+        rv = ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    DIAG_PRINT("%s, Write VIM port:%d %s value:0x%x, ", __FUNCTION__, port, vim_sfp_control_for_b_attr_to_str(control), value);
+
+    return rv;
+}
+
+/* Private function based on VIM 24CE */
+int
+onlp_vim_sfpi_control_get_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int* value)
+{
+    int rv;
+    int val;
+    int supported = 0;
+    int cpld_bus_id, list_index;
+    int vim_id, board_id;
+    char format[128];
+
+    if (value == NULL)
+    {
+        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_PARAM);
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if ((onlp_sfpi_control_supported_for_b_attr(port, control, &supported) == ONLP_STATUS_OK) && 
+        (supported == 0))
+    {
+        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+    *value = 0;
+    
+    /* ONLP_SFP_CONTROL_RX_LOS , ONLP_SFP_CONTROL_TX_FAULT are read-only. */
+    vim_id = onlp_vimi_index_map_to_vim_id(port);
+    if (vim_id == ONLP_STATUS_E_INTERNAL)
+    {
+        DIAG_PRINT("%s, port:%d out of range.", __FUNCTION__, port);
+        return ONLP_STATUS_E_INVALID;
+    }
+    
+    list_index = onlp_vimi_get_list_index(vim_id, port);
+    board_id = onlp_vimi_board_id_get(vim_id);
+
+    if (board_id == VIM_24CE && list_index > 12)
+    {
+        /* Access VIM Port CPLD from CPU */
+        cpld_bus_id = onlp_vimi_cpld_bus_id_get(vim_id, VIM_PORT_CPLD_ID);
+
+        switch(control)
+        {
+            case ONLP_SFP_CONTROL_TX_DISABLE_B:			
+                strcpy(format, VIM_OPTOE_TX_DIS_B_PORT_CPLD_PATH);
+                break;
+            case ONLP_SFP_CONTROL_RX_LOS_B:
+                strcpy(format, VIM_OPTOE_RX_LOSS_B_PORT_CPLD_PATH);
+                break;
+            case ONLP_SFP_CONTROL_TX_FAULT_B:	
+                strcpy(format, VIM_OPTOE_TX_FAULT_B_PORT_CPLD_PATH);
+                break;
+
+            default:
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+                break;
+        }
+
+        if (onlp_file_read_int(&val, format, cpld_bus_id, list_index) < 0) 
+        {
+            AIM_LOG_ERROR("Unable to read %s status from port(%d). path: %s\r\n", vim_sfp_control_for_b_attr_to_str(control), port, format);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        else
+        {
+            rv = ONLP_STATUS_OK;
+        }
+    }
+    else if (board_id == VIM_24CE && list_index <= 12)
+    {
+        /* Access VIM Power CPLD from CPU */
+        cpld_bus_id = onlp_vimi_cpld_bus_id_get(vim_id, VIM_POWER_CPLD_ID);
+
+        switch(control)
+        {
+            case ONLP_SFP_CONTROL_TX_DISABLE_B:			
+                strcpy(format, VIM_OPTOE_TX_DIS_B_PWR_CPLD_PATH);
+                break;
+            case ONLP_SFP_CONTROL_RX_LOS_B:
+                strcpy(format, VIM_OPTOE_RX_LOSS_B_PWR_CPLD_PATH);
+                break;
+            case ONLP_SFP_CONTROL_TX_FAULT_B:	
+                strcpy(format, VIM_OPTOE_TX_FAULT_B_PWR_CPLD_PATH);
+                break;
+
+            default:
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+                break;
+        }
+
+        if (onlp_file_read_int(&val, format, cpld_bus_id, list_index) < 0) 
+        {
+            AIM_LOG_ERROR("Unable to read %s status from port(%d). path: %s\r\n", vim_sfp_control_for_b_attr_to_str(control), port, format);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        else
+        {
+            rv = ONLP_STATUS_OK;
+        }
+    }
+    else
+    {
+        rv = ONLP_STATUS_E_UNSUPPORTED;
+    }
+    *value = val;
+
+    DIAG_PRINT("%s, port:%d, control:%d(%s), value:0x%X", __FUNCTION__, port, control, vim_sfp_control_for_b_attr_to_str(control), *value);
+
+    if (rv == ONLP_STATUS_E_UNSUPPORTED)
+    {
+        AIM_LOG_INFO("%s, port:%d, control:%d(%s) UNSUPPORTED(%d)\n", __FUNCTION__, port, control, vim_sfp_control_for_b_attr_to_str(control), ONLP_STATUS_E_UNSUPPORTED);
+    }
+
+    return rv;
+}
+
+/* Private function based on VIM 24CE (sfp) */
+int 
+onlp_sfpi_control_supported_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int *supported)
+{
+    int vim_end_index = onlp_vimi_get_vim_end_index();
+    int vim_id, board_id;
+
+    if(IS_VIM_PORT(port, vim_end_index))
+    {
+        vim_id = onlp_vimi_index_map_to_vim_id(port);
+        if (vim_id == ONLP_STATUS_E_INTERNAL)
+        {
+            DIAG_PRINT("%s, port:%d out of range.", __FUNCTION__, port);
+            return ONLP_STATUS_E_INVALID;
+        }
+        board_id = onlp_vimi_board_id_get(vim_id);
+    }
+    else
+    {
+        return ONLP_STATUS_E_INVALID;
+    }
+    
+
+    if (supported == NULL)
+    {
+        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_PARAM);
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    *supported = 0;
+    switch (control)
+    {
+        case ONLP_SFP_CONTROL_RX_LOS_B:
+        case ONLP_SFP_CONTROL_TX_FAULT_B:
+        case ONLP_SFP_CONTROL_TX_DISABLE_B:
+        {
+            switch (board_id)
+            {
+                case VIM_8DE:
+                case VIM_16CE:
+                case VIM_24YE:
+                    /* QSFP28 100G and QSFPDD 400G*/
+                    *supported = 0;
+                    break;
+                case VIM_24CE:
+                    /* SFP-DD and SFP28 (SFF-8472) */
+                    *supported = 1;
+                    break;
+                default:   
+                    break;
+            }
+        }
+            break;
+
+        default:
+            *supported = 0;
+            break;
+    }
+
+    DIAG_PRINT("%s, port:%d, control:%d(%s), supported:%d", __FUNCTION__, port, control, vim_sfp_control_for_b_attr_to_str(control), *supported);
+    
+    return ONLP_STATUS_OK;
+}
+
+
+/* Private function based on VIM 24CE (sfp) */
+int
+onlp_sfpi_control_set_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int value)
+{
+    int rv;  
+    int supported = 0;
+    int vim_end_index = onlp_vimi_get_vim_end_index();
+
+    if ((onlp_sfpi_control_supported_for_b_attr(port, control, &supported) == ONLP_STATUS_OK) && 
+        (supported == 0))
+    {
+        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+    
+    DIAG_PRINT("%s, port:%d, control:%d(%s), value:0x%X", __FUNCTION__, port, control, vim_sfp_control_for_b_attr_to_str(control), value);
+    
+    /* ONLP_SFP_CONTROL_RESET: write-only. */
+    switch(control)
+    {
+        case ONLP_SFP_CONTROL_TX_DISABLE_B:
+        {			
+            if(IS_VIM_PORT(port, vim_end_index))
+            {
+                rv = onlp_vim_sfpi_control_set_for_b_attr(port, control, value);
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
+            break;
+        }
+
+        default:
+            rv = ONLP_STATUS_E_UNSUPPORTED;
+            break;
+    }
+
+    if (rv == ONLP_STATUS_E_UNSUPPORTED)
+    {
+        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
+    }
+
+    return rv;
+}
+
+
+/* Private function based on VIM 24CE (sfp) */
+int
+onlp_sfpi_control_get_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int* value)
+{
+    int rv;
+    int supported = 0;
+    int vim_end_index = onlp_vimi_get_vim_end_index();
+
+    if (value == NULL)
+    {
+        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_PARAM);
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if ((onlp_sfpi_control_supported_for_b_attr(port, control, &supported) == ONLP_STATUS_OK) && 
+        (supported == 0))
+    {
+        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+    *value = 0;
+    
+    /* ONLP_SFP_CONTROL_RX_LOS , ONLP_SFP_CONTROL_TX_FAULT are read-only. */
+    switch(control)
+    {
+        case ONLP_SFP_CONTROL_RX_LOS_B: 
+        case ONLP_SFP_CONTROL_TX_FAULT_B:
+        case ONLP_SFP_CONTROL_TX_DISABLE_B:
+        {
+            if(IS_VIM_PORT(port, vim_end_index))
+            {
+                rv = onlp_vim_sfpi_control_get_for_b_attr(port, control, value);
+            }
+            else
+            {
+                rv = ONLP_STATUS_E_UNSUPPORTED;
+            }
+            break;
+        }
+
+        default:
+            rv = ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    DIAG_PRINT("%s, port:%d, control:%d(%s), value:0x%X", __FUNCTION__, port, control, vim_sfp_control_for_b_attr_to_str(control), *value);
+
+    if (rv == ONLP_STATUS_E_UNSUPPORTED)
+    {
+        AIM_LOG_INFO("%s:%d port = %d, control = %d fail[%d]\n", __FUNCTION__, __LINE__, port, control, ONLP_STATUS_E_UNSUPPORTED);
     }
 
     return rv;

@@ -83,6 +83,11 @@
 #define IPMI_SENSOR_OFFSET_FAN4_INLET				0x36
 #define IPMI_SENSOR_OFFSET_FAN4_OUTLET				0x37
 
+#define IPMI_SENSOR_OFFSET_FAN1_FAULT				0x50
+#define IPMI_SENSOR_OFFSET_FAN2_FAULT				0x51
+#define IPMI_SENSOR_OFFSET_FAN3_FAULT				0x52
+#define IPMI_SENSOR_OFFSET_FAN4_FAULT				0x53
+
 #define IPMI_TIMEOUT                            	(20 * HZ)
 #define IPMI_ERR_RETRY_TIMES                    	1
 
@@ -151,6 +156,7 @@ struct ipmi_fan_resp_data {
 	unsigned char   rpm_outlet[4];				/* 4 bytes for each fan. */
 	unsigned char   rpm_inlet_factors[7];		/* 0: not use, 1: M-LS 8bits, 2: M-MS 2bits, 3: B-LS 8bits, 4: B-MS 2bits, 5: not use, 6: [7:4]R exponent(K2) [3:0]B exponent(K1) */
 	unsigned char	rpm_outlet_factors[7];		/* 0: not use, 1: M-LS 8bits, 2: M-MS 2bits, 3: B-LS 8bits, 4: B-MS 2bits, 5: not use, 6: [7:4]R exponent(K2) [3:0]B exponent(K1) */
+	unsigned char   fan_fault[4];				/* 4 bytes for each fan. */
 };
 
 struct extreme7830_32ce_8de_fan_data {
@@ -184,13 +190,15 @@ static struct platform_driver extreme7830_32ce_8de_fan_driver = {
 #define FAN_RPM_INLET_ATTR_ID(index)	FAN##index##_INPUT_INLET
 #define FAN_RPM_OUTLET_ATTR_ID(index)	FAN##index##_INPUT_OUTLET
 #define FAN_PWM_ATTR_ID(index)			FAN##index##_PWM
+#define FAN_FAULT_ATTR_ID(index)		FAN##index##_FAULT
 
 #define FAN_ATTR(fan_id) \
 	FAN_PRESENT_ATTR_ID(fan_id),    	\
 	FAN_DIR_ATTR_ID(fan_id),        	\
 	FAN_RPM_INLET_ATTR_ID(fan_id),    	\
 	FAN_RPM_OUTLET_ATTR_ID(fan_id),		\
-	FAN_PWM_ATTR_ID(fan_id)
+	FAN_PWM_ATTR_ID(fan_id),			\
+	FAN_FAULT_ATTR_ID(fan_id)
 
 enum extreme7830_32ce_8de_fan_sysfs_attrs {
 	/* fan attributes */
@@ -213,14 +221,17 @@ enum extreme7830_32ce_8de_fan_sysfs_attrs {
 	static SENSOR_DEVICE_ATTR(fan##index##_input_outlet, S_IRUGO, show_fan_speed, NULL, \
 				  FAN##index##_INPUT_OUTLET); \
 	static SENSOR_DEVICE_ATTR(fan##index##_pwm, S_IRUGO, show_fan_speed, NULL, \
-				  FAN##index##_PWM)
+				  FAN##index##_PWM); \
+	static SENSOR_DEVICE_ATTR(fan##index##_fault, S_IRUGO, show_fan, NULL, \
+				  FAN##index##_FAULT)
 
 #define DECLARE_FAN_ATTR(index) \
 	&sensor_dev_attr_fan##index##_present.dev_attr.attr, \
 	&sensor_dev_attr_fan##index##_dir.dev_attr.attr, \
 	&sensor_dev_attr_fan##index##_input_inlet.dev_attr.attr, \
 	&sensor_dev_attr_fan##index##_input_outlet.dev_attr.attr, \
-	&sensor_dev_attr_fan##index##_pwm.dev_attr.attr
+	&sensor_dev_attr_fan##index##_pwm.dev_attr.attr, \
+	&sensor_dev_attr_fan##index##_fault.dev_attr.attr
 
 
 DECLARE_FAN_SENSOR_DEVICE_ATTR(1);
@@ -465,6 +476,49 @@ extreme7830_32ce_8de_fan_update_device(struct device_attribute *da)
 	}
 	if (unlikely(data->ipmi.rx_result != 0)) {
 		DEBUG_PRINT("Get FAN dir failed: data->ipmi.rx_result != 0\n");
+		status = -EIO;
+		goto exit;
+	}
+
+	/* Get FAN fault from ipmi */
+	/*  
+		ipmitool raw 0x4 0x2d 0x50
+		ipmitool raw 0x4 0x2d 0x51
+		ipmitool raw 0x4 0x2d 0x52
+		ipmitool raw 0x4 0x2d 0x53
+	*/
+	data->ipmi.tx_message.netfn = IPMI_SENSOR_NETFN;
+
+	switch (fid) 
+	{
+		case FAN_1:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN1_FAULT;
+			break;
+		case FAN_2:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN2_FAULT;
+			break;
+		case FAN_3:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN3_FAULT;
+			break;
+		case FAN_4:
+			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN4_FAULT;
+			break;
+		default:
+			status = -EIO;
+			goto exit;
+	}
+
+	status = ipmi_send_message(&data->ipmi, IPMI_SENSOR_READ_CMD ,
+				   data->ipmi_tx_data, 1,
+				   data->ipmi_resp_fan[fid].fan_fault, 
+				   sizeof(data->ipmi_resp_fan[fid].fan_fault));
+
+	if (unlikely(status != 0)){
+		DEBUG_PRINT("Get FAN Fault failed: status != 0\n");
+		goto exit;
+	}
+	if (unlikely(data->ipmi.rx_result != 0)) {
+		DEBUG_PRINT("Get FAN Fault failed: data->ipmi.rx_result != 0\n");
 		status = -EIO;
 		goto exit;
 	}
@@ -856,7 +910,7 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *da,
 			error = -EIO;
 			goto exit;
 	}
-	present = !!(data->ipmi_resp_present & mask);   /* 0 = Not Present, 1 = Present */
+	present = !!(data->ipmi_resp_present & mask);   /* 1 = Not Present, 0 = Present */
 
 	switch (attr->index) {
 		case FAN1_PRESENT:
@@ -881,6 +935,14 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *da,
 			VALIDATE_PRESENT_RETURN(fid);
 			value = (data->ipmi_resp_dir & mask) >> IPMI_SENSOR_FAN4_BIT;
 			break;
+		case FAN1_FAULT:
+		case FAN2_FAULT:
+		case FAN3_FAULT:
+		case FAN4_FAULT:
+			/* 1 = fan OK, 0 = fan fault */
+			VALIDATE_PRESENT_RETURN(fid);
+			value = data->ipmi_resp_fan[fid].fan_fault[2];
+			break;
 		default:
 			error = -EINVAL;
 			goto exit;
@@ -890,7 +952,7 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *da,
 
 	mutex_unlock(&data->update_lock);
 
-	return sprintf(buf, "%d\n", present ? value : 0);
+	return sprintf(buf, "%d\n", value);
 
 exit:
 	mutex_unlock(&data->update_lock);

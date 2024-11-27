@@ -56,11 +56,11 @@
 #define NUM_OF_IOBM_QSFP28_PORT 	        1       /* 1 * 100G */
 #define NUM_OF_IOBM_SFP_PORT 	            1       /* 1 * 10G */
 #define NUM_OF_QSFP_PORT_CPLD 	            2
-#define NUM_OF_QSFP_PER_PORT_CPLD           2
+#define NUM_OF_QSFP_PER_PORT_CPLD           3
 
 #define SFP_START_INDEX                     0       /* Both QSFP and SFP */
 #define SFP_PLUS_EEPROM_I2C_ADDR            0x50    /* SFP+ EEPROM Physical Address in the I2C */  
-#define SFP_DOM_EEPROM_I2C_ADDR             0x51
+#define SFP_DOM_EEPROM_I2C_ADDR             0x51    /* SFP+ EEPROM(A2h page) Physical Address in the I2C*/
 
 #define QSFP_PORT_INDEX_START               0
 #define QSFP_PORT_INDEX_END                 39
@@ -71,7 +71,7 @@
 #define QSFP28_PORT_INDEX_START             0
 #define QSFP28_PORT_INDEX_END               31
 
-
+#define CPLD_NOT_USE                        0xFF
 
 #define IS_QSFP_PORT(_port) (_port >= QSFP_PORT_INDEX_START && _port <= QSFP_PORT_INDEX_END)
 #define IS_IOBM_PORT(_port) (_port >= IOBM_QSFP28_PORT_INDEX && _port <= IOBM_SFP_PORT_INDEX)
@@ -124,7 +124,9 @@
 #define VIM_OPTOE_TX_FAULT_PWR_CPLD_PATH    "/sys/bus/i2c/devices/%d-005c/tx_fault_%d"
 #define VIM_OPTOE_TX_DIS_PWR_CPLD_PATH      "/sys/bus/i2c/devices/%d-005c/tx_dis_%d"
 #define VIM_OPTOE_RX_LOSS_PWR_CPLD_PATH     "/sys/bus/i2c/devices/%d-005c/rx_los_%d"
-
+#define VIM_OPTOE_TX_FAULT_B_PWR_CPLD_PATH  "/sys/bus/i2c/devices/%d-005c/tx_fault_b_%d"
+#define VIM_OPTOE_TX_DIS_B_PWR_CPLD_PATH    "/sys/bus/i2c/devices/%d-005c/tx_dis_b_%d"
+#define VIM_OPTOE_RX_LOSS_B_PWR_CPLD_PATH   "/sys/bus/i2c/devices/%d-005c/rx_los_b_%d"
 
 /* System CPLD access from CPU */
 #define VIM_PRESENT_PATH                    "/sys/bus/i2c/devices/0-006e/vim_%d_present"
@@ -140,6 +142,9 @@
 #define VIM_OPTOE_TX_FAULT_PORT_CPLD_PATH   "/sys/bus/i2c/devices/%d-0058/tx_fault_%d"
 #define VIM_OPTOE_TX_DIS_PORT_CPLD_PATH     "/sys/bus/i2c/devices/%d-0058/tx_dis_%d"
 #define VIM_OPTOE_RX_LOSS_PORT_CPLD_PATH    "/sys/bus/i2c/devices/%d-0058/rx_los_%d"
+#define VIM_OPTOE_TX_FAULT_B_PORT_CPLD_PATH "/sys/bus/i2c/devices/%d-0058/tx_fault_b_%d"
+#define VIM_OPTOE_TX_DIS_B_PORT_CPLD_PATH   "/sys/bus/i2c/devices/%d-0058/tx_dis_b_%d"
+#define VIM_OPTOE_RX_LOSS_B_PORT_CPLD_PATH  "/sys/bus/i2c/devices/%d-0058/rx_los_b_%d"
 #define VIM_OPTOE_EEPROM_PATH               "/sys/bus/i2c/devices/%d-0050/eeprom"
 #define VIM_OPTOE_DOM_PATH                  "/sys/bus/i2c/devices/%d-0051/eeprom"
 
@@ -245,6 +250,13 @@ enum onlp_led_id
     LED_SEC  
 };
 
+/** onlp_sfp_control_for_b_attr */
+typedef enum onlp_sfp_control_for_b_attr_e {
+    ONLP_SFP_CONTROL_RX_LOS_B,
+    ONLP_SFP_CONTROL_TX_FAULT_B,
+    ONLP_SFP_CONTROL_TX_DISABLE_B,
+} onlp_sfp_control_for_b_attr_t;
+
 
 #define DIAG_FLAG_ON 1
 #define DIAG_FLAG_OFF 0
@@ -264,6 +276,7 @@ char diag_debug_pause_platform_manage_check(void);
 
 char* sfp_control_to_str(int value);
 char* vim_sfp_control_to_str(int value);
+char* vim_sfp_control_for_b_attr_to_str(int value);
 char *rtrim(char *str);
 char *ltrim(char *str);
 char *trim(char *str);
