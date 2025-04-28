@@ -36,6 +36,11 @@
 #define IPMI_CHANNEL_0_ADDRESS  				0x01	/* CH0 */
 #define IPMI_CHANNEL_1_ADDRESS  				0x02	/* CH1 */
 
+/* Support impitool i2c command */
+#define IPMI_VIM1_PWRCPLD_CHANNEL				0x6
+#define IPMI_VIM2_PWRCPLD_CHANNEL				0x7
+#define IPMI_CHANNEL_BIT						0x4
+
 /* VIM CPLD1 0x5D*/
 #define VIM_BOARD_ID_ADDRESS            	    0x01
 #define VIM_CPLD_VERSION_ADDRESS            	0x00
@@ -341,7 +346,7 @@ static int read_vim_present_from_sysfs(int vim_id)
 static struct extreme7830_32ce_8de_vim_pwr_cpld_data *extreme7830_32ce_8de_vim_pwr_cpld_update_status_data(struct device_attribute *da)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    unsigned char vid = attr->index % VIM_ID_MAX;
+	unsigned char vid = attr->index % VIM_ID_MAX;
 	int status = 0;
 
 	if (time_before(jiffies, data->last_updated[vid] + HZ * 5) && data->valid[vid]) {
@@ -350,93 +355,46 @@ static struct extreme7830_32ce_8de_vim_pwr_cpld_data *extreme7830_32ce_8de_vim_p
 
 	data->valid[vid] = 0;
 
+	/* VIM1 version: ipmitool i2c bus=0 chan=6 0xBA 1 0x0
+	 * VIM2 version: ipmitool i2c bus=0 chan=7 0xBA 1 0x0 
+	 * VIM1 board id: ipmitool i2c bus=0 chan=6 0xBA 1 0x01
+	 * VIM2 board id: ipmitool i2c bus=0 chan=7 0xBA 1 0x01 
+	 */
 	data->ipmi.tx_message.netfn = IPMI_APP_NETFN;
-	data->ipmi_tx_data[0] = IPMI_VIM_PWRCPLD_BUS;
-	
-	switch (vid) 
-	{
+
+	switch (vid) {
 		case VIM_1:
-			/* set PCA9548#9(0x70)'s channel to CH0(0x1) */
-			data->ipmi_tx_data[1] = IPMI_PCA9548_9_ADDRESS;
-			data->ipmi_tx_data[2] = IPMI_WRITE_BYTE;
-			data->ipmi_tx_data[3] = 0x00;
-			data->ipmi_tx_data[4] = IPMI_CHANNEL_0_ADDRESS;
-			status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
-					  data->ipmi_tx_data, 5,
-					  NULL,
-					  0);
-			if (unlikely(status != 0)) {
-				goto exit;
-			}
-	
-			if (unlikely(data->ipmi.rx_result != 0)) {
-				status = -EIO;
-				goto exit;
-			}
+			data->ipmi_tx_data[0] = IPMI_VIM1_PWRCPLD_CHANNEL << IPMI_CHANNEL_BIT;
 			break;
-
 		case VIM_2:
-			/* set PCA9548#9(0x70)'s channel to CH1(0x2) */
-			data->ipmi_tx_data[1] = IPMI_PCA9548_9_ADDRESS;
-			data->ipmi_tx_data[2] = IPMI_WRITE_BYTE;
-			data->ipmi_tx_data[3] = 0x00;
-			data->ipmi_tx_data[4] = IPMI_CHANNEL_1_ADDRESS;
-			status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
-					  data->ipmi_tx_data, 5,
-					  NULL,
-					  0);
-			if (unlikely(status != 0)) {
-				goto exit;
-			}
-	
-			if (unlikely(data->ipmi.rx_result != 0)) {
-				status = -EIO;
-				goto exit;
-			}
-            break;
-	}
-
-
-    /* set PCA9548#2(0x75)'s channel to CH0(0x1) */
-	data->ipmi_tx_data[1] = IPMI_PCA9548_2_ADDRESS;
-	data->ipmi_tx_data[2] = IPMI_WRITE_BYTE;
-	data->ipmi_tx_data[3] = 0x00;
-	data->ipmi_tx_data[4] = IPMI_CHANNEL_0_ADDRESS;
-	status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
-				data->ipmi_tx_data, 5,
-				NULL,
-				0);
-	if (unlikely(status != 0)) {
-		goto exit;
+			data->ipmi_tx_data[0] = IPMI_VIM2_PWRCPLD_CHANNEL << IPMI_CHANNEL_BIT;
+			break;
+		default:
+			return -EINVAL;
 	}
 	
-	if (unlikely(data->ipmi.rx_result != 0)) {
-		status = -EIO;
-		goto exit;
-	}
-	
-    /* Get VIM Board ID and Version from VIM Power CPLD */
-    data->ipmi_tx_data[1] = IPMI_VIM_PWRCPLD_ADDRESS;
+	/* Get VIM Board ID and Version from VIM Power CPLD */
+	data->ipmi_tx_data[1] = IPMI_VIM_PWRCPLD_ADDRESS;
 	data->ipmi_tx_data[2] = IPMI_READ_BYTE;
-    
+
 	switch (attr->index) 
 	{
 		case VIM_1_VERSION:
-        case VIM_2_VERSION:
+		case VIM_2_VERSION:
 			/* Get VIM Version from VIM Power CPLD */
 			data->ipmi_tx_data[3] = VIM_CPLD_VERSION_ADDRESS;
 			break;
 		case VIM_1_BOARD_ID:
-        case VIM_2_BOARD_ID:
+		case VIM_2_BOARD_ID:
 			/* Get VIM Board ID from VIM Power CPLD */
-            data->ipmi_tx_data[3] = VIM_BOARD_ID_ADDRESS;
-            break;
-        default:
+			data->ipmi_tx_data[3] = VIM_BOARD_ID_ADDRESS;
+			break;
+		default:
 			status = -EIO;
 			goto exit;
 	}
 	
-    status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
+	status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
 				data->ipmi_tx_data, 4,
 				&data->ipmi_resp[vid],
 				sizeof(data->ipmi_resp[vid]));
@@ -487,7 +445,8 @@ static ssize_t show_vim_cpld_version(struct device *dev, struct device_attribute
 
 	if (vim_present == -EIO)
 	{
-		return -EINVAL;
+		error = -EINVAL;
+		goto exit;
 	}
 
 	DEBUG_PRINT("7830_32ce_8de show_vim_cpld_version: vim%d_present=%d", vid, vim_present);
@@ -543,7 +502,8 @@ static ssize_t show_vim_board_id(struct device *dev, struct device_attribute *da
 
 	if (vim_present == -EIO)
 	{
-		return -EINVAL;
+		error = -EINVAL;
+		goto exit;
 	}
 
 	DEBUG_PRINT("7830_32ce_8de show_vim_board_id: vim%d_present=%d", vid, vim_present);
