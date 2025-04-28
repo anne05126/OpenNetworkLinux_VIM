@@ -61,10 +61,13 @@
 #define VIM_SFP_RXLOS_B_P1_P8                   0x28
 #define VIM_SFP_RXLOS_B_P9_P16                  0x29
 #define VIM_PORT_LED_ON_OFF_CONTROL             0x40
+#define VIM_POWER_LED                           0x40
 
 #define NOT_SUPPORT                             0xFF
 #define VIM_CPLD_VERSION_BITS_MASK    			0x0F 	/* bit 0~3 */
 #define VIM_PORT_LED_ON_OFF_CONTROL_MASK		0x20 	/* bit 5 */
+#define VIM_POWER_LED_MASK		                0x18 	/* bit 3~4 */
+
 
 static unsigned int debug = DEBUG_MODE;
 module_param(debug, uint, S_IRUGO);
@@ -144,6 +147,7 @@ MODULE_DEVICE_TABLE(i2c, extreme7830_32ce_8de_vim_cpld_id);
 #define RXLOS_B_ATTR_ID(index)				        RXLOS_B_##index
 #define VIM_CPLD_VER_ATTR_ID(index)				    VIM##index##_CPLD_VERSION
 #define VIM_PORT_LED_CONTROL_ATTR_ID(index)         VIM##index##_PORT_LED_CONTROL
+#define VIM_POWER_LED_ATTR_ID(index)                VIM##index##_POWER_LED
 
 enum extreme7830_32ce_8de_sys_cpld_sysfs_attributes {
     VIM_CPLD_VER_ATTR_ID(1), 
@@ -321,6 +325,9 @@ enum extreme7830_32ce_8de_sys_cpld_sysfs_attributes {
 
     VIM_PORT_LED_CONTROL_ATTR_ID(1), 
     VIM_PORT_LED_CONTROL_ATTR_ID(2),
+
+    VIM_POWER_LED_ATTR_ID(1), 
+    VIM_POWER_LED_ATTR_ID(2),
 };
 
 
@@ -335,6 +342,8 @@ static ssize_t show_vim_port_led_control(struct device *dev, struct device_attri
                            char *buf);
 static ssize_t set_vim_port_led_control(struct device *dev, struct device_attribute *da, 
                       const char *buf, size_t count);
+static ssize_t show_vim_power_led(struct device *dev, struct device_attribute *da,
+                        char *buf);
 static int extreme7830_32ce_8de_vim_cpld_read_internal(struct i2c_client *client, u8 reg);
 static int extreme7830_32ce_8de_vim_cpld_write_internal(struct i2c_client *client, u8 reg, u8 value);
 
@@ -383,6 +392,11 @@ static int extreme7830_32ce_8de_vim_cpld_write_internal(struct i2c_client *clien
 	static SENSOR_DEVICE_ATTR(vim##index##_port_led_control, S_IWUSR | S_IRUGO, show_vim_port_led_control, set_vim_port_led_control, VIM##index##_PORT_LED_CONTROL)
 #define DECLARE_VIM_PORT_LED_CONTROL_ATTR(index)  &sensor_dev_attr_vim##index##_port_led_control.dev_attr.attr
 
+/* VIM Power LED */
+#define DECLARE_VIM_POWER_LED_DEVICE_ATTR(index) \
+	static SENSOR_DEVICE_ATTR(vim##index##_power_led, S_IRUGO, show_vim_power_led, NULL, VIM##index##_POWER_LED)
+#define DECLARE_VIM_POWER_LED_ATTR(index)  &sensor_dev_attr_vim##index##_power_led.dev_attr.attr
+
 DECLARE_VIM_CPLD_VERSION_DEVICE_ATTR(1);
 DECLARE_VIM_CPLD_VERSION_DEVICE_ATTR(2);
 DECLARE_VIM_SFP_SENSOR_DEVICE_ATTR(1);
@@ -403,6 +417,8 @@ DECLARE_VIM_SFP_SENSOR_DEVICE_ATTR(15);
 DECLARE_VIM_SFP_SENSOR_DEVICE_ATTR(16);
 DECLARE_VIM_PORT_LED_CONTROL_DEVICE_ATTR(1);
 DECLARE_VIM_PORT_LED_CONTROL_DEVICE_ATTR(2);
+DECLARE_VIM_POWER_LED_DEVICE_ATTR(1);
+DECLARE_VIM_POWER_LED_DEVICE_ATTR(2);
 
 
 /* VIM#1 CPLD1 */
@@ -425,6 +441,7 @@ static struct attribute *extreme7830_32ce_8de_vim1_cpld1_attributes[] = {
     DECLARE_VIM_SFP_ATTR(15), 
     DECLARE_VIM_SFP_ATTR(16), 
     DECLARE_VIM_PORT_LED_CONTROL_ATTR(1),
+    DECLARE_VIM_POWER_LED_ATTR(1),
 
     NULL
 };
@@ -453,6 +470,7 @@ static struct attribute *extreme7830_32ce_8de_vim2_cpld1_attributes[] = {
     DECLARE_VIM_SFP_ATTR(15), 
     DECLARE_VIM_SFP_ATTR(16), 
     DECLARE_VIM_PORT_LED_CONTROL_ATTR(2),
+    DECLARE_VIM_POWER_LED_ATTR(2),
 
     NULL
 };
@@ -468,6 +486,7 @@ static const struct attribute_group extreme7830_32ce_8de_vim2_cpld1_group = {
  *      - show_vim_cpld_version : Get VIM CPLD version
  *      - show_vim_port_led_control   : Get VIM port LED control attribute
  *      - set_vim_port_led_control    : Set VIM port LED control attribute
+ *      - show_vim_power_led    : Get VIM power LED attribute
  */
 static ssize_t set_vim_sfp_status(struct device *dev, struct device_attribute *da, 
                       const char *buf, size_t count)
@@ -1246,6 +1265,105 @@ exit:
     mutex_unlock(&data->update_lock);
     return status;
 }
+
+static ssize_t show_vim_power_led(struct device *dev, struct device_attribute *da,
+                           char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct extreme7830_32ce_8de_vim_cpld_data *data = i2c_get_clientdata(client);
+    int status = 0;
+    u8 reg = 0, mask = 0;
+    int board_id = 0;    
+
+    /* Get VIM board ID */
+    mutex_lock(&data->update_lock);
+    switch (data->type) 
+	{
+        case extreme7830_32ce_8de_vim1_cpld1:
+            status = extreme7830_32ce_8de_vim_cpld_write_internal(client, PCA9548_8_ADDRESS, CHANNEL_0_ADDRESS);
+            if (unlikely(status < 0)) {
+                DEBUG_PRINT("Switch channel failed! attr->index = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_8_ADDRESS, CHANNEL_0_ADDRESS);
+                goto exit;
+            }
+            break;
+
+		case extreme7830_32ce_8de_vim2_cpld1:
+            status = extreme7830_32ce_8de_vim_cpld_write_internal(client, PCA9548_8_ADDRESS, CHANNEL_1_ADDRESS);
+            if (unlikely(status < 0)) {
+                DEBUG_PRINT("Switch channel failed! attr->index = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_8_ADDRESS, CHANNEL_1_ADDRESS);
+                goto exit;
+            }
+            break;
+
+        default:
+            goto exit;
+			break;
+    }
+
+    status = extreme7830_32ce_8de_vim_cpld_write_internal(client, PCA9548_1_ADDRESS, CHANNEL_3_ADDRESS);
+    if (unlikely(status < 0)) {
+        DEBUG_PRINT("Switch channel failed! attr->index = %d, add=0x%02X, val=0x%02X", attr->index, PCA9548_1_ADDRESS, CHANNEL_3_ADDRESS);
+        goto exit;
+    }
+
+    
+    /* Get board id from power CPLD 0x5c */
+    status = extreme7830_32ce_8de_vim_cpld_read_internal(client, VIM_CPLD_REG_ADDR_BOARD_ID);
+    if (unlikely(status < 0)) {
+        DEBUG_PRINT("vim extreme7830_32ce_8de_vim_cpld_read_internal failed: attr->index:%d, reg=%d", attr->index, VIM_CPLD_REG_ADDR_BOARD_ID);
+        goto exit;
+    }
+
+    board_id = status & VIM_BOARD_ID_MASK;
+    DEBUG_PRINT("[VIM CPU PWR CPLD DEBUG]: attr->index:%d, board_id=%d", attr->index, board_id);
+    mutex_unlock(&data->update_lock);
+
+    /* Show vim sfp attribute */
+    switch (board_id) {
+        case VIM_8DE:
+        case VIM_16CE:
+        case VIM_24CE:
+        case VIM_24YE:
+            switch (attr->index) {
+                /* VIM Power LED */
+                case VIM1_POWER_LED:
+                case VIM2_POWER_LED:
+                    reg  = VIM_POWER_LED;
+                    mask = VIM_POWER_LED_MASK;
+                    break;
+                default:
+                    reg  = NOT_SUPPORT;
+                    break;
+            }
+            break;
+        default:
+            break;
+    }
+    
+    if (reg != NOT_SUPPORT)
+    {
+        mutex_lock(&data->update_lock);
+        status = extreme7830_32ce_8de_vim_cpld_read_internal(client, reg);
+        if (unlikely(status < 0)) {
+            goto exit;
+        }
+        mutex_unlock(&data->update_lock);
+
+        DEBUG_PRINT("[VIM CPU PWR CPLD DEBUG]: OTHER attr->index:%d, board_id=%d, status=%d, mask=%d, value=%d", attr->index, board_id, status, mask, !!(status & mask));
+        return sprintf(buf, "%d\n", (status & mask) >> 0x3);
+    }
+    else
+    {
+        return sprintf(buf, "%s\n", "NOT SUPPORT");
+    }
+    
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
+}
+
 
 /*
  * CPLD client function

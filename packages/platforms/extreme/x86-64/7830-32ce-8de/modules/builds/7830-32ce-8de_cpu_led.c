@@ -11,7 +11,7 @@
  * Based on:
  * Copyright (C) 2021 Alphanetworks Technology Corporation.
  * Fillmore Chen <fillmore_chen@alphanetworks.com>
- * 
+ *
  * Based on:
  * Copyright (C) 2021 Accton Technology Corporation.
  * Copyright (C)  Alex Lai <alex_lai@edge-core.com>
@@ -55,17 +55,20 @@
 #define I2C_RW_RETRY_INTERVAL             		60 /* ms */
 
 #define PWRCPLD_LED_Ctrl_0_OFFSET		        0x50
+#define PWRCPLD_LED_Ctrl_3_OFFSET		        0x53
+#define PWRCPLD_CHAN_SELE_COUNTER_OFFSET        0x74
 
-#define sw_led_control                      	0x80 
+#define SW_LED_CONTROL                      	0x80
+#define CHAN_SELE_CONTROL                       0x10    /* bit 4 */
 
 /* LED Control Register 0
  * bit 7   : 0=hw control,   1=factory test (CPU)
- * bit 6, 2: Reseved
+ * bit 6~2 : Reseved
  * bit 1   : Power 0=OFF, 1=Solid Green
  * bit 0   : Security 0=OFF 1=ON
  */
 #define SEC_LED_BIT_OFFSET						0x0
-#define PWR_LED_BIT_OFFSET						0x1     
+#define PWR_LED_BIT_OFFSET						0x1
 
 
 /* POWER_LED (map to driver) */
@@ -75,6 +78,29 @@
 /* Security_LED (map to driver) */
 #define SEC_LED_MODE_OFF               			0x0
 #define SEC_LED_MODE_BLUE              			0x1
+
+/* LED Control Register 3
+ * bit 7~4 : Reseved
+ * bit 3~0 : Channel LED
+ *           value      QSFP-DD Sub-Channel
+ *           0          1
+ *           1          2
+ *           2          3
+ *           3          4
+ *           4          5
+ *           5          6
+ *           6          7
+ *           7          8
+ *           8          Common Mode
+ */
+#define CHAN_SEL_LED_BIT_OFFSET					0x0
+
+/* 3.34.	Push Button Register
+ * bit 7~5 : Reseved
+ * bit 4   : Push button register Control (0: push button, 1: CPU)
+ * bit 3~0 : Push Button Counter
+ */
+#define CHAN_SEL_COUNTER_BIT_OFFSET					0x0
 
 static unsigned int debug = 0;
 module_param(debug, uint, S_IRUGO);
@@ -124,22 +150,29 @@ static int extreme7830_32ce_8de_cpld_write_internal(struct i2c_client *client, u
 
 enum led_data_index {
 	PWR_INDEX = 0,
- 	SEC_INDEX
+ 	SEC_INDEX,
+    CHAN_SEL_INDEX,
+    CHAN_SEL_COUNTER_INDEX
 };
 
 enum extreme7830_32ce_8de_led_sysfs_attrs {
 	LED_PWR,
-	LED_SEC	
+	LED_SEC,
+    LED_CHAN_SEL,
+    CHAN_SEL_COUNTER
 };
 
 
 static SENSOR_DEVICE_ATTR(led_pwr, S_IWUSR | S_IRUGO, show_led_by_cpu, set_led_by_cpu, LED_PWR);
 static SENSOR_DEVICE_ATTR(led_security, S_IWUSR | S_IRUGO, show_led_by_cpu, set_led_by_cpu, LED_SEC);
-
+static SENSOR_DEVICE_ATTR(led_chan_sel, S_IRUGO, show_led_by_cpu, NULL, LED_CHAN_SEL);
+static SENSOR_DEVICE_ATTR(chan_sel_counter, S_IRUGO, show_led_by_cpu, NULL, CHAN_SEL_COUNTER);
 
 static struct attribute *extreme7830_32ce_8de_led_attributes[] = {
 	&sensor_dev_attr_led_pwr.dev_attr.attr,
 	&sensor_dev_attr_led_security.dev_attr.attr,
+    &sensor_dev_attr_led_chan_sel.dev_attr.attr,
+    &sensor_dev_attr_chan_sel_counter.dev_attr.attr,
 	NULL
 };
 
@@ -157,8 +190,22 @@ static ssize_t show_led_by_cpu(struct device *dev, struct device_attribute *da,
 	int value = 0;
 	int status = 0;
     u8 reg = 0, mask = 0;
-	reg  = PWRCPLD_LED_Ctrl_0_OFFSET;
-    
+
+    switch (attr->index) {
+		case LED_PWR:
+        case LED_SEC:
+	        reg  = PWRCPLD_LED_Ctrl_0_OFFSET;
+            break;
+        case LED_CHAN_SEL:
+	        reg  = PWRCPLD_LED_Ctrl_3_OFFSET;
+            break;
+        case CHAN_SEL_COUNTER:
+	        reg  = PWRCPLD_CHAN_SELE_COUNTER_OFFSET;
+            break;
+        default:
+            return -ENODEV;
+    }
+
     mutex_lock(&data->update_lock);
     status = extreme7830_32ce_8de_cpld_read_internal(client, reg);
     if (unlikely(status < 0)) {
@@ -166,7 +213,7 @@ static ssize_t show_led_by_cpu(struct device *dev, struct device_attribute *da,
     }
 
 	switch (attr->index)
-	{   
+	{
         case LED_PWR:
 			mask = 0x1 << PWR_LED_BIT_OFFSET;
 			value = (status & mask) >> PWR_LED_BIT_OFFSET;
@@ -174,6 +221,14 @@ static ssize_t show_led_by_cpu(struct device *dev, struct device_attribute *da,
         case LED_SEC:
 			mask = 0x1 << SEC_LED_BIT_OFFSET;
 			value = (status & mask) >> SEC_LED_BIT_OFFSET;
+            break;
+        case LED_CHAN_SEL:
+			mask = 0xF << CHAN_SEL_LED_BIT_OFFSET;
+			value = (status & mask) >> CHAN_SEL_LED_BIT_OFFSET;
+            break;
+        case CHAN_SEL_COUNTER:
+			mask = 0xF << CHAN_SEL_COUNTER_BIT_OFFSET;
+			value = (status & mask) >> CHAN_SEL_COUNTER_BIT_OFFSET;
             break;
         default:
             return -ENODEV;
@@ -201,12 +256,10 @@ static ssize_t set_led_by_cpu(struct device *dev, struct device_attribute *da,
 	u8 reg = 0, mask = 0;
 	int value = 0;
 
-	reg  = PWRCPLD_LED_Ctrl_0_OFFSET;
-
 	error = kstrtol(buf, 10, &mode);
 	if (error)
 		return error;
-    
+
     mutex_lock(&data->update_lock);
     status = extreme7830_32ce_8de_cpld_read_internal(client, reg);
     if (unlikely(status < 0)) {
@@ -228,7 +281,7 @@ static ssize_t set_led_by_cpu(struct device *dev, struct device_attribute *da,
 				error = -EINVAL;
 				goto exit;
 			}
-			break; 
+			break;
 		case LED_SEC:
 			mask = ~(0x1 << SEC_LED_BIT_OFFSET);
 			value = status & mask;
@@ -249,10 +302,10 @@ static ssize_t set_led_by_cpu(struct device *dev, struct device_attribute *da,
 			goto exit;
 	}
 
-	status |= sw_led_control;
+	status |= SW_LED_CONTROL;
 
 	DEBUG_PRINT("set_led_by_cpu: attr->index:%d, mask:0x%x, value:0x%x, status:0x%x", attr->index, mask, value, status);
-	
+
     status = extreme7830_32ce_8de_cpld_write_internal(client, reg, status);
     if (unlikely(status < 0)) {
         goto exit;
