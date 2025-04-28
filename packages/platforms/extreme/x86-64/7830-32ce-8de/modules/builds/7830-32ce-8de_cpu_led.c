@@ -54,8 +54,9 @@
 #define I2C_RW_RETRY_COUNT                		10
 #define I2C_RW_RETRY_INTERVAL             		60 /* ms */
 
-#define PWRCPLD_LED_Ctrl_0_OFFSET		        0x50
-#define PWRCPLD_LED_Ctrl_3_OFFSET		        0x53
+#define PWRCPLD_LED_Ctrl_0_OFFSET               0x50
+#define PWRCPLD_LED_Ctrl_3_OFFSET               0x53
+#define PWRCPLD_LED_Ctrl_4_OFFSET               0x54
 #define PWRCPLD_CHAN_SELE_COUNTER_OFFSET        0x74
 
 #define SW_LED_CONTROL                      	0x80
@@ -69,7 +70,7 @@
  */
 #define SEC_LED_BIT_OFFSET						0x0
 #define PWR_LED_BIT_OFFSET						0x1
-
+#define LED_CONTROL_0_BIT_OFFSET                0x7
 
 /* POWER_LED (map to driver) */
 #define PWR_LED_MODE_OFF               			0x0
@@ -78,6 +79,10 @@
 /* Security_LED (map to driver) */
 #define SEC_LED_MODE_OFF               			0x0
 #define SEC_LED_MODE_BLUE              			0x1
+
+/* LED_CONTROL */
+#define CONTROL_BY_HW                           0x0
+#define CONTROL_BY_SW                           0x1
 
 /* LED Control Register 3
  * bit 7~4 : Reseved
@@ -101,6 +106,19 @@
  * bit 3~0 : Push Button Counter
  */
 #define CHAN_SEL_COUNTER_BIT_OFFSET					0x0
+
+/* LED Control Register 4
+ * bit 7, 5: Reseved
+ * bit 4, 3: Status 00=OFF, 01=Solid Green, 10=Solid Amber, 11=Blinking Amber-Green
+ * bit 2, 0: Not Use
+ */
+#define STAT_LED_BIT_OFFSET						0x3
+
+/* STAT_LED(STATUS_LED) */
+#define STAT_LED_MODE_OFF                 		0x0
+#define STAT_LED_MODE_GREEN               		0x1
+#define STAT_LED_MODE_AMBER               		0x2
+#define STAT_LED_MODE_GREEN_AMBER_BLINKING 		0x3
 
 static unsigned int debug = 0;
 module_param(debug, uint, S_IRUGO);
@@ -151,15 +169,19 @@ static int extreme7830_32ce_8de_cpld_write_internal(struct i2c_client *client, u
 enum led_data_index {
 	PWR_INDEX = 0,
  	SEC_INDEX,
-    CHAN_SEL_INDEX,
-    CHAN_SEL_COUNTER_INDEX
+	CHAN_SEL_INDEX,
+	CHAN_SEL_COUNTER_INDEX,
+	STAT_INDEX,
+	LED_CONTROL_INDEX
 };
 
 enum extreme7830_32ce_8de_led_sysfs_attrs {
 	LED_PWR,
 	LED_SEC,
-    LED_CHAN_SEL,
-    CHAN_SEL_COUNTER
+	LED_CHAN_SEL,
+	CHAN_SEL_COUNTER,
+	LED_STAT,
+	LED_CONTROL
 };
 
 
@@ -167,12 +189,16 @@ static SENSOR_DEVICE_ATTR(led_pwr, S_IWUSR | S_IRUGO, show_led_by_cpu, set_led_b
 static SENSOR_DEVICE_ATTR(led_security, S_IWUSR | S_IRUGO, show_led_by_cpu, set_led_by_cpu, LED_SEC);
 static SENSOR_DEVICE_ATTR(led_chan_sel, S_IRUGO, show_led_by_cpu, NULL, LED_CHAN_SEL);
 static SENSOR_DEVICE_ATTR(chan_sel_counter, S_IRUGO, show_led_by_cpu, NULL, CHAN_SEL_COUNTER);
+static SENSOR_DEVICE_ATTR(led_stat, S_IWUSR | S_IRUGO, show_led_by_cpu, set_led_by_cpu, LED_STAT);
+static SENSOR_DEVICE_ATTR(led_control, S_IWUSR | S_IRUGO, show_led_by_cpu, set_led_by_cpu, LED_CONTROL);
 
 static struct attribute *extreme7830_32ce_8de_led_attributes[] = {
 	&sensor_dev_attr_led_pwr.dev_attr.attr,
 	&sensor_dev_attr_led_security.dev_attr.attr,
-    &sensor_dev_attr_led_chan_sel.dev_attr.attr,
-    &sensor_dev_attr_chan_sel_counter.dev_attr.attr,
+	&sensor_dev_attr_led_chan_sel.dev_attr.attr,
+	&sensor_dev_attr_chan_sel_counter.dev_attr.attr,
+	&sensor_dev_attr_led_stat.dev_attr.attr,
+	&sensor_dev_attr_led_control.dev_attr.attr,
 	NULL
 };
 
@@ -184,27 +210,32 @@ static ssize_t show_led_by_cpu(struct device *dev, struct device_attribute *da,
 			char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct i2c_client *client = to_i2c_client(dev);
-    struct extreme7830_32ce_8de_power_cpld_data *data = i2c_get_clientdata(client);
+	struct i2c_client *client = to_i2c_client(dev);
+	struct extreme7830_32ce_8de_power_cpld_data *data = i2c_get_clientdata(client);
 
 	int value = 0;
 	int status = 0;
-    u8 reg = 0, mask = 0;
+	u8 reg = 0, mask = 0;
 
-    switch (attr->index) {
+	switch (attr->index) {
 		case LED_PWR:
-        case LED_SEC:
-	        reg  = PWRCPLD_LED_Ctrl_0_OFFSET;
-            break;
-        case LED_CHAN_SEL:
-	        reg  = PWRCPLD_LED_Ctrl_3_OFFSET;
-            break;
-        case CHAN_SEL_COUNTER:
-	        reg  = PWRCPLD_CHAN_SELE_COUNTER_OFFSET;
-            break;
-        default:
-            return -ENODEV;
-    }
+		case LED_SEC:
+		case LED_CONTROL:
+			reg  = PWRCPLD_LED_Ctrl_0_OFFSET;
+			break;
+		case LED_CHAN_SEL:
+			reg  = PWRCPLD_LED_Ctrl_3_OFFSET;
+			break;
+		case CHAN_SEL_COUNTER:
+			reg  = PWRCPLD_CHAN_SELE_COUNTER_OFFSET;
+			break;
+		case LED_STAT:
+			reg  = PWRCPLD_LED_Ctrl_4_OFFSET;
+			break;
+
+		default:
+			return -ENODEV;
+	}
 
     mutex_lock(&data->update_lock);
     status = extreme7830_32ce_8de_cpld_read_internal(client, reg);
@@ -214,25 +245,33 @@ static ssize_t show_led_by_cpu(struct device *dev, struct device_attribute *da,
 
 	switch (attr->index)
 	{
-        case LED_PWR:
+		case LED_PWR:
 			mask = 0x1 << PWR_LED_BIT_OFFSET;
 			value = (status & mask) >> PWR_LED_BIT_OFFSET;
 			break;
-        case LED_SEC:
+		case LED_SEC:
 			mask = 0x1 << SEC_LED_BIT_OFFSET;
 			value = (status & mask) >> SEC_LED_BIT_OFFSET;
-            break;
-        case LED_CHAN_SEL:
+			break;
+		case LED_CHAN_SEL:
 			mask = 0xF << CHAN_SEL_LED_BIT_OFFSET;
 			value = (status & mask) >> CHAN_SEL_LED_BIT_OFFSET;
-            break;
-        case CHAN_SEL_COUNTER:
+			break;
+		case CHAN_SEL_COUNTER:
 			mask = 0xF << CHAN_SEL_COUNTER_BIT_OFFSET;
 			value = (status & mask) >> CHAN_SEL_COUNTER_BIT_OFFSET;
-            break;
-        default:
-            return -ENODEV;
-    }
+			break;
+		case LED_STAT:
+			mask = 0x3 << STAT_LED_BIT_OFFSET;
+			value = (status & mask) >> STAT_LED_BIT_OFFSET;
+			break;
+		case LED_CONTROL:
+			mask = 0x1 << LED_CONTROL_0_BIT_OFFSET;
+			value = (status & mask) >> LED_CONTROL_0_BIT_OFFSET;
+			break;
+		default:
+			return -ENODEV;
+	}
 
 	mutex_unlock(&data->update_lock);
     return sprintf(buf, "%d\n", value);
@@ -247,8 +286,8 @@ static ssize_t set_led_by_cpu(struct device *dev, struct device_attribute *da,
 		       const char *buf, size_t count)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct i2c_client *client = to_i2c_client(dev);
-    struct extreme7830_32ce_8de_power_cpld_data *data = i2c_get_clientdata(client);
+	struct i2c_client *client = to_i2c_client(dev);
+	struct extreme7830_32ce_8de_power_cpld_data *data = i2c_get_clientdata(client);
 
 	int status= -ENOENT;
 	long mode;
@@ -259,6 +298,19 @@ static ssize_t set_led_by_cpu(struct device *dev, struct device_attribute *da,
 	error = kstrtol(buf, 10, &mode);
 	if (error)
 		return error;
+
+    switch (attr->index) {
+		case LED_PWR:
+		case LED_SEC:
+		case LED_CONTROL:
+			reg  = PWRCPLD_LED_Ctrl_0_OFFSET;
+			break;
+		case LED_STAT:
+			reg  = PWRCPLD_LED_Ctrl_4_OFFSET;
+			break;
+		default:
+			return -ENODEV;
+	}
 
     mutex_lock(&data->update_lock);
     status = extreme7830_32ce_8de_cpld_read_internal(client, reg);
@@ -297,12 +349,57 @@ static ssize_t set_led_by_cpu(struct device *dev, struct device_attribute *da,
 				goto exit;
 			}
 			break;
+		case LED_STAT:
+			mask = ~(0x3 << STAT_LED_BIT_OFFSET);
+			value = status & mask;
+			if (mode == STAT_LED_MODE_OFF) {
+				status = value;
+			}
+			else if (mode == STAT_LED_MODE_GREEN) {
+				mask = STAT_LED_MODE_GREEN << STAT_LED_BIT_OFFSET;
+				status = value | mask;
+			}
+			else if (mode == STAT_LED_MODE_AMBER) {
+				mask = STAT_LED_MODE_AMBER << STAT_LED_BIT_OFFSET;
+				status = value | mask;
+			}
+			else if (mode == STAT_LED_MODE_GREEN_AMBER_BLINKING) {
+				mask = STAT_LED_MODE_GREEN_AMBER_BLINKING << STAT_LED_BIT_OFFSET;
+				status = value | mask;
+			}
+			else {
+				error = -EINVAL;
+				goto exit;
+			}
+			break;
+		case LED_CONTROL:
+			mask = ~(0x1 << LED_CONTROL_0_BIT_OFFSET);
+			value = status & mask;
+			if(mode == CONTROL_BY_HW) {
+				status = value;
+			}
+			else if(mode == CONTROL_BY_SW) {
+				mask = CONTROL_BY_SW << LED_CONTROL_0_BIT_OFFSET;
+				status = value | mask;
+			}
+			else {
+				error = -EINVAL;
+				goto exit;
+			}
+			break;
 		default:
 			error = -EINVAL;
 			goto exit;
 	}
 
-	status |= SW_LED_CONTROL;
+	switch (attr->index) {
+		case LED_PWR:
+		case LED_SEC:
+			status |= SW_LED_CONTROL;
+			break;
+		default:
+			break;
+	}
 
 	DEBUG_PRINT("set_led_by_cpu: attr->index:%d, mask:0x%x, value:0x%x, status:0x%x", attr->index, mask, value, status);
 

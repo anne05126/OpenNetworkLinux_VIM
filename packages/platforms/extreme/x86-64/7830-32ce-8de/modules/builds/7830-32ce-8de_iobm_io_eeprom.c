@@ -7,7 +7,7 @@
  * Based on:
  * Copyright (C) 2023 Alphanetworks Technology Corporation.
  * Anne Liou <anne_liou@alphanetworks.com>
- * 
+ *
  * Based on:
  * Copyright (C) 2014 Accton Technology Corporation.
  * Brandon Chuang <brandon_chuang@accton.com.tw>
@@ -45,7 +45,7 @@
 #define DRVNAME "7830_iobm_io_eeprom"
 /*
 Access Path:
-	BMC I2C2 --> PCA9555#0 (0x21) --(I/O)--> SFP+ & QSFP28 IO (MGMT) 
+	BMC I2C2 --> PCA9555#0 (0x21) --(I/O)--> SFP+ & QSFP28 IO (MGMT)
 
 IPMI raw command:
 	ipmitool raw 0x06 0x52 <Bus> <Address> <Read/Write> <GPIO Registers>
@@ -76,6 +76,19 @@ Athena Design
 	  Default		0		1		1		1		0		1		1		1
 
 */
+
+/* IOBM OEM Command */
+#define IPMI_OEM_NETFN						0x38
+#define IPMI_IOBM_INTF_STATUS_CMD			0x40	/* Link status and speed */
+#define IPMI_IOBM_INTF_ACTIVE_STATUS_CMD	0xC3	/* Primary/Backup status */
+
+#define INTERFACE_2							0x2		/* SFP+ */
+#define INTERFACE_11						0xB		/* QSFP28 */
+
+#define LINK_STATUS_BYTE_OFFSET				0x0
+#define SPEED_BYTE_OFFSET					0x8
+#define PRIMARY_BYTE_OFFSET					0x8
+#define BYTE_MASK							0xFF
 
 /* Get/Set QSFP28/SFP+ I/O Status */
 #define IPMI_APP_NETFN					0x6
@@ -123,6 +136,7 @@ static ssize_t set_io(struct device *dev, struct device_attribute *da, const cha
 static ssize_t show_io(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t show_eeprom(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t show_dom(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t show_status(struct device *dev, struct device_attribute *attr, char *buf);
 static int extreme7830_32ce_8de_iobm_probe(struct platform_device *pdev);
 static int extreme7830_32ce_8de_iobm_remove(struct platform_device *pdev);
 
@@ -145,6 +159,16 @@ enum qsfp28_status_bit_index {
 	QSFP_LP_MODE,
 	QSFP_RST_MOD,
 	QSFP_MOD_PRESENT
+};
+
+enum iobm_intf_status_resp_byte {
+	LINK_STATUS = 0,
+	INTF_SPEED
+};
+
+enum iobm_intf_active_status_resp_byte {
+	/* SWITCHOVER_STATUS = 0, Not used */
+	ACTIVE_INTF_ID = 1
 };
 
 typedef struct ipmi_user *ipmi_user_t;
@@ -171,16 +195,24 @@ struct ipmi_iobm_resp_data {
 	unsigned char   dom[EEPROM_SIZE];
 };
 
+struct ipmi_iobm_resp_status {
+	unsigned char   status[2];
+	unsigned char   primary[4];
+};
+
 struct extreme7830_32ce_8de_iobm_data {
 	struct platform_device *pdev;
 	struct mutex	 update_lock;
-	char			 valid[2]; 					/* 0: SFP1, 1: QSFP28 */
-	char			 valid_status[2]; 			/* != 0 if registers are valid */
-							    	  			/* 0: SFP1, 1: QSFP28 */
-	unsigned long	 last_updated[2];	 		/* In jiffies, 0: SFP1, 1: QSFP28 */
-	unsigned long	 last_updated_status[2]; 	/* In jiffies, 0: SFP1, 1: QSFP28 */
+	char			 valid[2]; 						/* 0: SFP1, 1: QSFP28 */
+	char			 valid_status[2]; 				/* != 0 if registers are valid */
+	char			 valid_oem_status[2]; 			/* != 0 if registers are valid */
+							    	  				/* 0: SFP1, 1: QSFP28 */
+	unsigned long	 last_updated[2];	 			/* In jiffies, 0: SFP1, 1: QSFP28 */
+	unsigned long	 last_updated_status[2]; 		/* In jiffies, 0: SFP1, 1: QSFP28 */
+	unsigned long	 last_updated_oem_status[2];	/* In jiffies, 0: SFP1, 1: QSFP28 */
 	struct ipmi_data ipmi;
-	struct ipmi_iobm_resp_data ipmi_resp[2]; 	/* 0: SFP1, 1: QSFP28 */
+	struct ipmi_iobm_resp_data ipmi_resp[2]; 		/* 0: SFP1, 1: QSFP28 */
+	struct ipmi_iobm_resp_status ipmi_oem_resp[2];	/* 0: SFP1, 1: QSFP28 */
 	unsigned char ipmi_sfp_status;
 	unsigned char ipmi_qsfp_status;
 	unsigned char ipmi_tx_data[5];
@@ -203,12 +235,17 @@ static struct platform_driver extreme7830_32ce_8de_iobm_driver = {
 #define SFP_TXDIS_ATTR_ID(index)			SFP##index##_TXDIS
 #define SFP_EEPROM_ATTR_ID(index)			SFP##index##_EEPROM
 #define SFP_DOM_ATTR_ID(index)				SFP##index##_DOM
+#define SFP_LINK_STATUS_ATTR_ID(index)		SFP##index##_LINK_STATUS
+#define SFP_SPEED_ATTR_ID(index)			SFP##index##_SPEED
+
 #define QSFP28_MOD_SEL_ATTR_ID(index)		QSFP##index##_MOD_SEL
 #define QSFP28_LP_MODE_ATTR_ID(index)		QSFP##index##_LP_MODE
 #define QSFP28_RST_MOD_ATTR_ID(index)		QSFP##index##_RST_MOD
 #define QSFP28_MOD_PRESENT_ATTR_ID(index)	QSFP##index##_MOD_PRESENT
 #define QSFP28_EEPROM_ATTR_ID(index)		QSFP##index##_EEPROM
 #define QSFP28_DOM_ATTR_ID(index)			QSFP##index##_DOM
+#define QSFP28_LINK_STATUS_ATTR_ID(index)	QSFP##index##_LINK_STATUS
+#define QSFP28_SPEED_ATTR_ID(index)			QSFP##index##_SPEED
 
 #define SFP_ATTR(iobm_id) \
 		SFP_PRESENT_ATTR_ID(iobm_id),		\
@@ -216,7 +253,9 @@ static struct platform_driver extreme7830_32ce_8de_iobm_driver = {
 		SFP_RXLOS_ATTR_ID(iobm_id),		\
 		SFP_TXDIS_ATTR_ID(iobm_id),		\
 		SFP_EEPROM_ATTR_ID(iobm_id),		\
-		SFP_DOM_ATTR_ID(iobm_id)
+		SFP_DOM_ATTR_ID(iobm_id),		\
+		SFP_LINK_STATUS_ATTR_ID(iobm_id),		\
+		SFP_SPEED_ATTR_ID(iobm_id)
 
 #define QSFP28_ATTR(iobm_id) \
 		QSFP28_MOD_SEL_ATTR_ID(iobm_id),		\
@@ -224,14 +263,17 @@ static struct platform_driver extreme7830_32ce_8de_iobm_driver = {
 		QSFP28_RST_MOD_ATTR_ID(iobm_id),		\
 		QSFP28_MOD_PRESENT_ATTR_ID(iobm_id),		\
 		QSFP28_EEPROM_ATTR_ID(iobm_id),		\
-		QSFP28_DOM_ATTR_ID(iobm_id)
-	
+		QSFP28_DOM_ATTR_ID(iobm_id),		\
+		QSFP28_LINK_STATUS_ATTR_ID(iobm_id),		\
+		QSFP28_SPEED_ATTR_ID(iobm_id)
+
 enum extreme7830_32ce_8de_iobm_sysfs_attrs {
 	/* psu attributes */
 	SFP_ATTR(1),
 	QSFP28_ATTR(1),
 	NUM_OF_IOBM_ATTR,
-	NUM_OF_PER_IOBM_ATTR = (NUM_OF_IOBM_ATTR/NUM_OF_IOBM)
+	NUM_OF_PER_IOBM_ATTR = (NUM_OF_IOBM_ATTR/NUM_OF_IOBM),
+	PRIMARY_INTERFACE
 };
 
 /* iobm attributes */
@@ -241,14 +283,23 @@ enum extreme7830_32ce_8de_iobm_sysfs_attrs {
 		static SENSOR_DEVICE_ATTR(sfp##index##_rxlos, S_IRUGO, show_io,	 NULL, SFP##index##_RXLOS); \
 		static SENSOR_DEVICE_ATTR(sfp##index##_txdis, S_IWUSR | S_IRUGO, show_io,  set_io, SFP##index##_TXDIS); \
 		static SENSOR_DEVICE_ATTR(sfp##index##_eeprom, S_IRUGO, show_eeprom,	 NULL, SFP##index##_EEPROM); \
-		static SENSOR_DEVICE_ATTR(sfp##index##_dom, S_IRUGO, show_dom,	 NULL, SFP##index##_DOM)
+		static SENSOR_DEVICE_ATTR(sfp##index##_dom, S_IRUGO, show_dom,	 NULL, SFP##index##_DOM); \
+		static SENSOR_DEVICE_ATTR(sfp##index##_link_status, S_IRUGO, show_status,	 NULL, SFP##index##_LINK_STATUS); \
+		static SENSOR_DEVICE_ATTR(sfp##index##_speed, S_IRUGO, show_status,  NULL, SFP##index##_SPEED)
+
 #define DECLARE_QSFP28_SENSOR_DEVICE_ATTR(index) \
 		static SENSOR_DEVICE_ATTR(qsfp##index##_mod_sel, S_IWUSR | S_IRUGO, show_io,  NULL, QSFP##index##_MOD_SEL); \
 		static SENSOR_DEVICE_ATTR(qsfp##index##_lp_mode, S_IWUSR | S_IRUGO, show_io,  set_io, QSFP##index##_LP_MODE); \
 		static SENSOR_DEVICE_ATTR(qsfp##index##_rst_mod, S_IWUSR | S_IRUGO, show_io,	 set_io, QSFP##index##_RST_MOD); \
 		static SENSOR_DEVICE_ATTR(qsfp##index##_mod_present, S_IRUGO, show_io,  NULL, QSFP##index##_MOD_PRESENT); \
 		static SENSOR_DEVICE_ATTR(qsfp##index##_eeprom, S_IRUGO, show_eeprom,	 NULL, QSFP##index##_EEPROM); \
-		static SENSOR_DEVICE_ATTR(qsfp##index##_dom, S_IRUGO, show_dom,	 NULL, QSFP##index##_DOM)
+		static SENSOR_DEVICE_ATTR(qsfp##index##_dom, S_IRUGO, show_dom,	 NULL, QSFP##index##_DOM); \
+		static SENSOR_DEVICE_ATTR(qsfp##index##_link_status, S_IRUGO, show_status,  NULL, QSFP##index##_LINK_STATUS); \
+		static SENSOR_DEVICE_ATTR(qsfp##index##_speed, S_IRUGO, show_status,  NULL, QSFP##index##_SPEED)
+
+
+#define DECLARE_PRIMARY_SENSOR_DEVICE_ATTR \
+		static SENSOR_DEVICE_ATTR(primary_interface, S_IRUGO, show_status,  NULL, PRIMARY_INTERFACE) \
 
 #define DECLARE_SFP_ATTR(index) \
 		&sensor_dev_attr_sfp##index##_present.dev_attr.attr, \
@@ -256,22 +307,35 @@ enum extreme7830_32ce_8de_iobm_sysfs_attrs {
 		&sensor_dev_attr_sfp##index##_rxlos.dev_attr.attr, \
 		&sensor_dev_attr_sfp##index##_txdis.dev_attr.attr, \
 		&sensor_dev_attr_sfp##index##_eeprom.dev_attr.attr, \
-		&sensor_dev_attr_sfp##index##_dom.dev_attr.attr
+		&sensor_dev_attr_sfp##index##_dom.dev_attr.attr, \
+		&sensor_dev_attr_sfp##index##_link_status.dev_attr.attr, \
+		&sensor_dev_attr_sfp##index##_speed.dev_attr.attr
+
+
 #define DECLARE_QSFP28_ATTR(index) \
 		&sensor_dev_attr_qsfp##index##_mod_sel.dev_attr.attr, \
 		&sensor_dev_attr_qsfp##index##_lp_mode.dev_attr.attr, \
 		&sensor_dev_attr_qsfp##index##_rst_mod.dev_attr.attr, \
 		&sensor_dev_attr_qsfp##index##_mod_present.dev_attr.attr, \
 		&sensor_dev_attr_qsfp##index##_eeprom.dev_attr.attr, \
-		&sensor_dev_attr_qsfp##index##_dom.dev_attr.attr
-		
+		&sensor_dev_attr_qsfp##index##_dom.dev_attr.attr, \
+		&sensor_dev_attr_qsfp##index##_link_status.dev_attr.attr, \
+		&sensor_dev_attr_qsfp##index##_speed.dev_attr.attr
+
+
+#define DECLARE_PRIMARY_ATTR \
+		&sensor_dev_attr_primary_interface.dev_attr.attr
+
 DECLARE_SFP_SENSOR_DEVICE_ATTR(1);
 DECLARE_QSFP28_SENSOR_DEVICE_ATTR(1);
+DECLARE_PRIMARY_SENSOR_DEVICE_ATTR;
+
 
 static struct attribute *extreme7830_32ce_8de_iobm_attributes[] = {
 	/* iobm attributes */
 	DECLARE_SFP_ATTR(1),
 	DECLARE_QSFP28_ATTR(1),
+	DECLARE_PRIMARY_ATTR,
 	NULL
 };
 
@@ -395,10 +459,10 @@ static struct extreme7830_32ce_8de_iobm_data *extreme7830_32ce_8de_iobm_update_d
 	unsigned char *iobm_status_resp;
 	int status = 0, group=0;
 
-	switch (iobmid) 
+	switch (iobmid)
     {
 		case SFP_1:
-			group = 0; 
+			group = 0;
 			break;
 		case QSFP28_1:
 			group = 1;
@@ -416,7 +480,7 @@ static struct extreme7830_32ce_8de_iobm_data *extreme7830_32ce_8de_iobm_update_d
 
 	data->ipmi.tx_message.netfn = IPMI_APP_NETFN;
 
-	switch (iobmid) 
+	switch (iobmid)
     {
 		case SFP_1:
 			/* Get SFP+ I/O Status */
@@ -475,7 +539,7 @@ static struct extreme7830_32ce_8de_iobm_data *extreme7830_32ce_8de_iobm_update_e
 	data->ipmi.tx_message.netfn = IPMI_SENSOR_NETFN;
 
 	/* Get Transceiver EEPROM - Read EEPROM information */
-	switch (iobmid) 
+	switch (iobmid)
     {
 		case SFP_1:
 			data->ipmi_tx_data[0] = IPMI_IOBM_OFFSET_SFP1;
@@ -525,14 +589,14 @@ static struct extreme7830_32ce_8de_iobm_data *extreme7830_32ce_8de_iobm_update_d
 	data->ipmi.tx_message.netfn = IPMI_SENSOR_NETFN;
 
 	/* Get Transceiver EEPROM - Read digital diagnostics(DOM) */
-	switch (iobmid) 
+	switch (iobmid)
     {
 		case SFP_1:
 			data->ipmi_tx_data[0] = IPMI_IOBM_OFFSET_SFP1;
 			break;
 		case QSFP28_1:
 			data->ipmi_tx_data[0] = IPMI_IOBM_OFFSET_QSFP1;
-			break;			
+			break;
 		default:
 			status = -EIO;
 			goto exit;
@@ -560,6 +624,82 @@ exit:
 	return data;
 }
 
+static struct extreme7830_32ce_8de_iobm_data *extreme7830_32ce_8de_iobm_update_status(struct device_attribute *da)
+{
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+	unsigned char iobmid = attr->index / NUM_OF_PER_IOBM_ATTR;
+	int status = 0, group=0;
+	unsigned char cmd;
+	unsigned short tx_len;
+
+	switch (iobmid)
+    {
+		case SFP_1:
+			group = 0;
+			break;
+		case QSFP28_1:
+			group = 1;
+			break;
+		default:
+			status = -EIO;
+			goto exit;
+	}
+
+	if (time_before(jiffies, data->last_updated_oem_status[group] + HZ) && data->valid_oem_status[group]) {
+		return data;
+	}
+
+	data->valid_oem_status[group] = 0;
+
+	data->ipmi.tx_message.netfn = IPMI_OEM_NETFN;
+
+	switch (attr->index)
+	{
+		case PRIMARY_INTERFACE:
+			cmd = IPMI_IOBM_INTF_ACTIVE_STATUS_CMD;
+			tx_len = 0;
+			status = ipmi_send_message(&data->ipmi, cmd,
+				   data->ipmi_tx_data, tx_len,
+				   data->ipmi_oem_resp[group].primary,
+				   sizeof(data->ipmi_oem_resp[group].primary));
+			break;
+		case SFP1_LINK_STATUS:
+		case SFP1_SPEED:
+			data->ipmi_tx_data[0] = INTERFACE_2;
+			cmd = IPMI_IOBM_INTF_STATUS_CMD;
+			tx_len = 1;
+			status = ipmi_send_message(&data->ipmi, cmd,
+				   data->ipmi_tx_data, tx_len,
+				   data->ipmi_oem_resp[group].status,
+				   sizeof(data->ipmi_oem_resp[group].status));
+			break;
+		case QSFP1_LINK_STATUS:
+		case QSFP1_SPEED:
+			data->ipmi_tx_data[0] = INTERFACE_11;
+			cmd = IPMI_IOBM_INTF_STATUS_CMD;
+			tx_len = 1;
+			status = ipmi_send_message(&data->ipmi, cmd,
+				   data->ipmi_tx_data, tx_len,
+				   data->ipmi_oem_resp[group].status,
+				   sizeof(data->ipmi_oem_resp[group].status));
+			break;
+	}
+
+	if (unlikely(status != 0))
+		goto exit;
+
+	if (unlikely(data->ipmi.rx_result != 0)) {
+		status = -EIO;
+		goto exit;
+	}
+
+	data->last_updated_oem_status[group] = jiffies;
+	data->valid_oem_status[group] = 1;
+
+exit:
+	return data;
+}
+
 static ssize_t show_io(struct device *dev, struct device_attribute *da, char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
@@ -568,10 +708,10 @@ static ssize_t show_io(struct device *dev, struct device_attribute *da, char *bu
 	int error = 0;
 	u8 mask = 0;
 
-	switch (iobmid) 
+	switch (iobmid)
     {
 		case SFP_1:
-			group = 0; 
+			group = 0;
 			break;
 		case QSFP28_1:
 			group = 1;
@@ -583,7 +723,7 @@ static ssize_t show_io(struct device *dev, struct device_attribute *da, char *bu
 
 	mutex_lock(&data->update_lock);
 
-	data = extreme7830_32ce_8de_iobm_update_device(da);	
+	data = extreme7830_32ce_8de_iobm_update_device(da);
 	if (!data->valid_status[group]) {
 		error = -EIO;
 		goto exit;
@@ -628,7 +768,7 @@ static ssize_t show_io(struct device *dev, struct device_attribute *da, char *bu
 	}
 
 	DEBUG_PRINT("\n 7830_32ce_8de_iobm_io_eeprom show_io: iobmid:%d, attr:%d, value:%d \n", iobmid, attr->index, value);
-	
+
 	mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
 
@@ -646,11 +786,11 @@ static ssize_t set_io(struct device *dev, struct device_attribute *da,
 	int error;
 	u8 mask = 0;
 	int value = 0, group = 0;
-	
-	switch (iobmid) 
+
+	switch (iobmid)
     {
 		case SFP_1:
-			group = 0; 
+			group = 0;
 			break;
 		case QSFP28_1:
 			group = 1;
@@ -659,7 +799,7 @@ static ssize_t set_io(struct device *dev, struct device_attribute *da,
 			error = -EIO;
 			goto exit;
 	}
-	
+
 	error = kstrtol(buf, 10, &on);
 	if (error)
 		return error;
@@ -710,29 +850,29 @@ static ssize_t set_io(struct device *dev, struct device_attribute *da,
 			goto exit;
 	}
 
-	
+
 	if (on) {
-		if(attr->index == QSFP1_RST_MOD) {		
+		if(attr->index == QSFP1_RST_MOD) {
 			value |= mask;
 		}
-		else {		
+		else {
 			value &= ~mask;
 		}
 	}
 	else {
-		if(attr->index == QSFP1_RST_MOD) {	
-			value &= ~mask;	
+		if(attr->index == QSFP1_RST_MOD) {
+			value &= ~mask;
 		}
-		else {		
+		else {
 			value |= mask;
 		}
 	}
 
 	DEBUG_PRINT("\n set_io: attr->index:%d, mask:0x%x, value:0x%x", attr->index, mask, value);
-	
-	/* Send IPMI write command */	
+
+	/* Send IPMI write command */
 	data->ipmi_tx_data[4] = value;
-	
+
 	error = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
 				   data->ipmi_tx_data, 5,
 				   NULL, 0);
@@ -766,7 +906,7 @@ static ssize_t show_eeprom(struct device *dev, struct device_attribute *da, char
 		error = -EIO;
 		goto exit;
 	}
-	
+
 	switch (attr->index) {
 		case SFP1_EEPROM:
 		case QSFP1_EEPROM:
@@ -803,7 +943,7 @@ static ssize_t show_dom(struct device *dev, struct device_attribute *da, char *b
 		error = -EIO;
 		goto exit;
 	}
-	
+
 	switch (attr->index) {
 		case SFP1_DOM:
 		case QSFP1_DOM:
@@ -816,10 +956,68 @@ static ssize_t show_dom(struct device *dev, struct device_attribute *da, char *b
 	}
 
 	mutex_unlock(&data->update_lock);
-	
+
 	DEBUG_PRINT("\n 7830_32ce_8de_iobm_io_eeprom show_eeprom: iobmid:%d, attr:%d, count:%d \n", iobmid, attr->index, count);
 
 	return count;
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return error;
+}
+
+static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf)
+{
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+	unsigned char iobmid = attr->index / NUM_OF_PER_IOBM_ATTR;
+	int value = 0, group = 0;
+	int error = 0;
+	int i = 0;
+
+	switch (iobmid)
+    {
+		case SFP_1:
+			group = 0;
+			break;
+		case QSFP28_1:
+			group = 1;
+			break;
+		default:
+			error = -EIO;
+			goto exit;
+	}
+
+	mutex_lock(&data->update_lock);
+
+	data = extreme7830_32ce_8de_iobm_update_status(da);
+	if (!data->valid_oem_status[group]) {
+		error = -EIO;
+		goto exit;
+	}
+
+	switch (attr->index) {
+		case SFP1_LINK_STATUS:
+		case QSFP1_LINK_STATUS:
+			/* Byte 1: Link Up/Down */
+			value = data->ipmi_oem_resp[group].status[LINK_STATUS];
+			break;
+		case SFP1_SPEED:
+		case QSFP1_SPEED:
+			/* Byte 2: Speed */
+			value = data->ipmi_oem_resp[group].status[INTF_SPEED];
+			break;
+		case PRIMARY_INTERFACE:
+			value = data->ipmi_oem_resp[group].primary[ACTIVE_INTF_ID];
+			break;
+		default:
+			error = -EINVAL;
+			goto exit;
+	}
+
+	DEBUG_PRINT("\n 7830_32ce_8de_iobm_io_eeprom show_status: iobmid:%d, attr:%d, value:%d \n", iobmid, attr->index, value);
+
+	mutex_unlock(&data->update_lock);
+	return sprintf(buf, "%d\n", value);
 
 exit:
 	mutex_unlock(&data->update_lock);
@@ -830,7 +1028,7 @@ static int extreme7830_32ce_8de_iobm_probe(struct platform_device *pdev)
 {
 	int status = -1;
 
-	/* Register sysfs hooks */	
+	/* Register sysfs hooks */
 	status = sysfs_create_group(&pdev->dev.kobj, &extreme7830_32ce_8de_iobm_group);
 	if (status) {
 		goto exit;
@@ -880,7 +1078,7 @@ static int __init extreme7830_32ce_8de_iobm_init(void)
 	ret = init_ipmi_data(&data->ipmi, 0, &data->pdev->dev);
 	if (ret)
 		goto ipmi_err;
-	
+
 
 	return 0;
 

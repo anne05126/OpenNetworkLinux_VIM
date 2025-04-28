@@ -11,7 +11,7 @@
  * Based on:
  * Copyright (C) 2021 Alphanetworks Technology Corporation.
  * Fillmore Chen <fillmore_chen@alphanetworks.com>
- * 
+ *
  * Based on:
  * Copyright (C) 2021 Accton Technology Corporation.
  * Copyright (C)  Alex Lai <alex_lai@edge-core.com>
@@ -59,9 +59,8 @@
 #define IPMI_READ_BYTE							0x01 	/* Read */
 
 #define IPMI_LED_Ctrl_1_OFFSET		        	0x51
-#define IPMI_LED_Ctrl_4_OFFSET		        	0x54
 
-#define sw_led_control                      	0x80 
+#define SW_LED_CONTROL                      	0x80
 
 
 /* LED Control Register 1
@@ -70,23 +69,9 @@
  * bit 4, 3: FAN 00=OFF, 01=Solid Green, 10=Solid Amber, 11=Blinking Amber-Green
  * bit 2, 0: PSU 000=OFF, 001=Blinking Green, 010=Solid Green, 011=Blinking Amber, 100=Solid Amber, 101=Blinking Green and Amber, 110-111=Reserved
  */
-#define PSU_LED_BIT_OFFSET                  	0x0 
+#define PSU_LED_BIT_OFFSET                  	0x0
 #define FAN_LED_BIT_OFFSET                  	0x3
-
-
-/* LED Control Register 4 (Read Only)
- * bit 7, 5: Reseved
- * bit 4, 3: Status 00=OFF, 01=Solid Green, 10=Solid Amber, 11=Blinking Amber-Green
- * bit 2, 0: Not Use
- */
-#define STAT_LED_BIT_OFFSET						0x3     
-
-
-/* STAT_LED(STATUS_LED) */
-#define STAT_LED_MODE_OFF                 		0x0
-#define STAT_LED_MODE_GREEN               		0x1
-#define STAT_LED_MODE_AMBER               		0x2
-#define STAT_LED_MODE_GREEN_AMBER_BLINKING 		0x3
+#define LED_CONTROL_BIT_OFFSET					0x7
 
 /* FAN_LED (map to driver) */
 #define FAN_LED_MODE_OFF                    	0x0
@@ -101,6 +86,10 @@
 #define PSU_LED_MODE_AMBER_BLINKING        		0x3
 #define PSU_LED_MODE_AMBER        				0x4
 #define PSU_LED_MODE_GREEN_AMBER_BLINKING  		0x5
+
+/* LED_CONTROL */
+#define CONTROL_BY_HW                           0x0
+#define CONTROL_BY_SW                           0x1
 
 #define IPMI_TIMEOUT				        	(20 * HZ)
 #define IPMI_ERR_RETRY_TIMES		        	1
@@ -137,11 +126,9 @@ static int extreme7830_32ce_8de_led_remove(struct platform_device *pdev);
 
 
 enum led_data_index {
-	PWR_INDEX = 0,
- 	STAT_INDEX,
- 	FAN_INDEX,
+ 	FAN_INDEX = 0,
  	PSU_INDEX,
- 	SEC_INDEX
+ 	LED_CONTROL_INDEX
 };
 
 typedef struct ipmi_user *ipmi_user_t;
@@ -169,7 +156,7 @@ struct extreme7830_32ce_8de_led_data {
 	char                            valid[2];           /* != 0 if registers are valid */
                                                         /* 0: LED Control Register 0, 1: LED Control Register 4 */
 	unsigned long                   last_updated[2];    /* In jiffies  0: LED Control Register 0, 1: LED Control Register 4 */
-	struct ipmi_data ipmi;   
+	struct ipmi_data ipmi;
 	unsigned char                   ipmi_resp[2];       /* 0: LED Control Register 0, 1: LED Control Register 4 */
 	unsigned char                   ipmi_tx_data[4];
 };
@@ -186,21 +173,20 @@ static struct platform_driver extreme7830_32ce_8de_led_driver = {
 };
 
 enum extreme7830_32ce_8de_led_sysfs_attrs {
-	LED_STAT,
 	LED_FAN,
-	LED_PSU
+	LED_PSU,
+	LED_CONTROL
 };
 
 
-static SENSOR_DEVICE_ATTR(led_status, S_IRUGO, show_led_by_bmc, NULL, LED_STAT);
 static SENSOR_DEVICE_ATTR(led_fan, S_IWUSR | S_IRUGO, show_led_by_bmc, set_led_by_bmc, LED_FAN);
 static SENSOR_DEVICE_ATTR(led_psu, S_IWUSR | S_IRUGO, show_led_by_bmc, set_led_by_bmc, LED_PSU);
-
+static SENSOR_DEVICE_ATTR(led_control, S_IWUSR | S_IRUGO, show_led_by_bmc, set_led_by_bmc, LED_CONTROL);
 
 static struct attribute *extreme7830_32ce_8de_led_attributes[] = {
-	&sensor_dev_attr_led_status.dev_attr.attr,
 	&sensor_dev_attr_led_fan.dev_attr.attr,
 	&sensor_dev_attr_led_psu.dev_attr.attr,
+	&sensor_dev_attr_led_control.dev_attr.attr,
 	NULL
 };
 
@@ -291,17 +277,17 @@ static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 	int status = 0, retry = 0;
 
 	for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
-		status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, 
+		status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len,
 					    rx_data, rx_len);
 		if (unlikely(status != 0)) {
-			dev_err(&data->pdev->dev, 
+			dev_err(&data->pdev->dev,
 				"ipmi_send_message_%d err status(%d)\r\n",
 				retry, status);
 			continue;
 		}
 
 		if (unlikely(ipmi->rx_result != 0)) {
-			dev_err(&data->pdev->dev, 
+			dev_err(&data->pdev->dev,
 				"ipmi_send_message_%d err result(%d)\r\n",
 				retry, ipmi->rx_result);
 			continue;
@@ -355,39 +341,35 @@ extreme7830_32ce_8de_led_update_device(struct device_attribute *da)
 	unsigned char group = attr->index;
 	int status = 0;
 
-	switch (attr->index) 
+	switch (attr->index)
 	{
 		case LED_FAN:
 		case LED_PSU:
+		case LED_CONTROL:
 			group = 0;
-			break;
-		case LED_STAT: 
-			group = 1;
 			break;
 		default:
 			status = -EIO;
 			goto exit;
 	}
 
-	if (time_before(jiffies, data->last_updated[group] + HZ * 5) && 
+	if (time_before(jiffies, data->last_updated[group] + HZ * 5) &&
                 data->valid[group])
 		return data;
 
 	data->valid[group] = 0;
-	
+
 	/* Get LED status from ipmi */
 	data->ipmi_tx_data[0] = IPMI_PWRCPLD_BUS;
 	data->ipmi_tx_data[1] = IPMI_PWRCPLD_ADDRESS;
 	data->ipmi_tx_data[2] = IPMI_READ_BYTE;
 
-	switch (attr->index) 
+	switch (attr->index)
     {
 		case LED_FAN:
 		case LED_PSU:
+		case LED_CONTROL:
 			data->ipmi_tx_data[3] = IPMI_LED_Ctrl_1_OFFSET;
-			break;
-		case LED_STAT:
-			data->ipmi_tx_data[3] = IPMI_LED_Ctrl_4_OFFSET;
 			break;
 		default:
 			status = -EIO;
@@ -427,20 +409,18 @@ static ssize_t show_led_by_bmc(struct device *dev, struct device_attribute *da,
 
 	data = extreme7830_32ce_8de_led_update_device(da);
 
-	switch (attr->index) 
+	switch (attr->index)
 	{
 		case LED_FAN:
 		case LED_PSU:
+		case LED_CONTROL:
 			group = 0;
-			break;
-		case LED_STAT:
-			group = 1;
 			break;
 		default:
 			error = -EIO;
 			goto exit;
 	}
-	
+
 	if (!data->valid[group]) {
 		error = -EIO;
 		goto exit;
@@ -449,10 +429,6 @@ static ssize_t show_led_by_bmc(struct device *dev, struct device_attribute *da,
     DEBUG_PRINT("extreme7830_32ce_8de_484t show_led_by_bmc: ipmi_resp[%d]:0x%x", group, data->ipmi_resp[group]);
 
 	switch (attr->index) {
-		case LED_STAT:
-			mask = 0x3 << STAT_LED_BIT_OFFSET;
-			value = (data->ipmi_resp[group] & mask) >> STAT_LED_BIT_OFFSET;
-			break;	
 		case LED_FAN:
 			mask = 0x3 << FAN_LED_BIT_OFFSET;
 			value = (data->ipmi_resp[group] & mask) >> FAN_LED_BIT_OFFSET;
@@ -460,6 +436,10 @@ static ssize_t show_led_by_bmc(struct device *dev, struct device_attribute *da,
 		case LED_PSU:
 			mask = 0x7 << PSU_LED_BIT_OFFSET;
 			value = (data->ipmi_resp[group] & mask) >> PSU_LED_BIT_OFFSET;
+			break;
+		case LED_CONTROL:
+			mask = 0x1 << LED_CONTROL_BIT_OFFSET;
+			value = (data->ipmi_resp[group] & mask) >> LED_CONTROL_BIT_OFFSET;
 			break;
 	default:
 		error = -EINVAL;
@@ -484,18 +464,19 @@ static ssize_t set_led_by_bmc(struct device *dev, struct device_attribute *da,
 	int error;
 	u8 mask = 0;
 	int value = 0;
-	
-	switch (attr->index) 
+
+	switch (attr->index)
 	{
 		case LED_FAN:
 		case LED_PSU:
+		case LED_CONTROL:
 			group = 0;
 			break;
 		default:
 			error = -EIO;
 			goto exit;
 	}
-	
+
 	error = kstrtol(buf, 10, &mode);
 	if (error)
 		return error;
@@ -507,7 +488,7 @@ static ssize_t set_led_by_bmc(struct device *dev, struct device_attribute *da,
 		error = -EIO;
 		goto exit;
 	}
-	
+
 	DEBUG_PRINT("set_led_by_bmc: attr->index:%d, data->ipmi_resp[%d]:0x%x", attr->index, group, data->ipmi_resp[group]);
 
 	switch (attr->index) {
@@ -566,31 +547,58 @@ static ssize_t set_led_by_bmc(struct device *dev, struct device_attribute *da,
 				goto exit;
 			}
 			break;
+		case LED_CONTROL:
+			mask = ~(0x1 << LED_CONTROL_BIT_OFFSET);
+			value = data->ipmi_resp[group] & mask;
+			if(mode == CONTROL_BY_HW) {
+				data->ipmi_resp[group] = value;
+			}
+			else if(mode == CONTROL_BY_SW) {
+				mask = CONTROL_BY_SW << LED_CONTROL_BIT_OFFSET;
+				data->ipmi_resp[group] = value | mask;
+			}
+			else {
+				error = -EINVAL;
+				goto exit;
+			}
+			break;
 		default:
 			error = -EINVAL;
 			goto exit;
 	}
 
 	DEBUG_PRINT("set_led_by_bmc: attr->index:%d, mask:0x%x, value:0x%x, data->ipmi_resp[%d]:0x%x", attr->index, mask, value, group, data->ipmi_resp[group]);
-	
+
 	/* Send IPMI write command */
 	data->ipmi_tx_data[0] = IPMI_PWRCPLD_BUS;
 	data->ipmi_tx_data[1] = IPMI_PWRCPLD_ADDRESS;
 	data->ipmi_tx_data[2] = IPMI_READ_BYTE;
 
-	switch (attr->index) 
-    {
+	switch (attr->index)
+	{
 		case LED_FAN:
 		case LED_PSU:
+		case LED_CONTROL:
 			data->ipmi_tx_data[3] = IPMI_LED_Ctrl_1_OFFSET;
 			break;
 		default:
 			error = -EIO;
 			goto exit;
 	}
-	
-	data->ipmi_tx_data[4] = data->ipmi_resp[group] | sw_led_control;
-	
+
+	switch (attr->index)
+	{
+		case LED_FAN:
+		case LED_PSU:
+			data->ipmi_tx_data[4] = data->ipmi_resp[group] | SW_LED_CONTROL;
+			break;
+		case LED_CONTROL:
+			data->ipmi_tx_data[4] = data->ipmi_resp[group];
+			break;
+		default:
+			break;
+	}
+
 	error = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
 				   data->ipmi_tx_data, 5,
 				   NULL, 0);
@@ -619,7 +627,7 @@ static int extreme7830_32ce_8de_led_probe(struct platform_device *pdev)
 	if (status) {
 		goto exit;
 	}
-    
+
 	dev_info(&pdev->dev, "device created\n");
 
 	return 0;
