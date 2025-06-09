@@ -82,13 +82,9 @@ Athena Design
 #define IPMI_IOBM_INTF_STATUS_CMD			0x40	/* Link status and speed */
 #define IPMI_IOBM_INTF_ACTIVE_STATUS_CMD	0xC3	/* Primary/Backup status */
 
+#define INTERFACE_1							0x1		/* copper */
 #define INTERFACE_2							0x2		/* SFP+ */
 #define INTERFACE_11						0xB		/* QSFP28 */
-
-#define LINK_STATUS_BYTE_OFFSET				0x0
-#define SPEED_BYTE_OFFSET					0x8
-#define PRIMARY_BYTE_OFFSET					0x8
-#define BYTE_MASK							0xFF
 
 /* Get/Set QSFP28/SFP+ I/O Status */
 #define IPMI_APP_NETFN					0x6
@@ -143,6 +139,7 @@ static int extreme7830_32ce_8de_iobm_remove(struct platform_device *pdev);
 enum iobm_id {
 	SFP_1,
 	QSFP28_1,
+	COPPER_1,
 	NUM_OF_IOBM
 };
 
@@ -164,6 +161,12 @@ enum qsfp28_status_bit_index {
 enum iobm_intf_status_resp_byte {
 	LINK_STATUS = 0,
 	INTF_SPEED
+};
+
+enum iobm_intf_status_id {
+	LINK_STATUS_ID,
+	INTF_SPEED_ID,
+	NUM_OF_IOBM_INTF_STATUS
 };
 
 enum iobm_intf_active_status_resp_byte {
@@ -203,18 +206,19 @@ struct ipmi_iobm_resp_status {
 struct extreme7830_32ce_8de_iobm_data {
 	struct platform_device *pdev;
 	struct mutex	 update_lock;
-	char			 valid[2]; 						/* 0: SFP1, 1: QSFP28 */
-	char			 valid_status[2]; 				/* != 0 if registers are valid */
-	char			 valid_oem_status[2]; 			/* != 0 if registers are valid */
+	char			 valid[3]; 						/* 0: SFP1, 1: QSFP28, 2: copper */
+	char			 valid_status[3]; 				/* != 0 if registers are valid */
+	char			 valid_oem_status[3]; 			/* != 0 if registers are valid */
 							    	  				/* 0: SFP1, 1: QSFP28 */
-	unsigned long	 last_updated[2];	 			/* In jiffies, 0: SFP1, 1: QSFP28 */
-	unsigned long	 last_updated_status[2]; 		/* In jiffies, 0: SFP1, 1: QSFP28 */
-	unsigned long	 last_updated_oem_status[2];	/* In jiffies, 0: SFP1, 1: QSFP28 */
+	unsigned long	 last_updated[3];	 			/* In jiffies, 0: SFP1, 1: QSFP28, 2: copper */
+	unsigned long	 last_updated_status[3]; 		/* In jiffies, 0: SFP1, 1: QSFP28, 2: copper */
+	unsigned long	 last_updated_oem_status[3];	/* In jiffies, 0: SFP1, 1: QSFP28, 2: copper */
 	struct ipmi_data ipmi;
-	struct ipmi_iobm_resp_data ipmi_resp[2]; 		/* 0: SFP1, 1: QSFP28 */
-	struct ipmi_iobm_resp_status ipmi_oem_resp[2];	/* 0: SFP1, 1: QSFP28 */
+	struct ipmi_iobm_resp_data ipmi_resp[3]; 		/* 0: SFP1, 1: QSFP28, 2: copper */
+	struct ipmi_iobm_resp_status ipmi_oem_resp[3];	/* 0: SFP1, 1: QSFP28, 2: copper */
 	unsigned char ipmi_sfp_status;
 	unsigned char ipmi_qsfp_status;
+	unsigned char ipmi_copper_status;
 	unsigned char ipmi_tx_data[5];
 };
 
@@ -247,6 +251,9 @@ static struct platform_driver extreme7830_32ce_8de_iobm_driver = {
 #define QSFP28_LINK_STATUS_ATTR_ID(index)	QSFP##index##_LINK_STATUS
 #define QSFP28_SPEED_ATTR_ID(index)			QSFP##index##_SPEED
 
+#define COPPER_LINK_STATUS_ATTR_ID(index)	COPPER##index##_LINK_STATUS
+#define COPPER_SPEED_ATTR_ID(index)			COPPER##index##_SPEED
+
 #define SFP_ATTR(iobm_id) \
 		SFP_PRESENT_ATTR_ID(iobm_id),		\
 		SFP_TXFAULT_ATTR_ID(iobm_id),		\
@@ -267,12 +274,18 @@ static struct platform_driver extreme7830_32ce_8de_iobm_driver = {
 		QSFP28_LINK_STATUS_ATTR_ID(iobm_id),		\
 		QSFP28_SPEED_ATTR_ID(iobm_id)
 
+#define COPPER_ATTR(iobm_id) \
+		COPPER_LINK_STATUS_ATTR_ID(iobm_id),		\
+		COPPER_SPEED_ATTR_ID(iobm_id)
+
+
 enum extreme7830_32ce_8de_iobm_sysfs_attrs {
-	/* psu attributes */
+	/* iobm attributes */
 	SFP_ATTR(1),
 	QSFP28_ATTR(1),
+	COPPER_ATTR(1),
 	NUM_OF_IOBM_ATTR,
-	NUM_OF_PER_IOBM_ATTR = (NUM_OF_IOBM_ATTR/NUM_OF_IOBM),
+	NUM_OF_PER_IOBM_ATTR = ((NUM_OF_IOBM_ATTR - NUM_OF_IOBM_INTF_STATUS) / (NUM_OF_IOBM - 1)),
 	PRIMARY_INTERFACE
 };
 
@@ -297,9 +310,13 @@ enum extreme7830_32ce_8de_iobm_sysfs_attrs {
 		static SENSOR_DEVICE_ATTR(qsfp##index##_link_status, S_IRUGO, show_status,  NULL, QSFP##index##_LINK_STATUS); \
 		static SENSOR_DEVICE_ATTR(qsfp##index##_speed, S_IRUGO, show_status,  NULL, QSFP##index##_SPEED)
 
+#define DECLARE_COPPER_SENSOR_DEVICE_ATTR(index) \
+		static SENSOR_DEVICE_ATTR(copper##index##_link_status, S_IRUGO, show_status,  NULL, COPPER##index##_LINK_STATUS); \
+		static SENSOR_DEVICE_ATTR(copper##index##_speed, S_IRUGO, show_status,  NULL, COPPER##index##_SPEED)
 
 #define DECLARE_PRIMARY_SENSOR_DEVICE_ATTR \
 		static SENSOR_DEVICE_ATTR(primary_interface, S_IRUGO, show_status,  NULL, PRIMARY_INTERFACE) \
+
 
 #define DECLARE_SFP_ATTR(index) \
 		&sensor_dev_attr_sfp##index##_present.dev_attr.attr, \
@@ -323,18 +340,27 @@ enum extreme7830_32ce_8de_iobm_sysfs_attrs {
 		&sensor_dev_attr_qsfp##index##_speed.dev_attr.attr
 
 
+#define DECLARE_COPPER_ATTR(index) \
+		&sensor_dev_attr_copper##index##_link_status.dev_attr.attr, \
+		&sensor_dev_attr_copper##index##_speed.dev_attr.attr
+
+
 #define DECLARE_PRIMARY_ATTR \
 		&sensor_dev_attr_primary_interface.dev_attr.attr
 
+
 DECLARE_SFP_SENSOR_DEVICE_ATTR(1);
 DECLARE_QSFP28_SENSOR_DEVICE_ATTR(1);
+DECLARE_COPPER_SENSOR_DEVICE_ATTR(1);
 DECLARE_PRIMARY_SENSOR_DEVICE_ATTR;
+
 
 
 static struct attribute *extreme7830_32ce_8de_iobm_attributes[] = {
 	/* iobm attributes */
 	DECLARE_SFP_ATTR(1),
 	DECLARE_QSFP28_ATTR(1),
+	DECLARE_COPPER_ATTR(1),
 	DECLARE_PRIMARY_ATTR,
 	NULL
 };
@@ -640,6 +666,9 @@ static struct extreme7830_32ce_8de_iobm_data *extreme7830_32ce_8de_iobm_update_s
 		case QSFP28_1:
 			group = 1;
 			break;
+		case COPPER_1:
+			group = 2;
+			break;
 		default:
 			status = -EIO;
 			goto exit;
@@ -676,6 +705,16 @@ static struct extreme7830_32ce_8de_iobm_data *extreme7830_32ce_8de_iobm_update_s
 		case QSFP1_LINK_STATUS:
 		case QSFP1_SPEED:
 			data->ipmi_tx_data[0] = INTERFACE_11;
+			cmd = IPMI_IOBM_INTF_STATUS_CMD;
+			tx_len = 1;
+			status = ipmi_send_message(&data->ipmi, cmd,
+				   data->ipmi_tx_data, tx_len,
+				   data->ipmi_oem_resp[group].status,
+				   sizeof(data->ipmi_oem_resp[group].status));
+			break;
+		case COPPER1_LINK_STATUS:
+		case COPPER1_SPEED:
+			data->ipmi_tx_data[0] = INTERFACE_1;
 			cmd = IPMI_IOBM_INTF_STATUS_CMD;
 			tx_len = 1;
 			status = ipmi_send_message(&data->ipmi, cmd,
@@ -972,7 +1011,6 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da, char
 	unsigned char iobmid = attr->index / NUM_OF_PER_IOBM_ATTR;
 	int value = 0, group = 0;
 	int error = 0;
-	int i = 0;
 
 	switch (iobmid)
     {
@@ -981,6 +1019,9 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da, char
 			break;
 		case QSFP28_1:
 			group = 1;
+			break;
+		case COPPER_1:
+			group = 2;
 			break;
 		default:
 			error = -EIO;
@@ -998,11 +1039,13 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da, char
 	switch (attr->index) {
 		case SFP1_LINK_STATUS:
 		case QSFP1_LINK_STATUS:
+		case COPPER1_LINK_STATUS:
 			/* Byte 1: Link Up/Down */
 			value = data->ipmi_oem_resp[group].status[LINK_STATUS];
 			break;
 		case SFP1_SPEED:
 		case QSFP1_SPEED:
+		case COPPER1_SPEED:
 			/* Byte 2: Speed */
 			value = data->ipmi_oem_resp[group].status[INTF_SPEED];
 			break;
