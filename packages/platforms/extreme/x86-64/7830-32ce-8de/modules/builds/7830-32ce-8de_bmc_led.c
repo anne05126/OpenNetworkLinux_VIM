@@ -154,10 +154,10 @@ struct extreme7830_32ce_8de_led_data {
 	struct platform_device 			*pdev;
 	struct mutex                    update_lock;
 	char                            valid[2];           /* != 0 if registers are valid */
-                                                        /* 0: LED Control Register 0, 1: LED Control Register 4 */
-	unsigned long                   last_updated[2];    /* In jiffies  0: LED Control Register 0, 1: LED Control Register 4 */
+                                                        /* 0: LED Control Register 1 */
+	unsigned long                   last_updated[2];    /* In jiffies  0: LED Control Register 1 */
 	struct ipmi_data ipmi;
-	unsigned char                   ipmi_resp[2];       /* 0: LED Control Register 0, 1: LED Control Register 4 */
+	unsigned char                   ipmi_resp[2];       /* 0: LED Control Register 1 */
 	unsigned char                   ipmi_tx_data[4];
 };
 

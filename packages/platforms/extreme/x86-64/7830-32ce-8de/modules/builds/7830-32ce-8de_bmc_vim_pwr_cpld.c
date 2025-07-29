@@ -68,19 +68,19 @@ static int extreme7830_32ce_8de_vim_pwr_cpld_remove(struct platform_device *pdev
 
 enum vim_id
 {
-    VIM_1, 
+    VIM_1,
     VIM_2,
     VIM_ID_MAX
 };
 
 enum vim_type_id
 {
-    VIM_8DE, 
+    VIM_8DE,
     VIM_16CE,
     VIM_24CE,
     VIM_24YE,
-    VIM_NONE, 
-    VIM_TYPE_ID_MAX 
+    VIM_NONE,
+    VIM_TYPE_ID_MAX
 };
 
 typedef struct ipmi_user *ipmi_user_t;
@@ -105,12 +105,12 @@ struct ipmi_data {
 struct extreme7830_32ce_8de_vim_pwr_cpld_data {
 	struct platform_device 			*pdev;
 	struct mutex                    update_lock;
-	char                            valid[2];                   /* != 0 if registers are valid */
-	unsigned long                   last_updated[2];            /* In jiffies */
-	struct ipmi_data ipmi;   
+	char                            valid[4];                   /* != 0 if registers are valid. 0: VIM_1_VERSION, 1: VIM_2_VERSION, 2: VIM_1_BOARD_ID, 3: VIM_2_BOARD_ID */
+	unsigned long                   last_updated[4];            /* In jiffies. 0: VIM_1_VERSION, 1: VIM_2_VERSION, 2: VIM_1_BOARD_ID, 3: VIM_2_BOARD_ID */
+	struct ipmi_data ipmi;
 
-    /* bit0: VIM1_BOARD_ID, bit1: VIM2_BOARD_ID */
-    unsigned char   ipmi_resp[2];   
+    /* 0: VIM_1_VERSION, 1: VIM_2_VERSION, 2: VIM_1_BOARD_ID, 3: VIM_2_BOARD_ID */
+    unsigned char   ipmi_resp[4];
 	unsigned char   ipmi_tx_data[5];
 };
 
@@ -132,9 +132,9 @@ static struct platform_driver extreme7830_32ce_8de_vim_pwr_cpld_driver = {
 enum extreme7830_32ce_8de_vim_pwr_cpld_sysfs_attributes {
     /* VIM attributes */
 	VIM_VERSION_ATTR_ID(1),
-    VIM_VERSION_ATTR_ID(2), 
+    VIM_VERSION_ATTR_ID(2),
     VIM_BOARD_ID_ATTR_ID(1),
-    VIM_BOARD_ID_ATTR_ID(2),  
+    VIM_BOARD_ID_ATTR_ID(2),
 };
 
 /* VIM_BOARD_ID attributes */
@@ -247,17 +247,17 @@ static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 	int status = 0, retry = 0;
 
 	for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
-		status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, 
+		status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len,
 					    rx_data, rx_len);
 		if (unlikely(status != 0)) {
-			dev_err(&data->pdev->dev, 
+			dev_err(&data->pdev->dev,
 				"ipmi_send_message_%d err status(%d)\r\n",
 				retry, status);
 			continue;
 		}
 
 		if (unlikely(ipmi->rx_result != 0)) {
-			dev_err(&data->pdev->dev, 
+			dev_err(&data->pdev->dev,
 				"ipmi_send_message_%d err result(%d)\r\n",
 				retry, ipmi->rx_result);
 			continue;
@@ -349,16 +349,16 @@ static struct extreme7830_32ce_8de_vim_pwr_cpld_data *extreme7830_32ce_8de_vim_p
 	unsigned char vid = attr->index % VIM_ID_MAX;
 	int status = 0;
 
-	if (time_before(jiffies, data->last_updated[vid] + HZ * 5) && data->valid[vid]) {
+	if (time_before(jiffies, data->last_updated[attr->index] + HZ * 5) && data->valid[attr->index]) {
 		return data;
 	}
 
-	data->valid[vid] = 0;
+	data->valid[attr->index] = 0;
 
 	/* VIM1 version: ipmitool i2c bus=0 chan=6 0xBA 1 0x0
-	 * VIM2 version: ipmitool i2c bus=0 chan=7 0xBA 1 0x0 
+	 * VIM2 version: ipmitool i2c bus=0 chan=7 0xBA 1 0x0
 	 * VIM1 board id: ipmitool i2c bus=0 chan=6 0xBA 1 0x01
-	 * VIM2 board id: ipmitool i2c bus=0 chan=7 0xBA 1 0x01 
+	 * VIM2 board id: ipmitool i2c bus=0 chan=7 0xBA 1 0x01
 	 */
 	data->ipmi.tx_message.netfn = IPMI_APP_NETFN;
 
@@ -372,12 +372,12 @@ static struct extreme7830_32ce_8de_vim_pwr_cpld_data *extreme7830_32ce_8de_vim_p
 		default:
 			return -EINVAL;
 	}
-	
+
 	/* Get VIM Board ID and Version from VIM Power CPLD */
 	data->ipmi_tx_data[1] = IPMI_VIM_PWRCPLD_ADDRESS;
 	data->ipmi_tx_data[2] = IPMI_READ_BYTE;
 
-	switch (attr->index) 
+	switch (attr->index)
 	{
 		case VIM_1_VERSION:
 		case VIM_2_VERSION:
@@ -393,22 +393,22 @@ static struct extreme7830_32ce_8de_vim_pwr_cpld_data *extreme7830_32ce_8de_vim_p
 			status = -EIO;
 			goto exit;
 	}
-	
+
 	status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
 				data->ipmi_tx_data, 4,
-				&data->ipmi_resp[vid],
-				sizeof(data->ipmi_resp[vid]));
+				&data->ipmi_resp[attr->index],
+				sizeof(data->ipmi_resp[attr->index]));
 	if (unlikely(status != 0)) {
 		goto exit;
 	}
-	
+
 	if (unlikely(data->ipmi.rx_result != 0)) {
 		status = -EIO;
 		goto exit;
 	}
 
-	data->last_updated[vid] = jiffies;
-	data->valid[vid] = 1;
+	data->last_updated[attr->index] = jiffies;
+	data->valid[attr->index] = 1;
 
 exit:
 	return data;
@@ -456,24 +456,24 @@ static ssize_t show_vim_cpld_version(struct device *dev, struct device_attribute
         case VIM_2_VERSION:
 			VALIDATE_PRESENT_RETURN(vid);
 			data = extreme7830_32ce_8de_vim_pwr_cpld_update_status_data(da);
-			if (!data->valid[vid]) {
+			if (!data->valid[attr->index]) {
 				error = -EIO;
 				goto exit;
 			}
-			
-			value = data->ipmi_resp[vid] & VIM_CPLD_VERSION_BITS_MASK;
+
+			value = data->ipmi_resp[attr->index] & VIM_CPLD_VERSION_BITS_MASK;
 			break;
 		default:
 			return -EINVAL;
 	}
 
 	mutex_unlock(&data->update_lock);
-	DEBUG_PRINT("7830_32ce_8de show_vim_cpld_version: data->ipmi_resp[%d]:0x%x", vid, data->ipmi_resp[vid]);
+	DEBUG_PRINT("7830_32ce_8de show_vim_cpld_version: data->ipmi_resp[%d]:0x%x", attr->index, data->ipmi_resp[attr->index]);
 	return sprintf(buf, "%d\n", value);
 
 exit:
 	mutex_unlock(&data->update_lock);
-	return error;    
+	return error;
 }
 
 static ssize_t show_vim_board_id(struct device *dev, struct device_attribute *da,
@@ -513,12 +513,12 @@ static ssize_t show_vim_board_id(struct device *dev, struct device_attribute *da
 		case VIM_2_BOARD_ID:
 			VALIDATE_PRESENT_RETURN(vid);
 			data = extreme7830_32ce_8de_vim_pwr_cpld_update_status_data(da);
-			if (!data->valid[vid]) {
+			if (!data->valid[attr->index]) {
 				error = -EIO;
 				goto exit;
 			}
 			mask = 0x7; /* bit 0~2 */
-            value = data->ipmi_resp[vid] & mask;
+            value = data->ipmi_resp[attr->index] & mask;
 			break;
 
 		default:
@@ -574,6 +574,8 @@ static int __init extreme7830_32ce_8de_vim_pwr_cpld_init(void)
 	mutex_init(&data->update_lock);
 	data->valid[0] = 0;
 	data->valid[1] = 0;
+	data->valid[2] = 0;
+	data->valid[3] = 0;
 
 	ret = platform_driver_register(&extreme7830_32ce_8de_vim_pwr_cpld_driver);
 	if (ret < 0) {

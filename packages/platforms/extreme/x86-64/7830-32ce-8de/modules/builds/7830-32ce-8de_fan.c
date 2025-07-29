@@ -11,7 +11,7 @@
  * Based on:
  * Copyright (C) 2021 Alphanetworks Technology Corporation.
  * Fillmore Chen <fillmore_chen@alphanetworks.com>
- * 
+ *
  * Based on:
  * Copyright (C) 2021 Accton Technology Corporation.
  * Copyright (C)  Alex Lai <alex_lai@edge-core.com>
@@ -167,10 +167,10 @@ struct extreme7830_32ce_8de_fan_data {
                                                                    0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, */
 	unsigned long                   last_updated[4];            /* In jiffies 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, */
 	struct ipmi_data                ipmi;
-	unsigned char   				ipmi_resp_present;			/* 1 byte for each fan. 0: not present, 1: present */
-	unsigned char   				ipmi_resp_dir;				/* 1 byte for each fan. 0: Front to back, 1: back to front */
+	unsigned char   				ipmi_resp_present;			/* 1 bit for each fan. 0: not present, 1: present */
+	unsigned char   				ipmi_resp_dir;				/* 1 bit for each fan. 0: Front to back, 1: back to front */
 	struct ipmi_fan_resp_data   	ipmi_resp_fan[4];    		/* 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, */
-	unsigned char                   ipmi_resp_fan_pwm;       	/* 0: FAN1, 1: FAN2, 2: FAN3, 3: FAN4, */
+	unsigned char                   ipmi_resp_fan_pwm;
 	unsigned char                   ipmi_tx_data[4];
 };
 
@@ -336,17 +336,17 @@ static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 	int status = 0, retry = 0;
 
 	for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
-		status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, 
+		status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len,
 					    rx_data, rx_len);
 		if (unlikely(status != 0)) {
-			dev_err(&data->pdev->dev, 
+			dev_err(&data->pdev->dev,
 				"ipmi_send_message_%d err status(%d)\r\n",
 				retry, status);
 			continue;
 		}
 
 		if (unlikely(ipmi->rx_result != 0)) {
-			dev_err(&data->pdev->dev, 
+			dev_err(&data->pdev->dev,
 				"ipmi_send_message_%d err result(%d)\r\n",
 				retry, ipmi->rx_result);
 			continue;
@@ -400,7 +400,7 @@ extreme7830_32ce_8de_fan_update_device(struct device_attribute *da)
 	unsigned char                   fid = attr->index / NUM_OF_PER_FAN_ATTR;
 	int status = 0;
 
-	if (time_before(jiffies, data->last_updated[fid] + HZ * 5) && 
+	if (time_before(jiffies, data->last_updated[fid] + HZ * 5) &&
                 data->valid[fid])
 		return data;
 
@@ -413,7 +413,7 @@ extreme7830_32ce_8de_fan_update_device(struct device_attribute *da)
 	data->ipmi_tx_data[1] = IPMI_PWRCPLD_ADDRESS;
 	data->ipmi_tx_data[2] = IPMI_READ_BYTE;
 
-	switch (fid) 
+	switch (fid)
 	{
 		case FAN_1:
 		case FAN_2:
@@ -430,7 +430,7 @@ extreme7830_32ce_8de_fan_update_device(struct device_attribute *da)
 				   data->ipmi_tx_data, 4,
 				   &data->ipmi_resp_present,
 				   sizeof(data->ipmi_resp_present));
-	
+
 	DEBUG_PRINT("Get FAN present: present len:%ld \n", sizeof(data->ipmi_resp_present));
 
 	if (unlikely(status != 0)){
@@ -450,7 +450,7 @@ extreme7830_32ce_8de_fan_update_device(struct device_attribute *da)
 	data->ipmi_tx_data[1] = IPMI_PWRCPLD_ADDRESS;
 	data->ipmi_tx_data[2] = IPMI_READ_BYTE;
 
-	switch (fid) 
+	switch (fid)
 	{
 		case FAN_1:
 		case FAN_2:
@@ -467,7 +467,7 @@ extreme7830_32ce_8de_fan_update_device(struct device_attribute *da)
 				   data->ipmi_tx_data, 4,
 				   &data->ipmi_resp_dir,
 				   sizeof(data->ipmi_resp_dir));
-	
+
 	DEBUG_PRINT("Get FAN dir: dir len:%ld \n", sizeof(data->ipmi_resp_dir));
 
 	if (unlikely(status != 0)){
@@ -481,7 +481,7 @@ extreme7830_32ce_8de_fan_update_device(struct device_attribute *da)
 	}
 
 	/* Get FAN fault from ipmi */
-	/*  
+	/*
 		ipmitool raw 0x4 0x2d 0x50
 		ipmitool raw 0x4 0x2d 0x51
 		ipmitool raw 0x4 0x2d 0x52
@@ -489,7 +489,7 @@ extreme7830_32ce_8de_fan_update_device(struct device_attribute *da)
 	*/
 	data->ipmi.tx_message.netfn = IPMI_SENSOR_NETFN;
 
-	switch (fid) 
+	switch (fid)
 	{
 		case FAN_1:
 			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN1_FAULT;
@@ -510,7 +510,7 @@ extreme7830_32ce_8de_fan_update_device(struct device_attribute *da)
 
 	status = ipmi_send_message(&data->ipmi, IPMI_SENSOR_READ_CMD ,
 				   data->ipmi_tx_data, 1,
-				   data->ipmi_resp_fan[fid].fan_fault, 
+				   data->ipmi_resp_fan[fid].fan_fault,
 				   sizeof(data->ipmi_resp_fan[fid].fan_fault));
 
 	if (unlikely(status != 0)){
@@ -540,7 +540,7 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 	data->fan_speed_valid[fid] = 0;
 
 	/* Get FAN SPEED (inlet) from ipmi */
-	/*  
+	/*
 		ipmitool raw 0x4 0x2d 0x30
 		ipmitool raw 0x4 0x2d 0x32
 		ipmitool raw 0x4 0x2d 0x34
@@ -548,7 +548,7 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 	*/
 	data->ipmi.tx_message.netfn = IPMI_SENSOR_NETFN;
 
-	switch (fid) 
+	switch (fid)
 	{
 		case FAN_1:
 			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN1_INLET;
@@ -569,7 +569,7 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 
 	status = ipmi_send_message(&data->ipmi, IPMI_SENSOR_READ_CMD ,
 				   data->ipmi_tx_data, 1,
-				   data->ipmi_resp_fan[fid].rpm_inlet, 
+				   data->ipmi_resp_fan[fid].rpm_inlet,
 				   sizeof(data->ipmi_resp_fan[fid].rpm_inlet));
 
 	if (unlikely(status != 0)){
@@ -583,7 +583,7 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 	}
 
 	/* Get FAN SPEED (outlet) from ipmi */
-	/*  
+	/*
 		ipmitool raw 0x4 0x2d 0x31
 		ipmitool raw 0x4 0x2d 0x33
 		ipmitool raw 0x4 0x2d 0x35
@@ -591,7 +591,7 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 	*/
 	data->ipmi.tx_message.netfn = IPMI_SENSOR_NETFN;
 
-	switch (fid) 
+	switch (fid)
 	{
 		case FAN_1:
 			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN1_OUTLET;
@@ -612,7 +612,7 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 
 	status = ipmi_send_message(&data->ipmi, IPMI_SENSOR_READ_CMD ,
 				   data->ipmi_tx_data, 1,
-				   data->ipmi_resp_fan[fid].rpm_outlet, 
+				   data->ipmi_resp_fan[fid].rpm_outlet,
 				   sizeof(data->ipmi_resp_fan[fid].rpm_outlet));
 
 	if (unlikely(status != 0)){
@@ -626,7 +626,7 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 	}
 
 	/* Get FAN SPEED (inlet factors) from ipmi */
-	/*  
+	/*
 		ipmitool raw 0x4 0x23 0x30 0x0
 		ipmitool raw 0x4 0x23 0x32 0x0
 		ipmitool raw 0x4 0x23 0x34 0x0
@@ -634,7 +634,7 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 	*/
 	data->ipmi.tx_message.netfn = IPMI_SENSOR_NETFN;
 
-	switch (fid) 
+	switch (fid)
 	{
 		case FAN_1:
 			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN1_INLET;
@@ -656,12 +656,12 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 	data->ipmi_tx_data[1] = IPMI_FACTORS_READING_BYTE;
 	status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD ,
 				   data->ipmi_tx_data, 2,
-				   data->ipmi_resp_fan[fid].rpm_inlet_factors, 
+				   data->ipmi_resp_fan[fid].rpm_inlet_factors,
 				   sizeof(data->ipmi_resp_fan[fid].rpm_inlet_factors));
 
-	
+
 	/* Get FAN SPEED (outlet factors) from ipmi */
-	/*  
+	/*
 		ipmitool raw 0x4 0x23 0x31 0x0
 		ipmitool raw 0x4 0x23 0x33 0x0
 		ipmitool raw 0x4 0x23 0x35 0x0
@@ -669,7 +669,7 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 	*/
 	data->ipmi.tx_message.netfn = IPMI_SENSOR_NETFN;
 
-	switch (fid) 
+	switch (fid)
 	{
 		case FAN_1:
 			data->ipmi_tx_data[0] = IPMI_SENSOR_OFFSET_FAN1_OUTLET;
@@ -691,7 +691,7 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 	data->ipmi_tx_data[1] = IPMI_FACTORS_READING_BYTE;
 	status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD ,
 				   data->ipmi_tx_data, 2,
-				   data->ipmi_resp_fan[fid].rpm_outlet_factors, 
+				   data->ipmi_resp_fan[fid].rpm_outlet_factors,
 				   sizeof(data->ipmi_resp_fan[fid].rpm_outlet_factors));
 
 	if (unlikely(status != 0)){
@@ -711,7 +711,7 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 	data->ipmi_tx_data[1] = IPMI_PWRCPLD_ADDRESS;
 	data->ipmi_tx_data[2] = IPMI_READ_BYTE;
 
-	switch (fid) 
+	switch (fid)
 	{
 		case FAN_1:
 		case FAN_2:
@@ -728,7 +728,7 @@ extreme7830_32ce_8de_fan_update_fan_speed(struct device_attribute *da)
 				   data->ipmi_tx_data, 4,
 				   &data->ipmi_resp_fan_pwm,
 				   sizeof(data->ipmi_resp_fan_pwm));
-	
+
 	DEBUG_PRINT("Get FAN PWM: PWM len:%ld \n", sizeof(data->ipmi_resp_fan_pwm));
 
 	if (unlikely(status != 0)){
@@ -760,7 +760,7 @@ static u16 M_factors_get(u16 M_LS, u16 M_MS_raw)
 {
 	u16 M = 0;
 	u16 M_MS = 0;
-	
+
 	M_MS = (M_MS_raw & 0xc0) << 2;
 	M = M_MS | M_LS;
 
@@ -771,7 +771,7 @@ static u16 B_factors_get(u16 B_LS, u16 B_MS_raw)
 {
 	u16 B = 0;
 	u16 B_MS = 0;
-	
+
 	B_MS = (B_MS_raw & 0xc0) << 2;
 	B = (B_MS | B_LS) & 0x3ff;
 
@@ -792,18 +792,18 @@ static int exponentInt(const int base, int n)
 
 	if(n == 0)
 		return 1;
-		
+
     for (i = 1; i < n; ++i)
         p *= base;
-	
+
     return p;
 }
 
 static int result_convert(int x, u8 fid, u8 attr)
 {
-	/* 
-	 * IPMI Section 35.5, 36.3 
-	 * y = L[(Mx + (B * 10 ^ K1)) * 10 ^ K2] units 
+	/*
+	 * IPMI Section 35.5, 36.3
+	 * y = L[(Mx + (B * 10 ^ K1)) * 10 ^ K2] units
 	 * where:
 	 * x - Raw reading (get sensor reading CMD response byte 2)
 	 * y - Converted reading
@@ -818,7 +818,7 @@ static int result_convert(int x, u8 fid, u8 attr)
 	u16 B = 0;
 	int K1 = 0;
 	int K2 = 0;
-	int multiplier = 0; 
+	int multiplier = 0;
 	int exponent1 = 0;
 	int exponent2 = 0;
 	int y1 = 0;
@@ -846,7 +846,7 @@ static int result_convert(int x, u8 fid, u8 attr)
 				K2 = two_complement_to_int((data->ipmi_resp_fan[fid].rpm_outlet_factors[6] & 0xf0) >> 4, 4, 0x0f);
 				DEBUG_PRINT("7830_32ce_8de_fan result_convert: x:%d, fid:%d, attr:%d, M:%d, B:%d, K1:%d, K2:%d \n", x, fid, attr, M, B, K1, K2);
 				break;
-			
+
 	}
 
 	exponent1 = K2 + multiplier;
@@ -892,7 +892,7 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *da,
 		goto exit;
 	}
 
-	switch (fid) 
+	switch (fid)
 	{
 		case FAN_1:
 			mask = 0x1 << IPMI_SENSOR_FAN1_BIT;
@@ -956,10 +956,10 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *da,
 
 exit:
 	mutex_unlock(&data->update_lock);
-	return error;    
+	return error;
 }
 
-static ssize_t show_fan_speed(struct device *dev, 
+static ssize_t show_fan_speed(struct device *dev,
                 struct device_attribute *da, char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
@@ -979,7 +979,7 @@ static ssize_t show_fan_speed(struct device *dev,
 		goto exit;
 	}
 
-	switch (fid) 
+	switch (fid)
 	{
 		case FAN_1:
 			mask = 0x1 << IPMI_SENSOR_FAN1_BIT;
@@ -1055,7 +1055,7 @@ static int extreme7830_32ce_8de_fan_probe(struct platform_device *pdev)
 	if (status) {
 		goto exit;
 	}
-    
+
 	dev_info(&pdev->dev, "device created\n");
 
 	return 0;

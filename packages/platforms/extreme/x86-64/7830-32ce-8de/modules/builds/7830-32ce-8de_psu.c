@@ -7,7 +7,7 @@
  * Based on:
  * Copyright (C) 2023 Alphanetworks Technology Corporation.
  * Anne Liou <anne_liou@alphanetworks.com>
- * 
+ *
  * Based on:
  * Copyright (C) 2014 Accton Technology Corporation.
  * Brandon Chuang <brandon_chuang@accton.com.tw>
@@ -232,15 +232,15 @@ struct extreme7830_32ce_8de_psu_data {
 	char			 valid[2]; /* 0: PSU1, 1: PSU2 */
 	char			 valid_status[2]; /* != 0 if registers are valid */
 							    	  /* 0: PSU1, 1: PSU2 */
-	char			 valid_value[28]; /* 0: PSU1, 1: PSU2 */
+	char			 valid_value[28];
 	unsigned long	 last_updated[2];	 /* In jiffies, 0: PSU1, 1: PSU2 */
 	unsigned long	 last_updated_status[2]; /* In jiffies, 0: PSU1, 1: PSU2 */
-	unsigned long	 last_updated_value[28]; /* In jiffies, 0: PSU1, 1: PSU2 */
+	unsigned long	 last_updated_value[28]; /* In jiffies */
 	struct ipmi_data ipmi;
 	struct ipmi_psu_factors_data ipmi_factors[2]; /* 0: PSU1, 1: PSU2 */
 	struct ipmi_psu_resp_data ipmi_resp[2]; /* 0: PSU1, 1: PSU2 */
 	struct ipmi_psu_resp_data_value ipmi_resp_value[28]; /* 0: PSU1_VIN, 1: PSU1_VOUT, 2: PSU1_IIN, 3: PSU1_IOUT, 4: PSU1_PIN, 5: PSU1_POUT, 6: PSU1_MODEL, 7: PSU1_SERIAL, 8: PSU1_TEMP1, 9: PSU1_TEMP2, 10: PSU1_TEMP3, 11: PSU1_FAN1, 12: PSU1_PRESENT, 13: PSU1_POWERGOOD */
-							    	  					 /* 14: PSU2_VIN, 15: PSU2_VOUT, 16: PSU2_IIN, 17: PSU2_IOUT, 18: PSU2_PIN, 19: PSU2_POUT, 20: PSU2_MODEL, 21: PSU2_SERIAL, 22: PSU2_TEMP1, 23: PSU2_TEMP2, 24: PSU2_TEMP3, 25: PSU2_FAN1, 26: PSU1_PRESENT, 27: PSU1_POWERGOOD */ 	
+							    	  					 /* 14: PSU2_VIN, 15: PSU2_VOUT, 16: PSU2_IIN, 17: PSU2_IOUT, 18: PSU2_PIN, 19: PSU2_POUT, 20: PSU2_MODEL, 21: PSU2_SERIAL, 22: PSU2_TEMP1, 23: PSU2_TEMP2, 24: PSU2_TEMP3, 25: PSU2_FAN1, 26: PSU1_PRESENT, 27: PSU1_POWERGOOD */
 	unsigned char ipmi_resp_status[2]; /* 0: PSU1, 1: PSU2 */
 	unsigned char ipmi_tx_data[5];
 };
@@ -286,7 +286,7 @@ static struct platform_driver extreme7830_32ce_8de_psu_driver = {
 		PSU_FAN1_INPUT_ATTR_ID(psu_id), \
 		PSU_PRESENT_ATTR_ID(psu_id),	\
 		PSU_POWERGOOD_ATTR_ID(psu_id)
-	
+
 enum extreme7830_32ce_8de_psu_sysfs_attrs {
 	/* psu attributes */
 	PSU_ATTR(1),
@@ -326,7 +326,7 @@ enum extreme7830_32ce_8de_psu_sysfs_attrs {
 		&sensor_dev_attr_psu##index##_fan1_input.dev_attr.attr, \
 		&sensor_dev_attr_psu##index##_present.dev_attr.attr, \
 		&sensor_dev_attr_psu##index##_power_good.dev_attr.attr
-	
+
 DECLARE_PSU_SENSOR_DEVICE_ATTR(1);
 DECLARE_PSU_SENSOR_DEVICE_ATTR(2);
 
@@ -462,7 +462,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_dev
 
 	data->valid_status[pid] = 0;
 
-	/* Get status from ipmi 
+	/* Get status from ipmi
 	 * ipmitool raw 0x06 0x52 0x09 0xbc 0x1 0x11
 	 * ipmitool raw 0x06 0x52 0x09 0xbc 0x1 0x12
 	 */
@@ -471,7 +471,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_dev
 	data->ipmi_tx_data[1] = IPMI_PWRCPLD_ADDRESS;
 	data->ipmi_tx_data[2] = IPMI_READ_BYTE;
 
-	switch (attr->index) 
+	switch (attr->index)
 	{
 		case PSU1_PRESENT:
 		case PSU1_POWER_GOOD:
@@ -497,7 +497,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_dev
 		goto exit;
 	}
 
-	if (unlikely(data->ipmi.rx_result != 0)) 
+	if (unlikely(data->ipmi.rx_result != 0))
 	{
 		status = -EIO;
 		DEBUG_PRINT("%s:%d \n", __FUNCTION__, __LINE__);
@@ -525,7 +525,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_dev
 	/* Get PSU Power, Temperature and PSU FAN RPM from ipmi */
 	data->ipmi.tx_message.netfn = IPMI_SENSOR_NETFN;
 
-	switch (attr->index) 
+	switch (attr->index)
 	{
 		case PSU1_VIN:
 			data->ipmi_tx_data[0] = SENSOR_PS1_IN_VOL;
@@ -622,12 +622,12 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_get_factor
 
 	data->ipmi.tx_message.netfn = IPMI_SENSOR_NETFN;
 	data->ipmi_tx_data[1] = IPMI_FACTORS_READING_BYTE;
-	
 
-	/* Get vin factors from ipmi */	
+
+	/* Get vin factors from ipmi */
 	for(pid = PSU_1; pid < NUM_OF_PSU; pid++)
-	{	
-		switch (pid) 
+	{
+		switch (pid)
 		{
 			case PSU_1:
 				data->ipmi_tx_data[0] = SENSOR_PS1_IN_VOL;
@@ -639,10 +639,10 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_get_factor
 				status = -EIO;
 				goto exit;
 		}
-	
-		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD, 
+
+		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD,
 					   data->ipmi_tx_data, 2,
-					   data->ipmi_factors[pid].ipmi_vin_factors, 
+					   data->ipmi_factors[pid].ipmi_vin_factors,
 					   sizeof(data->ipmi_factors[pid].ipmi_vin_factors));
 
 		if (unlikely(status != 0)) {
@@ -652,14 +652,14 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_get_factor
 		if (unlikely(data->ipmi.rx_result != 0)) {
 			status = -EIO;
 			goto exit;
-		}	
+		}
 	}
 
-	
-	/* Get vout factors from ipmi */ 
+
+	/* Get vout factors from ipmi */
 	for(pid = PSU_1; pid < NUM_OF_PSU; pid++)
-	{	
-		switch (pid) 
+	{
+		switch (pid)
 		{
 			case PSU_1:
 				data->ipmi_tx_data[0] = SENSOR_PS1_OUT_VOL;
@@ -671,27 +671,27 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_get_factor
 				status = -EIO;
 				goto exit;
 		}
-		
-		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD, 
+
+		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD,
 					   data->ipmi_tx_data, 2,
-					   data->ipmi_factors[pid].ipmi_vout_factors, 
+					   data->ipmi_factors[pid].ipmi_vout_factors,
 					   sizeof(data->ipmi_factors[pid].ipmi_vout_factors));
 
 		if (unlikely(status != 0)) {
 			goto exit;
 		}
-	
+
 		if (unlikely(data->ipmi.rx_result != 0)) {
 			status = -EIO;
 			goto exit;
-		}	
+		}
 	}
 
-	
-	/* Get iin factors from ipmi */ 
+
+	/* Get iin factors from ipmi */
 	for(pid = PSU_1; pid < NUM_OF_PSU; pid++)
-	{	
-		switch (pid) 
+	{
+		switch (pid)
 		{
 			case PSU_1:
 				data->ipmi_tx_data[0] = SENSOR_PS1_IN_CUR;
@@ -703,27 +703,27 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_get_factor
 				status = -EIO;
 				goto exit;
 		}
-			
-		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD, 
+
+		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD,
 					   data->ipmi_tx_data, 2,
-					   data->ipmi_factors[pid].ipmi_iin_factors, 
+					   data->ipmi_factors[pid].ipmi_iin_factors,
 					   sizeof(data->ipmi_factors[pid].ipmi_iin_factors));
 
 		if (unlikely(status != 0)) {
 			goto exit;
 		}
-		
+
 		if (unlikely(data->ipmi.rx_result != 0)) {
 			status = -EIO;
 			goto exit;
-		}	
+		}
 	}
 
 
-	/* Get iout factors from ipmi */ 
+	/* Get iout factors from ipmi */
 	for(pid = PSU_1; pid < NUM_OF_PSU; pid++)
-	{	
-		switch (pid) 
+	{
+		switch (pid)
 		{
 			case PSU_1:
 				data->ipmi_tx_data[0] = SENSOR_PS1_OUT_CUR;
@@ -735,27 +735,27 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_get_factor
 				status = -EIO;
 				goto exit;
 		}
-			
-		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD, 
+
+		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD,
 					   data->ipmi_tx_data, 2,
-					   data->ipmi_factors[pid].ipmi_iout_factors, 
+					   data->ipmi_factors[pid].ipmi_iout_factors,
 					   sizeof(data->ipmi_factors[pid].ipmi_iout_factors));
 
 		if (unlikely(status != 0)) {
 			goto exit;
 		}
-		
+
 		if (unlikely(data->ipmi.rx_result != 0)) {
 			status = -EIO;
 			goto exit;
-		}	
+		}
 	}
 
 
-	/* Get pin factors from ipmi */ 
+	/* Get pin factors from ipmi */
 	for(pid = PSU_1; pid < NUM_OF_PSU; pid++)
-	{	
-		switch (pid) 
+	{
+		switch (pid)
 		{
 			case PSU_1:
 				data->ipmi_tx_data[0] = SENSOR_PS1_IN_PWR;
@@ -767,27 +767,27 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_get_factor
 				status = -EIO;
 				goto exit;
 		}
-			
-		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD, 
+
+		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD,
 					   data->ipmi_tx_data, 2,
-					   data->ipmi_factors[pid].ipmi_pin_factors, 
+					   data->ipmi_factors[pid].ipmi_pin_factors,
 					   sizeof(data->ipmi_factors[pid].ipmi_pin_factors));
 
 		if (unlikely(status != 0)) {
 			goto exit;
 		}
-		
+
 		if (unlikely(data->ipmi.rx_result != 0)) {
 			status = -EIO;
 			goto exit;
-		}	
+		}
 	}
 
 
-	/* Get pout factors from ipmi */ 	
+	/* Get pout factors from ipmi */
 	for(pid = PSU_1; pid < NUM_OF_PSU; pid++)
-	{	
-		switch (pid) 
+	{
+		switch (pid)
 		{
 			case PSU_1:
 				data->ipmi_tx_data[0] = SENSOR_PS1_OUT_PWR;
@@ -799,27 +799,27 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_get_factor
 				status = -EIO;
 				goto exit;
 		}
-				
-		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD, 
+
+		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD,
 					   data->ipmi_tx_data, 2,
-					   data->ipmi_factors[pid].ipmi_pout_factors, 
+					   data->ipmi_factors[pid].ipmi_pout_factors,
 					   sizeof(data->ipmi_factors[pid].ipmi_pout_factors));
 
 		if (unlikely(status != 0)) {
 			goto exit;
 		}
-			
+
 		if (unlikely(data->ipmi.rx_result != 0)) {
 			status = -EIO;
 			goto exit;
-		}	
+		}
 	}
 
 
-	/* Get temp1 factors from ipmi */	
+	/* Get temp1 factors from ipmi */
 	for(pid = PSU_1; pid < NUM_OF_PSU; pid++)
-	{	
-		switch (pid) 
+	{
+		switch (pid)
 		{
 			case PSU_1:
 				data->ipmi_tx_data[0] = SENSOR_PS1_TEMP1;
@@ -831,26 +831,26 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_get_factor
 				status = -EIO;
 				goto exit;
 		}
-					
-		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD, 
+
+		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD,
 					   data->ipmi_tx_data, 2,
-					   data->ipmi_factors[pid].ipmi_temp1_factors, 
+					   data->ipmi_factors[pid].ipmi_temp1_factors,
 					   sizeof(data->ipmi_factors[pid].ipmi_temp1_factors));
 
 		if (unlikely(status != 0)) {
 			goto exit;
 		}
-				
+
 		if (unlikely(data->ipmi.rx_result != 0)) {
 			status = -EIO;
 			goto exit;
-		}	
+		}
 	}
 
-	/* Get temp2 factors from ipmi */	
+	/* Get temp2 factors from ipmi */
 	for(pid = PSU_1; pid < NUM_OF_PSU; pid++)
-	{	
-		switch (pid) 
+	{
+		switch (pid)
 		{
 			case PSU_1:
 				data->ipmi_tx_data[0] = SENSOR_PS1_TEMP2;
@@ -862,26 +862,26 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_get_factor
 				status = -EIO;
 				goto exit;
 		}
-					
-		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD, 
+
+		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD,
 					   data->ipmi_tx_data, 2,
-					   data->ipmi_factors[pid].ipmi_temp2_factors, 
+					   data->ipmi_factors[pid].ipmi_temp2_factors,
 					   sizeof(data->ipmi_factors[pid].ipmi_temp2_factors));
 
 		if (unlikely(status != 0)) {
 			goto exit;
 		}
-				
+
 		if (unlikely(data->ipmi.rx_result != 0)) {
 			status = -EIO;
 			goto exit;
-		}	
+		}
 	}
 
-	/* Get temp3 factors from ipmi */	
+	/* Get temp3 factors from ipmi */
 	for(pid = PSU_1; pid < NUM_OF_PSU; pid++)
-	{	
-		switch (pid) 
+	{
+		switch (pid)
 		{
 			case PSU_1:
 				data->ipmi_tx_data[0] = SENSOR_PS1_TEMP3;
@@ -893,26 +893,26 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_get_factor
 				status = -EIO;
 				goto exit;
 		}
-					
-		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD, 
+
+		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD,
 					   data->ipmi_tx_data, 2,
-					   data->ipmi_factors[pid].ipmi_temp3_factors, 
+					   data->ipmi_factors[pid].ipmi_temp3_factors,
 					   sizeof(data->ipmi_factors[pid].ipmi_temp3_factors));
 
 		if (unlikely(status != 0)) {
 			goto exit;
 		}
-				
+
 		if (unlikely(data->ipmi.rx_result != 0)) {
 			status = -EIO;
 			goto exit;
-		}	
+		}
 	}
 
 	/* Get fan1 speed factors from ipmi */
 	for(pid = PSU_1; pid < NUM_OF_PSU; pid++)
-	{	
-		switch (pid) 
+	{
+		switch (pid)
 		{
 			case PSU_1:
 				data->ipmi_tx_data[0] = SENSOR_PS1_FAN1_PWM;
@@ -924,20 +924,20 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_get_factor
 				status = -EIO;
 				goto exit;
 		}
-					
-		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD, 
+
+		status = ipmi_send_message(&data->ipmi, IPMI_FACTORS_READ_CMD,
 					   data->ipmi_tx_data, 2,
-					   data->ipmi_factors[pid].ipmi_fan1_factors, 
+					   data->ipmi_factors[pid].ipmi_fan1_factors,
 					   sizeof(data->ipmi_factors[pid].ipmi_fan1_factors));
 
 		if (unlikely(status != 0)) {
 			goto exit;
 		}
-				
+
 		if (unlikely(data->ipmi.rx_result != 0)) {
 			status = -EIO;
 			goto exit;
-		}	
+		}
 	}
 
 exit:
@@ -958,9 +958,9 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 
 	data->ipmi.tx_message.netfn = IPMI_APP_NETFN;
 	data->ipmi_tx_data[0] = IPMI_PCA9548_6_BUS;
-	
+
 	/* Get model name from ipmi */
-	switch (pid) 
+	switch (pid)
 	{
 		case PSU_1:
 			/* set PCA9548#4's channel to CH0(0x1) */
@@ -975,7 +975,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 			if (unlikely(status != 0)) {
 				goto exit;
 			}
-	
+
 			if (unlikely(data->ipmi.rx_result != 0)) {
 				status = -EIO;
 				goto exit;
@@ -983,7 +983,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 
 			/* PSU1 Model name */
 			data->ipmi_tx_data[1] = IPMI_PSU1_CTRL_ADDR;
-				
+
 			break;
 		case PSU_2:
 			/* set PCA9548#4's channel to CH1(0x2) */
@@ -998,7 +998,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 			if (unlikely(status != 0)) {
 				goto exit;
 			}
-	
+
 			if (unlikely(data->ipmi.rx_result != 0)) {
 				status = -EIO;
 				goto exit;
@@ -1019,7 +1019,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 				data->ipmi_tx_data, 4,
 				data->ipmi_resp[pid].model,
 				sizeof(data->ipmi_resp[pid].model) - 1);
-			
+
 	if (unlikely(status != 0)) {
 		goto exit;
 	}
@@ -1028,11 +1028,11 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 		status = -EIO;
 		goto exit;
 	}
-	
+
 
 
 	/* Get serial number from ipmi */
-	switch (pid) 
+	switch (pid)
 	{
 		case PSU_1:
 			/* set PCA9548#4's channel to CH0(0x1) */
@@ -1047,7 +1047,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 			if (unlikely(status != 0)) {
 				goto exit;
 			}
-	
+
 			if (unlikely(data->ipmi.rx_result != 0)) {
 				status = -EIO;
 				goto exit;
@@ -1055,7 +1055,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 
 			/* PSU1 serial number */
 			data->ipmi_tx_data[1] = IPMI_PSU1_CTRL_ADDR;
-							
+
 			break;
 		case PSU_2:
 			/* set PCA9548#4's channel to CH1(0x2) */
@@ -1070,7 +1070,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 			if (unlikely(status != 0)) {
 				goto exit;
 			}
-	
+
 			if (unlikely(data->ipmi.rx_result != 0)) {
 				status = -EIO;
 				goto exit;
@@ -1084,7 +1084,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 			status = -EIO;
 			goto exit;
 	}
-	
+
 
 	data->ipmi_tx_data[2] = sizeof(data->ipmi_resp[pid].serial) - 1;
 	data->ipmi_tx_data[3] = PSU_REG_MFR_SERIAL;
@@ -1092,7 +1092,7 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 				   data->ipmi_tx_data, 4,
 				   data->ipmi_resp[pid].serial,
 				   sizeof(data->ipmi_resp[pid].serial) - 1);
-	
+
 	if (unlikely(status != 0)) {
 		goto exit;
 	}
@@ -1121,7 +1121,7 @@ static u16 M_factors_get(u16 M_LS, u16 M_MS_raw)
 {
 	u16 M = 0;
 	u16 M_MS = 0;
-	
+
 	M_MS = (M_MS_raw & 0xc0) << 2;
 	M = M_MS | M_LS;
 
@@ -1132,7 +1132,7 @@ static u16 B_factors_get(u16 B_LS, u16 B_MS_raw)
 {
 	u16 B = 0;
 	u16 B_MS = 0;
-	
+
 	B_MS = (B_MS_raw & 0xc0) << 2;
 	B = (B_MS | B_LS) & 0x3ff;
 
@@ -1153,18 +1153,18 @@ static int exponentInt(const int base, int n)
 
 	if(n == 0)
 		return 1;
-		
+
     for (i = 1; i < n; ++i)
         p *= base;
-	
+
     return p;
 }
 
 static int result_convert(int x, u8 pid, u8 attr)
 {
-	/* 
-	 * IPMI Section 35.5, 36.3 
-	 * y = L[(Mx + (B * 10 ^ K1)) * 10 ^ K2] units 
+	/*
+	 * IPMI Section 35.5, 36.3
+	 * y = L[(Mx + (B * 10 ^ K1)) * 10 ^ K2] units
 	 * where:
 	 * x - Raw reading (get sensor reading CMD response byte 2)
 	 * y - Converted reading
@@ -1381,7 +1381,7 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da, char *b
 	}
 
 	DEBUG_PRINT("7830_32ce_8de_psu show_psu: pid:%d, attr:%d, value:%d \n", pid, attr->index, value);
-	
+
 	mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
 
@@ -1391,44 +1391,44 @@ exit:
 }
 
 /* trim tail(right) space */
-char *rtrim(char *str) 
-{ 
-    if (str == NULL || *str == '\0') 
-    { 
-        return str; 
-    } 
-    int len = strlen(str); 
-    char *p = str + len - 1; 
+char *rtrim(char *str)
+{
+    if (str == NULL || *str == '\0')
+    {
+        return str;
+    }
+    int len = strlen(str);
+    char *p = str + len - 1;
     while (p >= str && (isspace(*p) || *p < 33 || *p > 122)) /* only print ascii 33~122 */
-    { 
-        *p = '\0'; --p; 
-    } 
-    return str; 
+    {
+        *p = '\0'; --p;
+    }
+    return str;
 }
 
 /* trim head(left) space */
-char *ltrim(char *str) 
-{ 
-    if (str == NULL || *str == '\0') 
-    { 
-        return str; 
-    } 
-    int len = 0; 
+char *ltrim(char *str)
+{
+    if (str == NULL || *str == '\0')
+    {
+        return str;
+    }
+    int len = 0;
     char *p = str;
     while (*p != '\0' && (isspace(*p) || *p < 33 || *p > 122)) /* only print ascii 33~122 */
-    { 
-        ++p; ++len; 
-    } 
-    memmove(str, p, strlen(str) - len + 1); 
-    return str; 
-}  
+    {
+        ++p; ++len;
+    }
+    memmove(str, p, strlen(str) - len + 1);
+    return str;
+}
 
-char *trim(char *str) 
-{ 
-    str = rtrim(str); 
-    str = ltrim(str); 
-    return str; 
-} 
+char *trim(char *str)
+{
+    str = rtrim(str);
+    str = ltrim(str);
+    return str;
+}
 
 static ssize_t show_string(struct device *dev, struct device_attribute *da, char *buf)
 {
@@ -1447,7 +1447,7 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da, char
 
 	switch (attr->index) {
 		case PSU1_MODEL:
-		case PSU2_MODEL:			
+		case PSU2_MODEL:
 			str = data->ipmi_resp[pid].model;
 			str = trim(str);
 			break;
@@ -1468,7 +1468,7 @@ exit:
 	mutex_unlock(&data->update_lock);
 	return error;
 }
-	
+
 static int extreme7830_32ce_8de_psu_probe(struct platform_device *pdev)
 {
 	int status = -1;
@@ -1523,7 +1523,7 @@ static int __init extreme7830_32ce_8de_psu_init(void)
 	ret = init_ipmi_data(&data->ipmi, 0, &data->pdev->dev);
 	if (ret)
 		goto ipmi_err;
-	
+
 	/* Get attributes factors */
 	extreme7830_32ce_8de_psu_get_factors();
 
