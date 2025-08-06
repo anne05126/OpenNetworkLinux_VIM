@@ -39,7 +39,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <stdlib.h> 
+#include <stdlib.h>
 #include <string.h>
 
 #define DEBUG                               0
@@ -123,8 +123,8 @@ onlp_sysi_platform_info_get(onlp_platform_info_t *pi)
 	/* Read CPLD version
 	 */
 	for (i = 0; i < AIM_ARRAYSIZE(cplds); i++) {
-		ret = onlp_file_read_int(&cplds[i].version, 
-					 			cplds[i].cpld_path_format, 
+		ret = onlp_file_read_int(&cplds[i].version,
+					 			cplds[i].cpld_path_format,
 					 			cplds[i].attr_name);
 
 		if (ret < 0) {
@@ -133,12 +133,12 @@ onlp_sysi_platform_info_get(onlp_platform_info_t *pi)
 		}
 	}
 
-	pi->cpld_versions = aim_fstrdup("%s:%02x, %s:%02x, %s:%02x", 
-									cplds[0].description, 
+	pi->cpld_versions = aim_fstrdup("%s:%02x, %s:%02x, %s:%02x",
+									cplds[0].description,
 									cplds[0].version,
-									cplds[1].description, 
+									cplds[1].description,
 									cplds[1].version,
-									cplds[2].description, 
+									cplds[2].description,
 									cplds[2].version);
 
     return ONLP_STATUS_OK;
@@ -161,7 +161,7 @@ onlp_sysi_oids_get(onlp_oid_t *table, int max)
     uint32_t oid = 0;
 
     /* PSUs */
-    for (i = 1; i <= CHASSIS_PSU_COUNT; i++) 
+    for (i = 1; i <= CHASSIS_PSU_COUNT; i++)
     {
         oid = ONLP_PSU_ID_CREATE(i);
         *e++ = oid;
@@ -221,12 +221,12 @@ onlp_sysi_platform_manage_vims(void)
     int vim1_present = -1;
     int vim2_present = -1;
     int vim1_board_id = -1;
-    int vim2_board_id = -1;   
+    int vim2_board_id = -1;
     int vim1_power_good = -1;
-    int vim2_power_good = -1;    
+    int vim2_power_good = -1;
     int rv = -1;
-    
-    /* 
+
+    /*
      * STEP 1
      * Get VIM present from system CPLD
      * 0 = present, 1 = not present
@@ -245,11 +245,11 @@ onlp_sysi_platform_manage_vims(void)
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    //AIM_SYSLOG_INFO("[SYSLOG_INFO]", 
+    //AIM_SYSLOG_INFO("[SYSLOG_INFO]",
     //                "[SYSLOG_INFO]",
     //                "[SYSLOG_INFO] Get VIM present: VIM1(%d) %s, VIM2(%d) %s", vim1_present, (vim1_present? "NOT PRESENT" : "PRESENT"), vim2_present, (vim2_present? "NOT PRESENT" : "PRESENT"));
-    
-    /* 
+
+    /*
      * STEP 2
      * Alpha detects the insertion/removal of the VIM, then call Extreme VIM handler function
      */
@@ -257,7 +257,7 @@ onlp_sysi_platform_manage_vims(void)
     if (history_vim_status.history_vim1_present == VIM_NOT_PRESENT && vim1_present == VIM_PRESENT)
     {
         /* It is detected that a VIM is inserted into VIM 1 slot */
-        AIM_SYSLOG_INFO("[SYSLOG_INFO]", 
+        AIM_SYSLOG_INFO("[SYSLOG_INFO]",
                         "[SYSLOG_INFO]",
                         "[SYSLOG_INFO] Insert VIM 1 (old: %s, new: %s)", (history_vim_status.history_vim1_present ? "NOT PRESENT" : "PRESENT"), (vim1_present ? "NOT PRESENT" : "PRESENT"));
 
@@ -283,7 +283,7 @@ onlp_sysi_platform_manage_vims(void)
             sleep(1);
         }
 
-        /* 
+        /*
          * Get VIM board id from VIM CPLD by BMC
          * 0 = 8DE, 1 = 16CE, 2 = 24CE, 3 = 24YE, 4 = VIM_NONE
          */
@@ -301,7 +301,7 @@ onlp_sysi_platform_manage_vims(void)
             AIM_LOG_ERROR("Insert VIM %d (board_id=%d) failed(%d)\r\n", VIM1_ID, vim1_board_id, rv);
             return ONLP_STATUS_E_INTERNAL;
         }
-        
+
         /* Update the history of VIM 1 present and board id */
         history_vim_status.history_vim1_present = vim1_present;
         history_vim_status.history_vim1_board_id = vim1_board_id;
@@ -309,7 +309,7 @@ onlp_sysi_platform_manage_vims(void)
     else if (history_vim_status.history_vim1_present == VIM_PRESENT && vim1_present == VIM_NOT_PRESENT)
     {
         /* It is detected that a VIM is removed from VIM 1 slot */
-        AIM_SYSLOG_INFO("[SYSLOG_INFO]", 
+        AIM_SYSLOG_INFO("[SYSLOG_INFO]",
                         "[SYSLOG_INFO]",
                         "[SYSLOG_INFO] Remove VIM 1 (old: %s, new: %s)", (history_vim_status.history_vim1_present ? "NOT PRESENT" : "PRESENT"), (vim1_present ? "NOT PRESENT" : "PRESENT"));
 
@@ -333,7 +333,7 @@ onlp_sysi_platform_manage_vims(void)
     if (history_vim_status.history_vim2_present == VIM_NOT_PRESENT && vim2_present == VIM_PRESENT)
     {
         /* It is detected that a VIM is inserted into VIM 2 slot */
-        AIM_SYSLOG_INFO("[SYSLOG_INFO]", 
+        AIM_SYSLOG_INFO("[SYSLOG_INFO]",
                         "[SYSLOG_INFO]",
                         "[SYSLOG_INFO] Insert VIM 2 (old: %s, new: %s)", (history_vim_status.history_vim2_present ? "NOT PRESENT" : "PRESENT"), (vim2_present ? "NOT PRESENT" : "PRESENT"));
 
@@ -359,7 +359,7 @@ onlp_sysi_platform_manage_vims(void)
             sleep(1);
         }
 
-        /* 
+        /*
          * Get VIM board id from VIM CPLD by BMC
          * 0 = 8DE, 1 = 16CE, 2 = 24CE, 3 = 24YE, 4 = VIM_NONE
          */
@@ -385,7 +385,7 @@ onlp_sysi_platform_manage_vims(void)
     else if (history_vim_status.history_vim2_present == VIM_PRESENT && vim2_present == VIM_NOT_PRESENT)
     {
         /* It is detected that a VIM is removed from VIM 2 slot */
-        AIM_SYSLOG_INFO("[SYSLOG_INFO]", 
+        AIM_SYSLOG_INFO("[SYSLOG_INFO]",
                         "[SYSLOG_INFO]",
                         "[SYSLOG_INFO] Remove VIM 2 (old: %s, new: %s)", (history_vim_status.history_vim2_present ? "NOT PRESENT" : "PRESENT"), (vim2_present ? "NOT PRESENT" : "PRESENT"));
 
@@ -448,14 +448,14 @@ int onlp_sysi_debug_diag_fan_status(void)
     int i = 0;
     uint32_t status = 0;
 
-    /* 
+    /*
      *  Get each fan status
      */
     for (i = 1; i <= CHASSIS_FAN_COUNT; i++)
     {
         onlp_fan_info_t fan_info;
         oid = ONLP_FAN_ID_CREATE(i);
-        if (onlp_fani_info_get(oid, &fan_info) != ONLP_STATUS_OK) 
+        if (onlp_fani_info_get(oid, &fan_info) != ONLP_STATUS_OK)
         {
             AIM_LOG_ERROR("Unable to get fan(%d) status\r\n", i);
             return ONLP_STATUS_E_INTERNAL;
@@ -472,14 +472,30 @@ int onlp_sysi_debug_diag_fan_status(void)
 
 int onlp_sysi_debug_diag_led(void)
 {
-
+    int i = 0;
+    int value = 0;
+    int vim_id = 0;
+    char chan_led_command[64];
+    char vim_pwr_led_command[128];
 
     printf("POWER o     STATUS  o     FAN o     PSU o     SECURITY o   \n");
     printf("\n");
 
     printf("[Stop platform manage ...]\n");
 
+    #if 0
     diag_debug_pause_platform_manage_on();
+    #else
+    /* Set BMC Test Mode */
+    /* 0x00: Disabled
+       0x01: Enabled
+       During test mode, the BMC will temporarily suspend the system control function as follows:
+       1. FAN/PSU control
+       2. Fan algorithm/Thermal profile
+       3. Sensor polling
+    */
+    system("ipmitool raw 0x34 0xf1 0x01");
+    #endif
 
     sleep(1);
 
@@ -488,7 +504,7 @@ int onlp_sysi_debug_diag_led(void)
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_OFF);
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_OFF);
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_OFF);
-    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_SEC), ONLP_LED_MODE_OFF);	
+    onlp_ledi_set(ONLP_LED_ID_CREATE(LED_SEC), ONLP_LED_MODE_OFF);
     printf("<Press Any Key to Continue>\n");
     getchar();
 
@@ -503,12 +519,12 @@ int onlp_sysi_debug_diag_led(void)
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_GREEN);
     printf("<Press Any Key to Continue>\n");
     getchar();
-	
+
     printf("[Set STATUS LED to ONLP_LED_MODE_ORANGE ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_ORANGE);
     printf("<Press Any Key to Continue>\n");
     getchar();
-	
+
 	printf("[Set STATUS LED to ONLP_LED_MODE_BLINKING(Blinking Amber-Green) ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_BLINKING);
     printf("<Press Any Key to Continue>\n");
@@ -519,12 +535,12 @@ int onlp_sysi_debug_diag_led(void)
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_GREEN);
     printf("<Press Any Key to Continue>\n");
     getchar();
-	
+
     printf("[Set FAN LED to ONLP_LED_MODE_ORANGE ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_ORANGE);
     printf("<Press Any Key to Continue>\n");
     getchar();
-	
+
 	printf("[Set FAN LED to ONLP_LED_MODE_BLINKING(Blinking Amber-Green) ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_BLINKING);
     printf("<Press Any Key to Continue>\n");
@@ -551,7 +567,7 @@ int onlp_sysi_debug_diag_led(void)
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_BLINKING);
     printf("<Press Any Key to Continue>\n");
     getchar();
-    
+
     /* SECURITY LED */
     printf("[Set SEC LED to ONLP_LED_MODE_BLUE ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_SEC), ONLP_LED_MODE_BLUE);
@@ -564,11 +580,54 @@ int onlp_sysi_debug_diag_led(void)
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_OFF);
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_OFF);
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_SEC), ONLP_LED_MODE_OFF);
+    printf("<Press Any Key to Continue>\n");
+    getchar();
+
+    printf("[Reverted power, fan, security, and PSU LEDs to hardware control ...]\n");
+    onlp_file_write_int(0, LED_PATH_I2C, "led_control");
+    onlp_file_write_int(0, LED_PATH, "led_control");
+    printf("<Press Any Key to Continue>\n");
+    getchar();
+
+    /* Channel LED */
+    for (i = 0; i <= 8; i++)
+    {
+        printf("[Set Channel LED to %d ...]\n", i);
+        sprintf(chan_led_command, "i2cset -y -f 0 0x5f 0x53 0x0%d", i);
+        system(chan_led_command);
+        if (onlp_file_read_int(&value, LED_PATH_I2C, "chan_sel_counter") < 0)
+        {
+            AIM_LOG_ERROR("[CPU] Unable to read status from file "LED_PATH, "chan_sel_counter");
+        }
+        printf("Push Button Counter: %d\n", value);
+        printf("<Press Any Key to Continue>\n");
+        getchar();
+    }
+
+    /* VIM Power LED */
+    for (vim_id = 1; vim_id <= VIM_ID_MAX; vim_id++)
+    {
+        for (i = 3; i >= 0; i--)
+        {
+            printf("[Set VIM#%d Power LED to %d ...]\n", vim_id, i);
+            sprintf(vim_pwr_led_command, "i2cset -y -f 0 0x77 0x%d;i2cset -y -f 0 0x76 0x8;i2cset -y -f 0 0x5c 0x40 0x%02x", vim_id, i << 3 | 4);
+            system(vim_pwr_led_command);
+            printf("<Press Any Key to Continue>\n");
+            getchar();
+        }
+        sprintf(vim_pwr_led_command, "i2cset -y -f 0 0x77 0x%d;i2cset -y -f 0 0x76 0x8;i2cset -y -f 0 0x5c 0x40 0x0", vim_id);
+        system(vim_pwr_led_command);
+    }
 
     printf("[Restart platform manage ...]\n");
     onlp_ledi_init();
 
+    #if 0
     diag_debug_pause_platform_manage_off();
+    #else
+    /* Disable BMC Test Mode */
+    system("ipmitool raw 0x34 0xf1 0x00");
+    #endif
 
     return 0;
 }
@@ -578,10 +637,10 @@ int onlp_sysi_debug_vim_eeprom(int vim_id)
     uint8_t *data = NULL;
     int rv = 0;
     int vim_present = 0;
-    
+
     vim_present = onlp_vimi_present_get(vim_id);
 
-    if(vim_present == VIM_NOT_PRESENT) 
+    if(vim_present == VIM_NOT_PRESENT)
     {
         AIM_LOG_ERROR("vim(%d) not present\r\n", vim_id);
         return ONLP_STATUS_OK;
@@ -618,7 +677,7 @@ int onlp_sysi_debug_diag_sfp(int index, int offset, int page, int page_select)
     uint8_t *data = NULL;
     int rv = 0;
 
-    uint8_t org_b = 0;    
+    uint8_t org_b = 0;
     uint16_t org_w = 0;
     uint8_t temp_b = 0;
     uint16_t temp_w = 0;
@@ -638,7 +697,7 @@ int onlp_sysi_debug_diag_sfp(int index, int offset, int page, int page_select)
     }
     aim_free(data);
     data = NULL;
-    
+
     if (index >= SFP_START_INDEX && index < (SFP_START_INDEX + NUM_OF_SFP_PORT))
     {
 		addr = SFP_PLUS_EEPROM_I2C_ADDR;
@@ -662,10 +721,6 @@ int onlp_sysi_debug_diag_sfp(int index, int offset, int page, int page_select)
             {
                 goto DONE;
             }
-        }
-        else
-        {
-            goto DONE;
         }
     }
 
@@ -700,7 +755,7 @@ int onlp_sysi_debug_diag_sfp(int index, int offset, int page, int page_select)
         	goto RESTORE_PAGE;
     	}
     }
-	
+
     org_b = onlp_sfpi_dev_readb(index, addr, offset);
     if (org_b < 0)
     {
@@ -850,7 +905,7 @@ int onlp_sysi_debug_diag_sfp_ctrl(int index)
 {
     int val = 0;
 
-    /* ONLP_SFP_CONTROL_RESET (Read and Write)*/ 
+    /* ONLP_SFP_CONTROL_RESET (Read and Write)*/
     printf("[Option: %d(%s)...Set/Get]\n", ONLP_SFP_CONTROL_RESET, sfp_control_to_str(ONLP_SFP_CONTROL_RESET));
     printf("[Set %s... to 0]\n", sfp_control_to_str(ONLP_SFP_CONTROL_RESET));
     onlp_sfpi_control_set(index, ONLP_SFP_CONTROL_RESET, 0);
@@ -867,8 +922,8 @@ int onlp_sysi_debug_diag_sfp_ctrl(int index)
     onlp_sfpi_control_get(index, ONLP_SFP_CONTROL_RESET, &val);
     printf("<Press Any Key to Continue>\n");
     getchar();
-  
-    /* ONLP_SFP_CONTROL_LP_MODE (Read and Write)*/ 
+
+    /* ONLP_SFP_CONTROL_LP_MODE (Read and Write)*/
     printf("[Option: %d(%s)...Set/Get]\n", ONLP_SFP_CONTROL_LP_MODE, sfp_control_to_str(ONLP_SFP_CONTROL_LP_MODE));
     printf("[Set %s... to 1]\n", sfp_control_to_str(ONLP_SFP_CONTROL_LP_MODE));
     onlp_sfpi_control_set(index, ONLP_SFP_CONTROL_LP_MODE, 1);
@@ -893,14 +948,14 @@ int onlp_sysi_debug_diag_sfp_ctrl(int index)
     printf("<Press Any Key to Continue>\n");
     getchar();
 
-    /* ONLP_SFP_CONTROL_TX_FAULT (Read only)*/ 
+    /* ONLP_SFP_CONTROL_TX_FAULT (Read only)*/
     printf("[Option: %d(%s)...Get]\n", ONLP_SFP_CONTROL_TX_FAULT, sfp_control_to_str(ONLP_SFP_CONTROL_TX_FAULT));
     printf("[Get %s... ]\n", sfp_control_to_str(ONLP_SFP_CONTROL_TX_FAULT));
     onlp_sfpi_control_get(index, ONLP_SFP_CONTROL_TX_FAULT, &val);
     printf("<Press Any Key to Continue>\n");
     getchar();
 
-    /* ONLP_SFP_CONTROL_TX_DISABLE (Read and Write)*/ 
+    /* ONLP_SFP_CONTROL_TX_DISABLE (Read and Write)*/
     printf("[Option: %d(%s)...Set/Get]\n", ONLP_SFP_CONTROL_TX_DISABLE, sfp_control_to_str(ONLP_SFP_CONTROL_TX_DISABLE));
     printf("[Set %s... to 1]\n", sfp_control_to_str(ONLP_SFP_CONTROL_TX_DISABLE));
     onlp_sfpi_control_set(index, ONLP_SFP_CONTROL_TX_DISABLE, 1);
@@ -927,14 +982,14 @@ int onlp_sysi_debug_diag_sfp_ctrl(int index)
     printf("<Press Any Key to Continue>\n");
     getchar();
 
-    /* ONLP_SFP_CONTROL_TX_FAULT_B (Read only)*/ 
+    /* ONLP_SFP_CONTROL_TX_FAULT_B (Read only)*/
     printf("[Option: %d(%s)...Get]\n", ONLP_SFP_CONTROL_TX_FAULT_B, vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_TX_FAULT_B));
     printf("[Get %s... ]\n", vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_TX_FAULT_B));
     onlp_sfpi_control_get_for_b_attr(index, ONLP_SFP_CONTROL_TX_FAULT_B, &val);
     printf("<Press Any Key to Continue>\n");
     getchar();
 
-    /* ONLP_SFP_CONTROL_TX_DISABLE_B (Read and Write)*/ 
+    /* ONLP_SFP_CONTROL_TX_DISABLE_B (Read and Write)*/
     printf("[Option: %d(%s)...Set/Get]\n", ONLP_SFP_CONTROL_TX_DISABLE_B, vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_TX_DISABLE_B));
     printf("[Set %s... to 1]\n", vim_sfp_control_for_b_attr_to_str(ONLP_SFP_CONTROL_TX_DISABLE_B));
     onlp_sfpi_control_set_for_b_attr(index, ONLP_SFP_CONTROL_TX_DISABLE_B, 1);
@@ -954,6 +1009,182 @@ int onlp_sysi_debug_diag_sfp_ctrl(int index)
 
     return 0;
 }
+
+/* LED Control bit debug function */
+int onlp_sysi_debug_diag_led_control_bit(void)
+{
+    int value = 0;
+    int present = 0, board_id = 0;
+    int vim_id = 0;
+    int cpld_bus_id = 0;
+
+    /* Set BMC Test Mode */
+    /* 0x00: Disabled
+       0x01: Enabled
+       During test mode, the BMC will temporarily suspend the system control function as follows:
+       1. FAN/PSU control
+       2. Fan algorithm/Thermal profile
+       3. Sensor polling
+    */
+    system("ipmitool raw 0x34 0xf1 0x01");
+
+    /* LED Control Register 0 */
+    if (onlp_file_read_int(&value, LED_PATH_I2C, "led_control") < 0)
+    {
+        AIM_LOG_ERROR("[CPU] Unable to read status from file "LED_PATH_I2C, "led_control");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    printf("Control bit on LED Control Register 0: %d \n", value);
+
+    /* LED Control Register 1 */
+    if (onlp_file_read_int(&value, LED_PATH, "led_control") < 0)
+    {
+        AIM_LOG_ERROR("[CPU] Unable to read status from file "LED_PATH, "led_control");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    printf("Control bit on LED Control Register 1: %d \n", value);
+
+    /* Port LED on-off control on Port CPLD#1 */
+    if (onlp_file_read_int(&value, PORT_CPLD1_PATH, "cpld_port_led_enable_1") < 0)
+    {
+        AIM_LOG_ERROR("[CPU] Unable to read status from file "PORT_CPLD1_PATH, "cpld_port_led_enable_1");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    printf("Port LED on-off control on Port CPLD#1: %d \n", value);
+
+    /* Port LED on-off control on Port CPLD#2 */
+    if (onlp_file_read_int(&value, PORT_CPLD2_PATH, "cpld_port_led_enable_2") < 0)
+    {
+        AIM_LOG_ERROR("[CPU] Unable to read status from file "PORT_CPLD2_PATH, "cpld_port_led_enable_2");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    printf("Port LED on-off control on Port CPLD#2: %d \n", value);
+
+
+    for (vim_id = 1; vim_id <= VIM_ID_MAX; vim_id++)
+    {
+        present = onlp_vimi_present_get(vim_id);
+        board_id = onlp_vimi_board_id_get(vim_id);
+
+        if (present == VIM_NOT_PRESENT)
+        {
+            printf("VIM#%d not present\n", vim_id);
+        }
+        else {
+            switch (board_id)
+            {
+                case VIM_8DE:
+                case VIM_16CE:
+                    /* VIM Power CPLD */
+                    cpld_bus_id = onlp_vimi_cpld_bus_id_get(vim_id, VIM_POWER_CPLD_ID); /* Get Power CPLD I2C bus id */
+                    if (onlp_file_read_int(&value, VIM_PWR_LED_CTRL_PWR_CPLD_PATH, cpld_bus_id, vim_id) < 0)
+                    {
+                        AIM_LOG_ERROR("[CPU] Unable to read status from file "VIM_PWR_LED_CTRL_PWR_CPLD_PATH, cpld_bus_id, vim_id);
+                        return ONLP_STATUS_E_INTERNAL;
+                    }
+                    printf("VIM#%d Power LED Control Register: %d \n", vim_id, value);
+
+                    if (onlp_file_read_int(&value, VIM_PORT_LED_CTRL_PWR_CPLD_PATH, cpld_bus_id, vim_id) < 0)
+                    {
+                        AIM_LOG_ERROR("[CPU] Unable to read status from file "VIM_PORT_LED_CTRL_PWR_CPLD_PATH, cpld_bus_id, vim_id);
+                        return ONLP_STATUS_E_INTERNAL;
+                    }
+                    printf("VIM#%d Port LED on-off control: %d \n", vim_id, value);
+                    break;
+
+                case VIM_24CE:
+                case VIM_24YE:
+                    /* VIM Power CPLD */
+                    cpld_bus_id = onlp_vimi_cpld_bus_id_get(vim_id, VIM_POWER_CPLD_ID); /* Get Power CPLD I2C bus id */
+                    if (onlp_file_read_int(&value, VIM_PWR_LED_CTRL_PWR_CPLD_PATH, cpld_bus_id, vim_id) < 0)
+                    {
+                        AIM_LOG_ERROR("[CPU] Unable to read status from file "VIM_PWR_LED_CTRL_PWR_CPLD_PATH, cpld_bus_id, vim_id);
+                        return ONLP_STATUS_E_INTERNAL;
+                    }
+                    printf("VIM#%d Power LED Control Register: %d \n", vim_id, value);
+
+                    /* VIM port CPLD */
+                    cpld_bus_id = onlp_vimi_cpld_bus_id_get(vim_id, VIM_PORT_CPLD_ID); /* Get Port CPLD I2C bus id */
+                    if (onlp_file_read_int(&value, VIM_PORT_LED_CTRL_PORT_CPLD_PATH, cpld_bus_id, vim_id) < 0)
+                    {
+                        AIM_LOG_ERROR("[CPU] Unable to read status from file "VIM_PORT_LED_CTRL_PORT_CPLD_PATH, cpld_bus_id, vim_id);
+                        return ONLP_STATUS_E_INTERNAL;
+                    }
+                    printf("VIM#%d Port LED on-off control: %d \n", vim_id, value);
+                    break;
+
+                default:
+                    printf("board_id: 0x%x [%s]\n", board_id, "None");
+                    break;
+            }
+        }
+    }
+
+    /* Disable BMC Test Mode */
+    system("ipmitool raw 0x34 0xf1 0x00");
+
+    return 0;
+}
+
+/* MGMT Primary Port, link status and speed */
+int onlp_sysi_debug_diag_mgmt_info(void)
+{
+    int value = 0;
+    int link_status = 0;
+    int speed = 0;
+
+    /* MGMT Primary Port */
+    if (onlp_file_read_int(&value, MODULE_MGMT_PRIMARY_INTF_PATH) < 0)
+    {
+        AIM_LOG_ERROR("[CPU] Unable to read status from file "MODULE_MGMT_PRIMARY_INTF_PATH);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    printf("MGMT Primary Port: %s \n", intf_to_str(value));
+
+    /* SFP+	Link status and speed */
+    if (onlp_file_read_int(&link_status, MODULE_MGMT_SFP_PATH, "link_status") < 0)
+    {
+        AIM_LOG_ERROR("[CPU] Unable to read status from file "MODULE_MGMT_SFP_PATH, "link_status");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (onlp_file_read_int(&speed, MODULE_MGMT_SFP_PATH, "speed") < 0)
+    {
+        AIM_LOG_ERROR("[CPU] Unable to read status from file "MODULE_MGMT_SFP_PATH, "speed");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    printf("SFP+ Link status: %s, speed: %s \n", link_status_to_str(link_status), speed_to_str(speed));
+
+    /* QSFP28 Link status and speed */
+    if (onlp_file_read_int(&link_status, MODULE_MGMT_QSFP_PATH, "link_status") < 0)
+    {
+        AIM_LOG_ERROR("[CPU] Unable to read status from file "MODULE_MGMT_QSFP_PATH, "link_status");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (onlp_file_read_int(&speed, MODULE_MGMT_QSFP_PATH, "speed") < 0)
+    {
+        AIM_LOG_ERROR("[CPU] Unable to read status from file "MODULE_MGMT_QSFP_PATH, "speed");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    printf("QSFP28 Link status: %s, speed: %s \n", link_status_to_str(link_status), speed_to_str(speed));
+
+    /* Copper Link status and speed */
+    if (onlp_file_read_int(&link_status, MODULE_MGMT_COPPER_PATH, "link_status") < 0)
+    {
+        AIM_LOG_ERROR("[CPU] Unable to read status from file "MODULE_MGMT_COPPER_PATH, "link_status");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (onlp_file_read_int(&speed, MODULE_MGMT_COPPER_PATH, "speed") < 0)
+    {
+        AIM_LOG_ERROR("[CPU] Unable to read status from file "MODULE_MGMT_COPPER_PATH, "speed");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    printf("Copper Link status: %s, speed: %s \n", link_status_to_str(link_status), speed_to_str(speed));
+    return 0;
+}
+
 
 /* For VIM card debug fumction
  *      - onlp_sysi_debug_diag_vim_status
@@ -976,7 +1207,7 @@ int onlp_sysi_debug_diag_vim_status(void)
         else
         {
             printf("VIM#%d \n", i+1);
-            printf("present: 0x%x [%s]\n", present,
+            printf("Present: 0x%x [%s]\n", present,
                 (present) ? "NOT PRESENT" : "PRESENT");
         }
 
@@ -986,30 +1217,30 @@ int onlp_sysi_debug_diag_vim_status(void)
             if (present == 1)
                 printf("VIM#%d not present\n", i+1);
             else
-                printf("Get VIM#%d board_id failed, err=%d\n", i+1, board_id);
+                printf("Get VIM#%d Board ID failed, err=%d\n", i+1, board_id);
         }
         else
         {
             switch (board_id)
             {
                 case VIM_8DE:
-                    printf("board_id: 0x%x [%s]\n", board_id, "8DE");
+                    printf("Board ID: 0x%x [%s]\n", board_id, "8DE");
                     break;
-                
+
                 case VIM_16CE:
-                    printf("board_id: 0x%x [%s]\n", board_id, "16CE");
+                    printf("Board ID: 0x%x [%s]\n", board_id, "16CE");
                     break;
-                
+
                 case VIM_24CE:
-                    printf("board_id: 0x%x [%s]\n", board_id, "24CE");
+                    printf("Board ID: 0x%x [%s]\n", board_id, "24CE");
                     break;
-                
+
                 case VIM_24YE:
-                    printf("board_id: 0x%x [%s]\n", board_id, "24YE");
+                    printf("Board ID: 0x%x [%s]\n", board_id, "24YE");
                     break;
-                
+
                 default:
-                    printf("board_id: 0x%x [%s]\n", board_id, "None");
+                    printf("Board ID: 0x%x [%s]\n", board_id, "None");
                     break;
             }
         }
@@ -1023,7 +1254,7 @@ int onlp_sysi_debug_diag_vim_sfp(int index, int offset, int page, int page_selec
     uint8_t *data = NULL;
     int rv = 0;
 
-    uint8_t org_b = 0;    
+    uint8_t org_b = 0;
     uint16_t org_w = 0;
     uint8_t temp_b = 0;
     uint16_t temp_w = 0;
@@ -1086,7 +1317,7 @@ int onlp_sysi_debug_diag_vim_sfp(int index, int offset, int page, int page_selec
             addr = SFP_DOM_EEPROM_I2C_ADDR;
             offset = SFP28_DIAG_OFFSET;
             break;
-        default:    
+        default:
             break;
     }
 
@@ -1121,7 +1352,7 @@ int onlp_sysi_debug_diag_vim_sfp(int index, int offset, int page, int page_selec
         	goto RESTORE_PAGE;
     	}
     }
-	
+
     org_b = onlp_vim_sfpi_dev_readb(index, addr, offset);
     if (org_b < 0)
     {
@@ -1304,7 +1535,7 @@ onlp_sysi_show_cpld_version()
                     }
                 }
                 break;
-            
+
             default:
                 break;
         }
@@ -1320,8 +1551,8 @@ onlp_sysi_show_cpld_version()
 
 	/* Read VIM CPLD version */
 	for (i = 0; i < index; i++) {
-		ret = onlp_file_read_int(&cplds[i].version, 
-					 			cplds[i].cpld_path_format, 
+		ret = onlp_file_read_int(&cplds[i].version,
+					 			cplds[i].cpld_path_format,
 					 			cplds[i].i2c_bus_id,
                                 cplds[i].vim_id);
 
@@ -1331,7 +1562,7 @@ onlp_sysi_show_cpld_version()
 		}
 	}
 
-    /* Print cpld version */ 
+    /* Print cpld version */
     printf("%s:%02x\n", "System CPLD", sys_cpld_version);
     for (i = 0; i < index; i++) {
         printf("%s:%02x\n", cplds[i].description, cplds[i].version);
@@ -1518,7 +1749,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
                 }
             }
             if (argc > 2)
-            {     
+            {
                 if (argc == 5)
                 {
                     sfp_offset = atoi(argv[2]);
@@ -1530,7 +1761,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
                     printf("Parameter error, The command format is \"onlpdump debugi sfp [PORT] [REG_ADDR] [PAGE] [PAGE_SEL]\".\n");
                     return -1;
                 }
-            }          
+            }
 
             if (IS_VIM_PORT((port_index - 1), vim_end_index))
             {
@@ -1747,7 +1978,21 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
         onlp_vimi_init();
         onlp_sysi_debug_diag_vim_status();
         diag_flag_set(DIAG_FLAG_OFF);
-    }    
+    }
+    else if (argc > 0 && !strcmp(argv[0], "led_control_bit"))
+    {
+        printf("DIAG for LED control bit: \n");
+        diag_flag_set(DIAG_FLAG_ON);
+        onlp_sysi_debug_diag_led_control_bit();
+        diag_flag_set(DIAG_FLAG_OFF);
+    }
+    else if (argc > 0 && !strcmp(argv[0], "mgmt"))
+    {
+        printf("DIAG for MGMT information: \n");
+        diag_flag_set(DIAG_FLAG_ON);
+        onlp_sysi_debug_diag_mgmt_info();
+        diag_flag_set(DIAG_FLAG_OFF);
+    }
     else if (argc > 0 && !strcmp(argv[0], "get_i2c_tree_db"))
     {
         int fd;
@@ -1771,14 +2016,14 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
             return 30;
         }
 
-        /* Copy memory from addr to data */ 
+        /* Copy memory from addr to data */
         memcpy(data, addr, STORAGE_SIZE);
 
-        AIM_SYSLOG_INFO("[DEBUG]", 
+        AIM_SYSLOG_INFO("[DEBUG]",
                         "[DEBUG]",
                         "[get_i2c_tree_db] Read from shared memory: addr--(%s)", addr);
-    
-        AIM_SYSLOG_INFO("[DEBUG]", 
+
+        AIM_SYSLOG_INFO("[DEBUG]",
                         "[DEBUG]",
                         "[get_i2c_tree_db] Read from shared memory: data--(%s)", data);
 
@@ -1792,11 +2037,11 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
         }
 
         while((split_date=strtok(NULL, " ")))
-        { 
+        {
             /* Use the first parameter as NULL to extract a substring */
             printf("[%d] atoi(%s) is %d\n", count, split_date, atoi(split_date));
             count ++;
-        }    
+        }
     }
     else if (argc > 0 && !strcmp(argv[0], "get_vim_cpld_bus_id"))
     {
@@ -1813,7 +2058,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
                 printf("onlp_vimi_cpld_bus_id_get failed\n");
             else
                 printf("VIM %d Power CPLD I2C bus id is %d\n", vim_id, cpld_bus_id);
-            
+
             vim_board_id = onlp_vimi_board_id_get(vim_id);
             if ((vim_board_id == VIM_24CE) || (vim_board_id == VIM_24YE))
             {
@@ -1828,7 +2073,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
         {
             printf("VIM %d is not present\n", vim_id);
         }
-        
+
     }
     else if (argc > 0 && !strcmp(argv[0], "get_vim_port_information"))
     {
@@ -2004,7 +2249,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
                 printf("%14d    VIM %2d    %14d    %5d    %7d    %8d    %6d    %7d    %10d    %8d    %9d\n", \
                 port, vim_id, list_index, reset_sup, lp_mode_sup, tx_fault_sup, tx_dis_sup, rx_loss_sup, tx_fault_b_sup, tx_dis_b_sup, rx_loss_b_sup);
             }
-            
+
         }
 
         if (!((vim1_start_port == -1) && (vim2_start_port == -1)))
@@ -2021,7 +2266,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
     {
         int vim_id = atoi(argv[1]);
         int rv;
-        
+
         rv = onlp_sysi_debug_vim_eeprom(vim_id);
 
         printf("rv = %d\n", rv);
@@ -2030,7 +2275,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
     {
         int vim_id = atoi(argv[1]);
         int rv;
-        
+
         rv = onlp_vimi_power_control(ON, vim_id);
 
         printf("rv = %d\n", rv);
@@ -2039,7 +2284,7 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
     {
         int vim_id = atoi(argv[1]);
         int rv;
-        
+
         rv = onlp_vimi_power_control(OFF, vim_id);
 
         printf("rv = %d\n", rv);
@@ -2062,6 +2307,8 @@ onlp_sysi_debug(aim_pvs_t *pvs, int argc, char *argv[])
         printf("    sfp [PORT] [REG_ADDR] [PAGE] [PAGE_SEL] : run sfp ONLPI diagnostic function.\n");
         printf("    sfp_dom [PORT]      : run sfp dom ONLPI diagnostic function.\n");
         printf("    sfp_ctrl [PORT]     : run sfp control ONLPI diagnostic function.\n");
+        printf("    led_control_bit                         : show LED control bit status.\n");
+        printf("    mgmt                                    : show mgmt status (Link status and speed).\n");
         printf("    get_i2c_tree_db                         : show i2c tree db information.\n");
         printf("    get_vim_cpld_bus_id [VIM_ID]            : show VIM cpld i2c bus id.\n");
         printf("    get_vim_port_information                : show sfp information.\n");

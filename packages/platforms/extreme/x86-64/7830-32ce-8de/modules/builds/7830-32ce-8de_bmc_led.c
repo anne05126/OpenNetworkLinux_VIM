@@ -56,6 +56,7 @@
 #define IPMI_READ_WRITE_CMD						0x52
 #define IPMI_PWRCPLD_BUS						0x09
 #define IPMI_PWRCPLD_ADDRESS					0xbc	/* 0x5e << 1 = 0xbc */
+#define IPMI_WRITE_BYTE							0x00 	/* Write */
 #define IPMI_READ_BYTE							0x01 	/* Read */
 
 #define IPMI_LED_Ctrl_1_OFFSET		        	0x51
@@ -572,7 +573,7 @@ static ssize_t set_led_by_bmc(struct device *dev, struct device_attribute *da,
 	/* Send IPMI write command */
 	data->ipmi_tx_data[0] = IPMI_PWRCPLD_BUS;
 	data->ipmi_tx_data[1] = IPMI_PWRCPLD_ADDRESS;
-	data->ipmi_tx_data[2] = IPMI_READ_BYTE;
+	data->ipmi_tx_data[2] = IPMI_WRITE_BYTE;
 
 	switch (attr->index)
 	{

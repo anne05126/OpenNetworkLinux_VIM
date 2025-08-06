@@ -27,8 +27,6 @@
 #include <onlp/platformi/ledi.h>
 #include "platform_lib.h"
 
-#define LED_PATH      "/sys/bus/platform/devices/7830_bmc_led/%s"
-#define LED_PATH_I2C  "/sys/bus/i2c/devices/0-005f/%s"
 
 /* PWR_LED(POWER_LED) */
 #define PWR_LED_MODE_OFF               		0x0
@@ -76,11 +74,11 @@ typedef struct led_light_mode_map {
 led_light_mode_map_t led_map[] = {
 	{LED_PWR,    	PWR_LED_MODE_OFF,            		ONLP_LED_MODE_OFF},
     {LED_PWR,    	PWR_LED_MODE_GREEN,          		ONLP_LED_MODE_GREEN},
-    
+
     {LED_STAT,  	STAT_LED_MODE_OFF,             		ONLP_LED_MODE_OFF},
     {LED_STAT,  	STAT_LED_MODE_GREEN,           		ONLP_LED_MODE_GREEN},
     {LED_STAT,  	STAT_LED_MODE_AMBER,           		ONLP_LED_MODE_ORANGE},
-    {LED_STAT,     	STAT_LED_MODE_GREEN_AMBER_BLINKING, ONLP_LED_MODE_BLINKING},   
+    {LED_STAT,     	STAT_LED_MODE_GREEN_AMBER_BLINKING, ONLP_LED_MODE_BLINKING},
 
     {LED_FAN,     	FAN_LED_MODE_OFF,             		ONLP_LED_MODE_OFF},
     {LED_FAN,     	FAN_LED_MODE_GREEN,           		ONLP_LED_MODE_GREEN},
@@ -95,7 +93,7 @@ led_light_mode_map_t led_map[] = {
     {LED_PSU,     	PSU_LED_MODE_GREEN_AMBER_BLINKING,  ONLP_LED_MODE_BLINKING},
 
 	{LED_SEC,		SEC_LED_MODE_OFF,            		ONLP_LED_MODE_OFF},
-    {LED_SEC,  		SEC_LED_MODE_BLUE,           		ONLP_LED_MODE_BLUE},   
+    {LED_SEC,  		SEC_LED_MODE_BLUE,           		ONLP_LED_MODE_BLUE},
 
 };
 
@@ -103,8 +101,8 @@ static char *leds[] =  /* must map with onlp_led_id (platform_lib.h) */
 {
     "reserved",
 	"led_pwr",
-	"led_status",
-	"led_fan",    
+	"led_stat",
+	"led_fan",
     "led_psu",
     "led_security",
 };
@@ -150,7 +148,7 @@ static int driver_to_onlp_led_mode(enum onlp_led_id id, int driver_led_mode)
     {
         if (id == led_map[i].id && driver_led_mode == led_map[i].driver_led_mode)
         {
-            DIAG_PRINT("%s, id:%d, driver_led_mode:%d to onlp_led_mode:%d", 
+            DIAG_PRINT("%s, id:%d, driver_led_mode:%d to onlp_led_mode:%d",
                 __FUNCTION__, id, driver_led_mode, led_map[i].onlp_led_mode);
             return led_map[i].onlp_led_mode;
         }
@@ -167,7 +165,7 @@ static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led
     {
         if (id == led_map[i].id && onlp_led_mode == led_map[i].onlp_led_mode)
         {
-            DIAG_PRINT("%s, id:%d, onlp_led_mode:%d to driver_led_mode:%d", 
+            DIAG_PRINT("%s, id:%d, onlp_led_mode:%d to driver_led_mode:%d",
                 __FUNCTION__, id, onlp_led_mode, led_map[i].driver_led_mode);
             return led_map[i].driver_led_mode;
         }
@@ -199,23 +197,24 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[ONLP_OID_ID_GET(id)];
 
-    
+
     switch (lid)
     {
         case LED_PWR:
         case LED_SEC:
+        case LED_STAT:
             /* Get LED mode from CPU board */
-            if (onlp_file_read_int(&value, LED_PATH_I2C, leds[lid]) < 0) 
+            if (onlp_file_read_int(&value, LED_PATH_I2C, leds[lid]) < 0)
             {
-                AIM_LOG_ERROR("[CPU] Unable to read status from file "LED_PATH, leds[lid]);
+                AIM_LOG_ERROR("[CPU] Unable to read status from file "LED_PATH_I2C, leds[lid]);
                 return ONLP_STATUS_E_INTERNAL;
             }
             break;
-        case LED_STAT:
+
         case LED_FAN:
         case LED_PSU:
             /* Get LED mode from BMC */
-            if (onlp_file_read_int(&value, LED_PATH, leds[lid]) < 0) 
+            if (onlp_file_read_int(&value, LED_PATH, leds[lid]) < 0)
             {
                 AIM_LOG_ERROR("[BMC] Unable to read status from file "LED_PATH, leds[lid]);
                 return ONLP_STATUS_E_INTERNAL;
@@ -224,12 +223,12 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
         default:
             break;
     }
-    
+
 
     info->mode = driver_to_onlp_led_mode(lid, value);
 
     /* Set the on/off status */
-    if (info->mode != ONLP_LED_MODE_OFF) 
+    if (info->mode != ONLP_LED_MODE_OFF)
     {
         info->status |= ONLP_LED_STATUS_ON;
     }
@@ -251,7 +250,7 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
 {
     VALIDATE(id);
 
-    if (!on_or_off) 
+    if (!on_or_off)
     {
         return onlp_ledi_mode_set(id, ONLP_LED_MODE_OFF);
     }
@@ -268,14 +267,14 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
 
         caps = info.caps;
         /*Bit scan*/
-        for (i = 1; i < sizeof(caps)*8; i++) 
+        for (i = 1; i < sizeof(caps)*8; i++)
         {
             if( caps & (1<<i)) {
                 return onlp_ledi_mode_set(id, i);
             }
         }
     }
-	
+
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
@@ -296,8 +295,9 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
     {
         case LED_PWR:
         case LED_SEC:
+        case LED_STAT:
             /* Set from CPU to cpld */
-            if (onlp_file_write_int(onlp_to_driver_led_mode(lid , mode), LED_PATH_I2C, leds[lid]) < 0) 
+            if (onlp_file_write_int(onlp_to_driver_led_mode(lid , mode), LED_PATH_I2C, leds[lid]) < 0)
             {
                 return ONLP_STATUS_E_INTERNAL;
             }
@@ -305,19 +305,15 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
         case LED_FAN:
         case LED_PSU:
             /* Set from BMC to cpld */
-            if (onlp_file_write_int(onlp_to_driver_led_mode(lid , mode), LED_PATH, leds[lid]) < 0) 
+            if (onlp_file_write_int(onlp_to_driver_led_mode(lid , mode), LED_PATH, leds[lid]) < 0)
             {
                 return ONLP_STATUS_E_INTERNAL;
             }
             break;
-        case LED_STAT:
-            return ONLP_STATUS_E_UNSUPPORTED;
-            break;
-        
         default:
             break;
     }
-    
+
 
     return ONLP_STATUS_OK;
 }

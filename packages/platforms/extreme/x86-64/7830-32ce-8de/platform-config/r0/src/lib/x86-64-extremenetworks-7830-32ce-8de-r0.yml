@@ -23,7 +23,7 @@ x86-64-extremenetworks-7830-32ce-8de-r0:
     args: >-
       nopat
       modprobe.blacklist=i2c-ismt,i2c_ismt
-      console=ttyS0,115200n8
+      console=ttyS1,115200n8
 
   ##network
   ##  interfaces:

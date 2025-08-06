@@ -51,6 +51,17 @@
 
 #define ONIE_EEPROM_PATH                "/sys/bus/i2c/devices/57-0055/eeprom"
 
+#define LED_PATH                        "/sys/bus/platform/devices/7830_bmc_led/%s"
+#define LED_PATH_I2C                    "/sys/bus/i2c/devices/0-005f/%s"
+
+#define PORT_CPLD1_PATH                 "/sys/bus/i2c/devices/12-0057/%s"
+#define PORT_CPLD2_PATH                 "/sys/bus/i2c/devices/15-0057/%s"
+
+#define MODULE_MGMT_PRIMARY_INTF_PATH       "/sys/bus/platform/devices/7830_iobm_io_eeprom/primary_interface"
+#define MODULE_MGMT_SFP_PATH                "/sys/bus/platform/devices/7830_iobm_io_eeprom/sfp1_%s"
+#define MODULE_MGMT_QSFP_PATH               "/sys/bus/platform/devices/7830_iobm_io_eeprom/qsfp1_%s"
+#define MODULE_MGMT_COPPER_PATH             "/sys/bus/platform/devices/7830_iobm_io_eeprom/copper1_%s"
+
 #define NUM_OF_SFP_PORT 	                40      /* 32 * 100G + 8 * 400G*/
 #define NUM_OF_IOBM_PORT 	       		 	2       /* 1 * 100G, 1 * 10G */
 #define NUM_OF_IOBM_QSFP28_PORT 	        1       /* 1 * 100G */
@@ -59,7 +70,7 @@
 #define NUM_OF_QSFP_PER_PORT_CPLD           3
 
 #define SFP_START_INDEX                     0       /* Both QSFP and SFP */
-#define SFP_PLUS_EEPROM_I2C_ADDR            0x50    /* SFP+ EEPROM Physical Address in the I2C */  
+#define SFP_PLUS_EEPROM_I2C_ADDR            0x50    /* SFP+ EEPROM Physical Address in the I2C */
 #define SFP_DOM_EEPROM_I2C_ADDR             0x51    /* SFP+ EEPROM(A2h page) Physical Address in the I2C*/
 
 #define QSFP_PORT_INDEX_START               0
@@ -85,7 +96,7 @@
 #define ONLP_VIMI_SHM_KEY                   (0xF001100 | ONLP_OID_TYPE_VIM)
 #define STORAGE_SIZE                        32
 #define STORAGE_ID                          "i2c_tree_db"
-#define DEBUG_FLAG_SAMPLE                   0   /* 0: Execute Alpha's solution, only for development and testing. 
+#define DEBUG_FLAG_SAMPLE                   0   /* 0: Execute Alpha's solution, only for development and testing.
                                                  * 1: Execute sample hard code. Example only for this case: insert VIM 1 8DE, VIM 2 not present
                                                  */
 
@@ -95,7 +106,7 @@
 #define VIM2_ID                             2
 #define VIM_POWER_CPLD_ID                   1
 #define VIM_PORT_CPLD_ID                    2
-#define VIM_START_INDEX                     (NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT)  
+#define VIM_START_INDEX                     (NUM_OF_SFP_PORT + NUM_OF_IOBM_PORT)
 #define VIM_PRESENT                         0
 #define VIM_NOT_PRESENT                     1
 #define VIM_POWER_GOOD                      1
@@ -127,6 +138,9 @@
 #define VIM_OPTOE_TX_FAULT_B_PWR_CPLD_PATH  "/sys/bus/i2c/devices/%d-005c/tx_fault_b_%d"
 #define VIM_OPTOE_TX_DIS_B_PWR_CPLD_PATH    "/sys/bus/i2c/devices/%d-005c/tx_dis_b_%d"
 #define VIM_OPTOE_RX_LOSS_B_PWR_CPLD_PATH   "/sys/bus/i2c/devices/%d-005c/rx_los_b_%d"
+#define VIM_PORT_LED_CTRL_PWR_CPLD_PATH     "/sys/bus/i2c/devices/%d-005c/vim%d_port_led_control"
+#define VIM_PWR_LED_PWR_CPLD_PATH           "/sys/bus/i2c/devices/%d-005c/vim%d_power_led"
+#define VIM_PWR_LED_CTRL_PWR_CPLD_PATH      "/sys/bus/i2c/devices/%d-005c/vim%d_power_led_control"
 
 /* System CPLD access from CPU */
 #define VIM_PRESENT_PATH                    "/sys/bus/i2c/devices/0-006e/vim_%d_present"
@@ -147,6 +161,9 @@
 #define VIM_OPTOE_RX_LOSS_B_PORT_CPLD_PATH  "/sys/bus/i2c/devices/%d-0058/rx_los_b_%d"
 #define VIM_OPTOE_EEPROM_PATH               "/sys/bus/i2c/devices/%d-0050/eeprom"
 #define VIM_OPTOE_DOM_PATH                  "/sys/bus/i2c/devices/%d-0051/eeprom"
+#define VIM_PORT_LED_CTRL_PORT_CPLD_PATH    "/sys/bus/i2c/devices/%d-0058/vim%d_port_led_control"
+#define VIM_PWR_LED_PORT_CPLD_PATH          "/sys/bus/i2c/devices/%d-0058/vim%d_power_led"
+#define VIM_PWR_LED_CTRL_PORT_CPLD_PATH     "/sys/bus/i2c/devices/%d-0058/vim%d_power_led_control"
 
 /* Create I2C tree echo command */
 #define CMD_SIZE                            128
@@ -165,16 +182,16 @@
 #define VIM_SFP_EEPROM_ADDR                 0x50
 
 enum vim_port {
-    NOT_VIM_PORT, 
+    NOT_VIM_PORT,
     VIM_PORT
 };
 
 enum vim_type_id {
-    VIM_8DE, 
+    VIM_8DE,
     VIM_16CE,
     VIM_24CE,
     VIM_24YE,
-    VIM_NONE, 
+    VIM_NONE,
     VIM_TYPE_ID_MAX
 };
 
@@ -236,7 +253,7 @@ enum onlp_fan_fault_status
 };
 
 
-/* 
+/*
  * LED ID (need to sync with "enum onlp_led_id" defined in ledi.c)
  */
 
@@ -247,7 +264,7 @@ enum onlp_led_id
     LED_STAT,
     LED_FAN,
     LED_PSU,
-    LED_SEC  
+    LED_SEC
 };
 
 /** onlp_sfp_control_for_b_attr */
@@ -272,11 +289,14 @@ char diag_debug_pause_platform_manage_off(void);
 char diag_debug_pause_platform_manage_check(void);
 
 #define DIAG_TRACE(fmt,args...) if(diag_debug_trace_check()) printf("\n[TRACE]"fmt"\n", args)
-#define DIAG_PRINT(fmt,args...) DIAG_TRACE(fmt,args);else if(diag_flag_get()) printf("[DIAG]"fmt"\n", args) 
+#define DIAG_PRINT(fmt,args...) DIAG_TRACE(fmt,args);else if(diag_flag_get()) printf("[DIAG]"fmt"\n", args)
 
 char* sfp_control_to_str(int value);
 char* vim_sfp_control_to_str(int value);
 char* vim_sfp_control_for_b_attr_to_str(int value);
+char* link_status_to_str(int value);
+char* speed_to_str(int value);
+char* intf_to_str(int value);
 char *rtrim(char *str);
 char *ltrim(char *str);
 char *trim(char *str);

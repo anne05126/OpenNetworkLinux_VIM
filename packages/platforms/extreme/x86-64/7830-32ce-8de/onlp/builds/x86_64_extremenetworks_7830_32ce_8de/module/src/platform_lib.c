@@ -146,6 +146,62 @@ char* vim_sfp_control_for_b_attr_to_str(int value)
     return "";
 }
 
+char* link_status_to_str(int value)
+{
+    switch (value)
+    {
+        case 0:
+            return "Link Down";
+        case 1:
+            return "Link Up";
+        default:
+            return "UNKNOW";
+    }
+    return "";
+}
+
+char* speed_to_str(int value)
+{
+    switch (value)
+    {
+        case 1:
+            return "100 Mbps";
+        case 2:
+            return "1 Gbps";
+        case 3:
+            return "10 Gbps";
+        case 4:
+            return "20 Gbps";
+        case 5:
+            return "25 Gbps";
+        case 6:
+            return "40 Gbps";
+        case 7:
+            return "50 Gbps";
+        case 8:
+            return "100 Gbps";
+        default:
+            return "UNKNOW";
+    }
+    return "";
+}
+
+char* intf_to_str(int value)
+{
+    switch (value)
+    {
+        case 1:
+            return "Copper";
+        case 2:
+            return "SFP+";
+        case 11:
+            return "QSFP28";
+        default:
+            return "UNKNOW";
+    }
+    return "";
+}
+
 char diag_debug_pause_platform_manage_on(void)
 {
     system("echo 1 > /tmp/onlpi_dbg_pause_pm");
@@ -173,44 +229,44 @@ char diag_debug_pause_platform_manage_check(void)
 }
 
 /* trim tail(right) space */
-char *rtrim(char *str) 
-{ 
-    if (str == NULL || *str == '\0') 
-    { 
-        return str; 
-    } 
-    int len = strlen(str); 
-    char *p = str + len - 1; 
+char *rtrim(char *str)
+{
+    if (str == NULL || *str == '\0')
+    {
+        return str;
+    }
+    int len = strlen(str);
+    char *p = str + len - 1;
     while (p >= str && (isspace(*p) || *p < 33 || *p > 122)) /* only print ascii 33~122 */
-    { 
-        *p = '\0'; --p; 
-    } 
-    return str; 
+    {
+        *p = '\0'; --p;
+    }
+    return str;
 }
 
 /* trim head(left) space */
-char *ltrim(char *str) 
-{ 
-    if (str == NULL || *str == '\0') 
-    { 
-        return str; 
-    } 
-    int len = 0; 
+char *ltrim(char *str)
+{
+    if (str == NULL || *str == '\0')
+    {
+        return str;
+    }
+    int len = 0;
     char *p = str;
     while (*p != '\0' && (isspace(*p) || *p < 33 || *p > 122)) /* only print ascii 33~122 */
-    { 
-        ++p; ++len; 
-    } 
-    memmove(str, p, strlen(str) - len + 1); 
-    return str; 
-}  
+    {
+        ++p; ++len;
+    }
+    memmove(str, p, strlen(str) - len + 1);
+    return str;
+}
 
-char *trim(char *str) 
-{ 
-    str = rtrim(str); 
-    str = ltrim(str); 
-    return str; 
-} 
+char *trim(char *str)
+{
+    str = rtrim(str);
+    str = ltrim(str);
+    return str;
+}
 
 psu_type_t psu_type_get(int id, char* modelname, int modelname_len)
 {
@@ -227,7 +283,7 @@ psu_type_t psu_type_get(int id, char* modelname, int modelname_len)
         aim_free(string);
         string = NULL;
     }
-	
+
 
 	if(modelname)
 	{

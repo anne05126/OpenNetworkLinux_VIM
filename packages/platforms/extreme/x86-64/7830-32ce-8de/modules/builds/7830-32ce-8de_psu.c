@@ -82,13 +82,12 @@
 #define SENSOR_PS2_FAN1_PWM						0x39
 
 /* PMBus Protocol. */
-#define IPMI_PCA9548_6_BUS  					0x5
-#define IPMI_PCA9548_6_ADDR  					0xec	/* 0x76 << 1 */
-#define IPMI_PSU_WRITE_BYTE  					0x0
-#define IPMI_PSU_CHANNEL_OFFSET  				0x0
+#define IPMI_I2C_BUS_PSU1_MICRO_CTRLER			0x0
+#define IPMI_I2C_CHAN_PSU1_MICRO_CTRLER			0x2
+#define IPMI_I2C_BUS_PSU2_MICRO_CTRLER			0x1
+#define IPMI_I2C_CHAN_PSU2_MICRO_CTRLER			0x2
 
-#define IPMI_PCA9548_6_CHANNEL_PSU1				0x01	/* CH0 */
-#define IPMI_PCA9548_6_CHANNEL_PSU2				0x02	/* CH1 */
+#define IPMI_ENCODE_BUS_ID(_chan, _bus)			(((_chan) << 4) | ((_bus) << 1))
 
 #define IPMI_PSU1_CTRL_ADDR  					0xb0	/* 0x58 << 1 */
 #define IPMI_PSU2_CTRL_ADDR  					0xb2	/* 0x59 << 1 */
@@ -218,8 +217,8 @@ struct ipmi_psu_factors_data {
 };
 
 struct ipmi_psu_resp_data {
-	char   serial[26];
-	char   model[20];
+	char   serial[18];
+	char   model[14];
 };
 
 struct ipmi_psu_resp_data_value{
@@ -957,57 +956,25 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 	data->valid[pid] = 0;
 
 	data->ipmi.tx_message.netfn = IPMI_APP_NETFN;
-	data->ipmi_tx_data[0] = IPMI_PCA9548_6_BUS;
 
-	/* Get model name from ipmi */
+
+	/*
+	 * Get model name from ipmi
+	 * PSU1: ipmitool raw 0x06 0x52 0x20 0xb0 0xD 0x9A
+	 * PSU2: ipmitool raw 0x06 0x52 0x22 0xb2 0xD 0x9A
+	 */
 	switch (pid)
 	{
 		case PSU_1:
-			/* set PCA9548#4's channel to CH0(0x1) */
-			data->ipmi_tx_data[1] = IPMI_PCA9548_6_ADDR;
-			data->ipmi_tx_data[2] = IPMI_PSU_WRITE_BYTE;
-			data->ipmi_tx_data[3] = 0x00;
-			data->ipmi_tx_data[4] = IPMI_PCA9548_6_CHANNEL_PSU1;
-			status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
-					  data->ipmi_tx_data, 5,
-					  NULL,
-					  0);
-			if (unlikely(status != 0)) {
-				goto exit;
-			}
-
-			if (unlikely(data->ipmi.rx_result != 0)) {
-				status = -EIO;
-				goto exit;
-			}
-
-			/* PSU1 Model name */
+			data->ipmi_tx_data[0] = IPMI_ENCODE_BUS_ID(IPMI_I2C_CHAN_PSU1_MICRO_CTRLER, IPMI_I2C_BUS_PSU1_MICRO_CTRLER);
 			data->ipmi_tx_data[1] = IPMI_PSU1_CTRL_ADDR;
-
 			break;
+
 		case PSU_2:
-			/* set PCA9548#4's channel to CH1(0x2) */
-			data->ipmi_tx_data[1] = IPMI_PCA9548_6_ADDR;
-			data->ipmi_tx_data[2] = IPMI_PSU_WRITE_BYTE;
-			data->ipmi_tx_data[3] = 0x00;
-			data->ipmi_tx_data[4] = IPMI_PCA9548_6_CHANNEL_PSU2;
-			status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
-					  data->ipmi_tx_data, 5,
-					  NULL,
-					  0);
-			if (unlikely(status != 0)) {
-				goto exit;
-			}
-
-			if (unlikely(data->ipmi.rx_result != 0)) {
-				status = -EIO;
-				goto exit;
-			}
-
-			/* PSU2 Model name */
+			data->ipmi_tx_data[0] = IPMI_ENCODE_BUS_ID(IPMI_I2C_CHAN_PSU2_MICRO_CTRLER, IPMI_I2C_BUS_PSU2_MICRO_CTRLER);
 			data->ipmi_tx_data[1] = IPMI_PSU2_CTRL_ADDR;
-
 			break;
+
 		default:
 			status = -EIO;
 			goto exit;
@@ -1029,69 +996,34 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 		goto exit;
 	}
 
-
-
-	/* Get serial number from ipmi */
+	/*
+	 * Get serial number from ipmi
+	 * PSU1: ipmitool raw 0x06 0x52 0x20 0xb0 0x11 0x9E
+	 * PSU2: ipmitool raw 0x06 0x52 0x22 0xb2 0x11 0x9E
+	 */
 	switch (pid)
 	{
 		case PSU_1:
-			/* set PCA9548#4's channel to CH0(0x1) */
-			data->ipmi_tx_data[1] = IPMI_PCA9548_6_ADDR;
-			data->ipmi_tx_data[2] = IPMI_PSU_WRITE_BYTE;
-			data->ipmi_tx_data[3] = 0x00;
-			data->ipmi_tx_data[4] = IPMI_PCA9548_6_CHANNEL_PSU1;
-			status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
-					  data->ipmi_tx_data, 5,
-					  NULL,
-					  0);
-			if (unlikely(status != 0)) {
-				goto exit;
-			}
-
-			if (unlikely(data->ipmi.rx_result != 0)) {
-				status = -EIO;
-				goto exit;
-			}
-
-			/* PSU1 serial number */
+			data->ipmi_tx_data[0] = IPMI_ENCODE_BUS_ID(IPMI_I2C_CHAN_PSU1_MICRO_CTRLER, IPMI_I2C_BUS_PSU1_MICRO_CTRLER);
 			data->ipmi_tx_data[1] = IPMI_PSU1_CTRL_ADDR;
-
 			break;
+
 		case PSU_2:
-			/* set PCA9548#4's channel to CH1(0x2) */
-			data->ipmi_tx_data[1] = IPMI_PCA9548_6_ADDR;
-			data->ipmi_tx_data[2] = IPMI_PSU_WRITE_BYTE;
-			data->ipmi_tx_data[3] = 0x00;
-			data->ipmi_tx_data[4] = IPMI_PCA9548_6_CHANNEL_PSU2;
-			status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
-					  data->ipmi_tx_data, 5,
-					  NULL,
-					  0);
-			if (unlikely(status != 0)) {
-				goto exit;
-			}
-
-			if (unlikely(data->ipmi.rx_result != 0)) {
-				status = -EIO;
-				goto exit;
-			}
-
-			/* PSU2 serial number */
+			data->ipmi_tx_data[0] = IPMI_ENCODE_BUS_ID(IPMI_I2C_CHAN_PSU2_MICRO_CTRLER, IPMI_I2C_BUS_PSU2_MICRO_CTRLER);
 			data->ipmi_tx_data[1] = IPMI_PSU2_CTRL_ADDR;
-
 			break;
+
 		default:
 			status = -EIO;
 			goto exit;
 	}
 
-
 	data->ipmi_tx_data[2] = sizeof(data->ipmi_resp[pid].serial) - 1;
 	data->ipmi_tx_data[3] = PSU_REG_MFR_SERIAL;
 	status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
-				   data->ipmi_tx_data, 4,
-				   data->ipmi_resp[pid].serial,
-				   sizeof(data->ipmi_resp[pid].serial) - 1);
+				data->ipmi_tx_data, 4,
+				data->ipmi_resp[pid].serial,
+				sizeof(data->ipmi_resp[pid].serial) - 1);
 
 	if (unlikely(status != 0)) {
 		goto exit;
