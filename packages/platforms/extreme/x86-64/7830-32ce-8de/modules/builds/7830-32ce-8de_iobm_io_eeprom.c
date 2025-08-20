@@ -200,6 +200,9 @@ struct ipmi_iobm_resp_data {
 
 struct ipmi_iobm_resp_status {
 	unsigned char   status[2];
+};
+
+struct ipmi_iobm_resp_primary {
 	unsigned char   primary[4];
 };
 
@@ -209,13 +212,16 @@ struct extreme7830_32ce_8de_iobm_data {
 	char			 valid[3]; 						/* 0: SFP1, 1: QSFP28, 2: copper */
 	char			 valid_status[3]; 				/* != 0 if registers are valid */
 	char			 valid_oem_status[3]; 			/* != 0 if registers are valid */
-							    	  				/* 0: SFP1, 1: QSFP28 */
+	char			 valid_oem_primary;
+
 	unsigned long	 last_updated[3];	 			/* In jiffies, 0: SFP1, 1: QSFP28, 2: copper */
 	unsigned long	 last_updated_status[3]; 		/* In jiffies, 0: SFP1, 1: QSFP28, 2: copper */
 	unsigned long	 last_updated_oem_status[3];	/* In jiffies, 0: SFP1, 1: QSFP28, 2: copper */
+	unsigned long	 last_updated_oem_primary;
 	struct ipmi_data ipmi;
 	struct ipmi_iobm_resp_data ipmi_resp[3]; 		/* 0: SFP1, 1: QSFP28, 2: copper */
 	struct ipmi_iobm_resp_status ipmi_oem_resp[3];	/* 0: SFP1, 1: QSFP28, 2: copper */
+	struct ipmi_iobm_resp_primary ipmi_oem_resp_primary;
 	unsigned char ipmi_sfp_status;
 	unsigned char ipmi_qsfp_status;
 	unsigned char ipmi_copper_status;
@@ -658,27 +664,40 @@ static struct extreme7830_32ce_8de_iobm_data *extreme7830_32ce_8de_iobm_update_s
 	unsigned char cmd;
 	unsigned short tx_len;
 
-	switch (iobmid)
-    {
-		case SFP_1:
-			group = 0;
-			break;
-		case QSFP28_1:
-			group = 1;
-			break;
-		case COPPER_1:
-			group = 2;
-			break;
-		default:
-			status = -EIO;
-			goto exit;
+
+	if (attr->index == PRIMARY_INTERFACE)
+	{
+		if (time_before(jiffies, data->last_updated_oem_primary + HZ) && data->valid_oem_primary) {
+			return data;
+		}
+		data->valid_oem_primary = 0;
+	}
+	else
+	{
+		switch (iobmid)
+		{
+			case SFP_1:
+				group = 0;
+				break;
+			case QSFP28_1:
+				group = 1;
+				break;
+			case COPPER_1:
+				group = 2;
+				break;
+			default:
+				status = -EIO;
+				goto exit;
+		}
+
+		if (time_before(jiffies, data->last_updated_oem_status[group] + HZ) && data->valid_oem_status[group]) {
+			return data;
+		}
+		data->valid_oem_status[group] = 0;
 	}
 
-	if (time_before(jiffies, data->last_updated_oem_status[group] + HZ) && data->valid_oem_status[group]) {
-		return data;
-	}
 
-	data->valid_oem_status[group] = 0;
+
 
 	data->ipmi.tx_message.netfn = IPMI_OEM_NETFN;
 
@@ -689,8 +708,8 @@ static struct extreme7830_32ce_8de_iobm_data *extreme7830_32ce_8de_iobm_update_s
 			tx_len = 0;
 			status = ipmi_send_message(&data->ipmi, cmd,
 				   data->ipmi_tx_data, tx_len,
-				   data->ipmi_oem_resp[group].primary,
-				   sizeof(data->ipmi_oem_resp[group].primary));
+				   data->ipmi_oem_resp_primary.primary,
+				   sizeof(data->ipmi_oem_resp_primary.primary));
 			break;
 		case SFP1_LINK_STATUS:
 		case SFP1_SPEED:
@@ -732,8 +751,18 @@ static struct extreme7830_32ce_8de_iobm_data *extreme7830_32ce_8de_iobm_update_s
 		goto exit;
 	}
 
-	data->last_updated_oem_status[group] = jiffies;
-	data->valid_oem_status[group] = 1;
+	if (attr->index == PRIMARY_INTERFACE)
+	{
+		data->last_updated_oem_primary = jiffies;
+		data->valid_oem_primary = 1;
+	}
+	else
+	{
+		data->last_updated_oem_status[group] = jiffies;
+		data->valid_oem_status[group] = 1;
+	}
+
+
 
 exit:
 	return data;
@@ -1031,10 +1060,22 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da, char
 	mutex_lock(&data->update_lock);
 
 	data = extreme7830_32ce_8de_iobm_update_status(da);
-	if (!data->valid_oem_status[group]) {
-		error = -EIO;
-		goto exit;
+	if (attr->index == PRIMARY_INTERFACE)
+	{
+		if (!data->valid_oem_primary) {
+			error = -EIO;
+			goto exit;
+		}
 	}
+	else
+	{
+		if (!data->valid_oem_status[group]) {
+			error = -EIO;
+			goto exit;
+		}
+	}
+
+
 
 	switch (attr->index) {
 		case SFP1_LINK_STATUS:
@@ -1050,7 +1091,7 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da, char
 			value = data->ipmi_oem_resp[group].status[INTF_SPEED];
 			break;
 		case PRIMARY_INTERFACE:
-			value = data->ipmi_oem_resp[group].primary[ACTIVE_INTF_ID];
+			value = data->ipmi_oem_resp_primary.primary[ACTIVE_INTF_ID];
 			break;
 		default:
 			error = -EINVAL;

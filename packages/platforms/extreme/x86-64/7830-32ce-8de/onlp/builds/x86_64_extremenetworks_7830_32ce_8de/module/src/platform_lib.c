@@ -38,7 +38,7 @@
 #include <ctype.h>
 
 #define DEBUG_FLAG 0
-#define PSU_MODEL_NAME_LEN          10
+#define PSU_MODEL_NAME_LEN          11
 
 
 static char diag_flag=0;

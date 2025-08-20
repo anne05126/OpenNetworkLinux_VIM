@@ -217,8 +217,8 @@ struct ipmi_psu_factors_data {
 };
 
 struct ipmi_psu_resp_data {
-	char   serial[18];
-	char   model[14];
+	char   serial[17];	/* data len + Can store 15 (0xf)bytes + '\0' */
+	char   model[13];	/* data len + Can store 11 (0xb)bytes + '\0' */
 };
 
 struct ipmi_psu_resp_data_value{

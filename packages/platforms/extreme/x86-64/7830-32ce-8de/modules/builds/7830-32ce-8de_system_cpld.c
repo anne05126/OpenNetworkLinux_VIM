@@ -49,6 +49,9 @@
 #define VIM_CPLD2_ADDRESS                       0x58
 #define VIM_CPLD_REG_ADDR_BOARD_ID         	    0x01
 
+#define VIM_POWER_GOOD                          (1)
+#define VIM_POWER_FAIL                          (0)
+
 static unsigned int debug = 0;
 module_param(debug, uint, S_IRUGO);
 MODULE_PARM_DESC(debug, "Set DEBUG mode. Default is disabled.");
@@ -83,16 +86,24 @@ struct chip_desc {
 
 enum vim_id
 {
-    VIM_1, 
+    VIM_1,
     VIM_2,
     VIM_ID_MAX
 };
 
 enum vim_use_status
 {
-    VIM_1_USE, 
+    VIM_1_USE,
     VIM_2_USE,
     NOT_USE,
+};
+
+enum vim_power_good_bits
+{
+    VIM_1_MP5990 = 0,
+    VIM_2_MP5990,
+    VIM_1_ISOLATION_IC,
+    VIM_2_ISOLATION_IC,
 };
 
 static const struct i2c_device_id extreme7830_32ce_8de_vim_cpld_id[] = {
@@ -132,7 +143,7 @@ static ssize_t show_sys_cpld_version(struct device *dev, struct device_attribute
 static ssize_t show_vim_power_control(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t set_vim_power_control(struct device *dev, struct device_attribute *da, const char *buf, size_t count);
 static ssize_t show_vim_power_good(struct device *dev, struct device_attribute *da, char *buf);
-   
+
 static int extreme7830_32ce_8de_vim_cpld_read_internal(struct i2c_client *client, u8 reg);
 static int extreme7830_32ce_8de_vim_cpld_write_internal(struct i2c_client *client, u8 reg, u8 value);
 
@@ -214,7 +225,7 @@ static ssize_t show_vim_status(struct device *dev, struct device_attribute *da,
     u8 reg = 0, mask = 0;
 
     switch (attr->index) {
-		/* PRESENT 
+		/* PRESENT
          * i2cget -y -f 0 0x6e 0x30
          */
 		case VIM_1_PRESENT:
@@ -225,8 +236,8 @@ static ssize_t show_vim_status(struct device *dev, struct device_attribute *da,
 			reg  = CPLD_REG_ADDR_VIM_PRESENT;
 			mask = 0x1 << PRESENT_VIM2_BIT;
 			break;
-		
-        /* RESET 
+
+        /* RESET
          * i2cget -y -f 0 0x6e 0x23
          */
         case VIM_1_RESET:
@@ -346,17 +357,16 @@ static ssize_t show_vim_power_good(struct device *dev, struct device_attribute *
     struct i2c_client *client = to_i2c_client(dev);
     struct extreme7830_32ce_8de_vim_cpld_data *data = i2c_get_clientdata(client);
     int status = 0;
-    u8 reg = 0, mask = 0, shift = 0;
-    reg  = CPLD_REG_ADDR_VIM_PWR_GOOD;
+    u8 reg = 0, mask = 0;
 
+    /* MP5990 and Isolation IC of VIM Power Good */
+    reg  = CPLD_REG_ADDR_VIM_PWR_GOOD;
     switch (attr->index) {
 		case VIM_1_PWR_GOOD:
-            shift = PWR_GOOD_VIM1_BIT;
-			mask = 0x1 << shift;
+			mask = (0x1 << VIM_1_MP5990) | (0x1 << VIM_1_ISOLATION_IC);
 			break;
 		case VIM_2_PWR_GOOD:
-            shift = PWR_GOOD_VIM2_BIT;
-			mask = 0x1 << shift;
+            mask = (0x1 << VIM_2_MP5990) | (0x1 << VIM_2_ISOLATION_IC);
 			break;
 		default:
 			DEBUG_PRINT("vim show_vim_power_good failed: attr->index:%d", attr->index);
@@ -366,12 +376,20 @@ static ssize_t show_vim_power_good(struct device *dev, struct device_attribute *
     mutex_lock(&data->update_lock);
     status = extreme7830_32ce_8de_vim_cpld_read_internal(client, reg);
     if (unlikely(status < 0)) {
-		DEBUG_PRINT("vim extreme7830_32ce_8de_vim_cpld_read_internal failed: attr->index:%d, reg=%d", attr->index, reg);
+        DEBUG_PRINT("vim extreme7830_32ce_8de_vim_cpld_read_internal failed: attr->index:%d, reg=%d", attr->index, reg);
         goto exit;
     }
     mutex_unlock(&data->update_lock);
 
-    return sprintf(buf, "%d\n", (status & mask) >> shift);
+    /* Confirm that both the MP5990 and the Isolation IC indicate power good */
+    if ((status & mask) == mask)
+    {
+        return sprintf(buf, "%d\n", VIM_POWER_GOOD);
+    }
+    else
+    {
+        return sprintf(buf, "%d\n", VIM_POWER_FAIL);
+    }
 
 exit:
     mutex_unlock(&data->update_lock);
@@ -490,20 +508,20 @@ static int extreme7830_32ce_8de_vim_cpld_probe(struct i2c_client *client,
         DEBUG_PRINT("i2c_check_functionality failed");
         return -ENODEV;
     }
-        
+
 
     data = kzalloc(sizeof(struct extreme7830_32ce_8de_vim_cpld_data), GFP_KERNEL);
     if (!data){
         DEBUG_PRINT("kzalloc failed");
         return -ENOMEM;
     }
-        
+
     i2c_set_clientdata(client, data);
     data->type = id->driver_data;
     mutex_init(&data->update_lock);
-	
+
     DEBUG_PRINT("data->type = %d", data->type);
-	switch (data->type) 
+	switch (data->type)
 	{
 		case extreme7830_32ce_8de_sys_cpld:
 			group = &extreme7830_32ce_8de_sys_cpld_group;
@@ -541,7 +559,7 @@ static int extreme7830_32ce_8de_vim_cpld_remove(struct i2c_client *client)
     extreme7830_32ce_8de_vim_cpld_remove_client(client);
 
     /* Remove sysfs hooks */
-    switch (data->type) 
+    switch (data->type)
 	{
 		case extreme7830_32ce_8de_sys_cpld:
 			group = &extreme7830_32ce_8de_sys_cpld_group;

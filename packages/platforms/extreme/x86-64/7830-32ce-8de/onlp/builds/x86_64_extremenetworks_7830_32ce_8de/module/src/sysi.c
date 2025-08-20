@@ -505,73 +505,73 @@ int onlp_sysi_debug_diag_led(void)
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_OFF);
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_OFF);
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_SEC), ONLP_LED_MODE_OFF);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 
     /* POWER LED */
     printf("[Set POWER LED to ONLP_LED_MODE_GREEN ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PWR), ONLP_LED_MODE_GREEN);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 
     /* STATUS LED */
     printf("[Set STATUS LED to ONLP_LED_MODE_GREEN ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_GREEN);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 
     printf("[Set STATUS LED to ONLP_LED_MODE_ORANGE ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_ORANGE);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 
 	printf("[Set STATUS LED to ONLP_LED_MODE_BLINKING(Blinking Amber-Green) ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_STAT), ONLP_LED_MODE_BLINKING);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 
 	/* FAN LED */
     printf("[Set FAN LED to ONLP_LED_MODE_GREEN ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_GREEN);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 
     printf("[Set FAN LED to ONLP_LED_MODE_ORANGE ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_ORANGE);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 
 	printf("[Set FAN LED to ONLP_LED_MODE_BLINKING(Blinking Amber-Green) ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_BLINKING);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 
     /* PSU LED */
     printf("[Set PSU LED to ONLP_LED_MODE_GREEN ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_GREEN);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
     printf("[Set PSU LED to ONLP_LED_MODE_GREEN_BLINKING ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_GREEN_BLINKING);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
     printf("[Set PSU LED to ONLP_LED_MODE_ORANGE ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_ORANGE);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
     printf("[Set PSU LED to ONLP_LED_MODE_ORANGE_BLINKING ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_ORANGE_BLINKING);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 	printf("[Set PSU LED to ONLP_LED_MODE_BLINKING(Blinking Amber-Green) ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_BLINKING);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 
     /* SECURITY LED */
     printf("[Set SEC LED to ONLP_LED_MODE_BLUE ...]\n");
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_SEC), ONLP_LED_MODE_BLUE);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 
     printf("[Set All LED to OFF ...]\n");
@@ -580,13 +580,13 @@ int onlp_sysi_debug_diag_led(void)
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_OFF);
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_PSU), ONLP_LED_MODE_OFF);
     onlp_ledi_set(ONLP_LED_ID_CREATE(LED_SEC), ONLP_LED_MODE_OFF);
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 
     printf("[Reverted power, fan, security, and PSU LEDs to hardware control ...]\n");
     onlp_file_write_int(0, LED_PATH_I2C, "led_control");
     onlp_file_write_int(0, LED_PATH, "led_control");
-    printf("<Press Any Key to Continue>\n");
+    printf("<Press Enter Key to Continue>\n");
     getchar();
 
     /* Channel LED */
@@ -600,7 +600,7 @@ int onlp_sysi_debug_diag_led(void)
             AIM_LOG_ERROR("[CPU] Unable to read status from file "LED_PATH, "chan_sel_counter");
         }
         printf("Push Button Counter: %d\n", value);
-        printf("<Press Any Key to Continue>\n");
+        printf("<Press Enter Key to Continue>\n");
         getchar();
     }
 
@@ -612,7 +612,7 @@ int onlp_sysi_debug_diag_led(void)
             printf("[Set VIM#%d Power LED to %d ...]\n", vim_id, i);
             sprintf(vim_pwr_led_command, "i2cset -y -f 0 0x77 0x%d;i2cset -y -f 0 0x76 0x8;i2cset -y -f 0 0x5c 0x40 0x%02x", vim_id, i << 3 | 4);
             system(vim_pwr_led_command);
-            printf("<Press Any Key to Continue>\n");
+            printf("<Press Enter Key to Continue>\n");
             getchar();
         }
         sprintf(vim_pwr_led_command, "i2cset -y -f 0 0x77 0x%d;i2cset -y -f 0 0x76 0x8;i2cset -y -f 0 0x5c 0x40 0x0", vim_id);

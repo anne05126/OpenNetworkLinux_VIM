@@ -154,12 +154,12 @@ struct ipmi_data {
 struct extreme7830_32ce_8de_led_data {
 	struct platform_device 			*pdev;
 	struct mutex                    update_lock;
-	char                            valid[2];           /* != 0 if registers are valid */
+	char                            valid[1];           /* != 0 if registers are valid */
                                                         /* 0: LED Control Register 1 */
-	unsigned long                   last_updated[2];    /* In jiffies  0: LED Control Register 1 */
+	unsigned long                   last_updated[1];    /* In jiffies  0: LED Control Register 1 */
 	struct ipmi_data ipmi;
-	unsigned char                   ipmi_resp[2];       /* 0: LED Control Register 1 */
-	unsigned char                   ipmi_tx_data[4];
+	unsigned char                   ipmi_resp[1];       /* 0: LED Control Register 1 */
+	unsigned char                   ipmi_tx_data[5];
 };
 
 struct extreme7830_32ce_8de_led_data *data = NULL;
@@ -354,9 +354,12 @@ extreme7830_32ce_8de_led_update_device(struct device_attribute *da)
 			goto exit;
 	}
 
+	/*  Disable 5s cache check to always fetch fresh data from BMC, preventing stale LED control bit. */
+#if 0
 	if (time_before(jiffies, data->last_updated[group] + HZ * 5) &&
                 data->valid[group])
 		return data;
+#endif
 
 	data->valid[group] = 0;
 
@@ -656,7 +659,6 @@ static int __init extreme7830_32ce_8de_led_init(void)
 
 	mutex_init(&data->update_lock);
 	data->valid[0] = 0;
-	data->valid[1] = 0;
 
 	ret = platform_driver_register(&extreme7830_32ce_8de_led_driver);
 	if (ret < 0)
