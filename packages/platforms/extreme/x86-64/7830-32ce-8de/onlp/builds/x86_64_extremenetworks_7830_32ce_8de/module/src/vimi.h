@@ -35,10 +35,10 @@
 #define PORT_TYPE_SIZE                      7
 
 #if (DEBUG_FLAG_SAMPLE == 0)
-/*
- * VIM information for HW design
- * It contains how many PCA9548 have this VIM used,
- * the number of port supported and the type of Optoe
+/* 
+ * VIM information for HW design 
+ * It contains how many PCA9548 have this VIM used, 
+ * the number of port supported and the type of Optoe 
  */
 typedef struct vim_info_s {
     int pca_count;
@@ -51,7 +51,7 @@ typedef struct vim_info_s {
 typedef int (*VIM_CALLBACK_FUNC)(
     int vim_id,
     int operation,
-    int vim_board_id);
+    int vim_board_id); 
 
 
 /* Record data structure of callback function pointer */
@@ -62,48 +62,48 @@ typedef struct {
 
 enum vim_id
 {
-    VIM_1,
+    VIM_1, 
     VIM_2,
     VIM_ID_MAX
 };
 
 enum operation
 {
-    INSERT,
+    INSERT, 
     REMOVE
 };
 
 enum vim_power_operation
 {
-    ON,
+    ON, 
     OFF
 };
 
 enum boolean
-{
-    FALSE,
+{ 
+    FALSE, 
     TRUE
 };
 
 enum vim_use_status
 {
-    VIM_1_USE,
+    VIM_1_USE, 
     VIM_2_USE,
     NOT_USE
 };
 
 enum pca9548_index
 {
-    PCA9548_1,
-    PCA9548_2,
-    PCA9548_3,
+    PCA9548_1, 
+    PCA9548_2, 
+    PCA9548_3, 
     PCA9548_4
 };
 
-/*
- * Extreme needs to record the VIM i2c tree information
- * after updating the i2c tree. VIM i2c tree information
- * include CH0 i2c bus id for each VIM i2c PCA9548. Alpha
+/* 
+ * Extreme needs to record the VIM i2c tree information 
+ * after updating the i2c tree. VIM i2c tree information 
+ * include CH0 i2c bus id for each VIM i2c PCA9548. Alpha 
  * needs this information to complete the ONLPI API.
 */
 typedef struct onlp_vim_i2c_info {
@@ -174,7 +174,7 @@ int onlp_vimi_init(void);
  * @param vim_id The VIM ID. (VIM 1 = 1, VIM 2 = 2)
  * @returns 1 if absent \
  * @returns 0 if present    \
- * @returns An error condition.
+ * @returns An error condition. 
  */
 int onlp_vimi_present_get(int vim_id);
 
@@ -208,14 +208,14 @@ int onlp_vimi_optoe_start_port_get(int vim_id);
  */
 int onlp_vimi_get_vim_end_index(void);
 
-/**
+/** 
  * @brief [private] Use index to map which VIM slot the port belongs to.
  * @param index index start from 0, front port(0-41), vim port(42-(vim_end_index-1))
  * @returns vim_id: The VIM ID. (VIM 1 = 1, VIM 2 = 2)
  */
 int onlp_vimi_index_map_to_vim_id(int index);
 
-/**
+/** 
  * @brief [private] Used vim_id and index to get the list_index.
  * @param vim_id The VIM ID. (VIM 1 = 1, VIM 2 = 2)
  * @param index index start from 0, front port(0-41), vim port(42-(vim_end_index-1))
@@ -223,7 +223,7 @@ int onlp_vimi_index_map_to_vim_id(int index);
  */
 int onlp_vimi_get_list_index(int vim_id, int index);
 
-/**
+/** 
  * @brief [private] Get vim optoe bus id list according to vim id.
  * @param vim_id The VIM ID. (VIM 1 = 1, VIM 2 = 2)
  * @returns optoe_bus_id: optoe bus id array list

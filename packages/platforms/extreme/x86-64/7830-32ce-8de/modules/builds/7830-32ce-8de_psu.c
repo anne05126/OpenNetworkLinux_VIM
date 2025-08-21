@@ -43,7 +43,7 @@
 #include <linux/platform_device.h>
 
 #define DRVNAME 								"7830_psu"
-
+#define PSU_DATA_STRING_LEN						(32)
 /* Base on Power CPLD spec v10 */
 /* Get PSU Status */
 #define IPMI_APP_NETFN							0x6
@@ -82,6 +82,7 @@
 #define SENSOR_PS2_FAN1_PWM						0x39
 
 /* PMBus Protocol. */
+/* Refer to Hawk Physical Logical I2C Mapping.xlsx */
 #define IPMI_I2C_BUS_PSU1_MICRO_CTRLER			0x0
 #define IPMI_I2C_CHAN_PSU1_MICRO_CTRLER			0x2
 #define IPMI_I2C_BUS_PSU2_MICRO_CTRLER			0x1
@@ -216,9 +217,9 @@ struct ipmi_psu_factors_data {
 	unsigned char	ipmi_fan1_factors[7];	/* 0: not use, 1: M-LS 8bits, 2: M-MS 2bits, 3: B-LS 8bits, 4: B-MS 2bits, 5: not use, 6: [7:4]R exponent(K2) [3:0]B exponent(K1) */
 };
 
-struct ipmi_psu_resp_data {
-	char   serial[17];	/* data len + Can store 15 (0xf)bytes + '\0' */
-	char   model[13];	/* data len + Can store 11 (0xb)bytes + '\0' */
+struct ipmi_psu_resp_data_string {
+	char   serial[PSU_DATA_STRING_LEN];
+	char   model[PSU_DATA_STRING_LEN];
 };
 
 struct ipmi_psu_resp_data_value{
@@ -237,7 +238,7 @@ struct extreme7830_32ce_8de_psu_data {
 	unsigned long	 last_updated_value[28]; /* In jiffies */
 	struct ipmi_data ipmi;
 	struct ipmi_psu_factors_data ipmi_factors[2]; /* 0: PSU1, 1: PSU2 */
-	struct ipmi_psu_resp_data ipmi_resp[2]; /* 0: PSU1, 1: PSU2 */
+	struct ipmi_psu_resp_data_string ipmi_resp_string[2]; /* 0: PSU1, 1: PSU2 */
 	struct ipmi_psu_resp_data_value ipmi_resp_value[28]; /* 0: PSU1_VIN, 1: PSU1_VOUT, 2: PSU1_IIN, 3: PSU1_IOUT, 4: PSU1_PIN, 5: PSU1_POUT, 6: PSU1_MODEL, 7: PSU1_SERIAL, 8: PSU1_TEMP1, 9: PSU1_TEMP2, 10: PSU1_TEMP3, 11: PSU1_FAN1, 12: PSU1_PRESENT, 13: PSU1_POWERGOOD */
 							    	  					 /* 14: PSU2_VIN, 15: PSU2_VOUT, 16: PSU2_IIN, 17: PSU2_IOUT, 18: PSU2_PIN, 19: PSU2_POUT, 20: PSU2_MODEL, 21: PSU2_SERIAL, 22: PSU2_TEMP1, 23: PSU2_TEMP2, 24: PSU2_TEMP3, 25: PSU2_FAN1, 26: PSU1_PRESENT, 27: PSU1_POWERGOOD */
 	unsigned char ipmi_resp_status[2]; /* 0: PSU1, 1: PSU2 */
@@ -980,12 +981,12 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 			goto exit;
 	}
 
-	data->ipmi_tx_data[2] = sizeof(data->ipmi_resp[pid].model) - 1;
+	data->ipmi_tx_data[2] = sizeof(data->ipmi_resp_string[pid].model) - 1;
 	data->ipmi_tx_data[3] = PSU_REG_MFR_MODEL;
 	status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
 				data->ipmi_tx_data, 4,
-				data->ipmi_resp[pid].model,
-				sizeof(data->ipmi_resp[pid].model) - 1);
+				data->ipmi_resp_string[pid].model,
+				sizeof(data->ipmi_resp_string[pid].model) - 1);
 
 	if (unlikely(status != 0)) {
 		goto exit;
@@ -1018,12 +1019,12 @@ static struct extreme7830_32ce_8de_psu_data *extreme7830_32ce_8de_psu_update_str
 			goto exit;
 	}
 
-	data->ipmi_tx_data[2] = sizeof(data->ipmi_resp[pid].serial) - 1;
+	data->ipmi_tx_data[2] = sizeof(data->ipmi_resp_string[pid].serial) - 1;
 	data->ipmi_tx_data[3] = PSU_REG_MFR_SERIAL;
 	status = ipmi_send_message(&data->ipmi, IPMI_READ_WRITE_CMD,
 				data->ipmi_tx_data, 4,
-				data->ipmi_resp[pid].serial,
-				sizeof(data->ipmi_resp[pid].serial) - 1);
+				data->ipmi_resp_string[pid].serial,
+				sizeof(data->ipmi_resp_string[pid].serial) - 1);
 
 	if (unlikely(status != 0)) {
 		goto exit;
@@ -1322,44 +1323,33 @@ exit:
 	return error;
 }
 
-/* trim tail(right) space */
-char *rtrim(char *str)
+char *trim_ipmi_str(const char *orig, size_t bufsize, char *outbuf, size_t outbufsize)
 {
-    if (str == NULL || *str == '\0')
-    {
-        return str;
-    }
-    int len = strlen(str);
-    char *p = str + len - 1;
-    while (p >= str && (isspace(*p) || *p < 33 || *p > 122)) /* only print ascii 33~122 */
-    {
-        *p = '\0'; --p;
-    }
-    return str;
-}
+    if (!orig || bufsize == 0 || !outbuf || outbufsize == 0)
+        return NULL;
 
-/* trim head(left) space */
-char *ltrim(char *str)
-{
-    if (str == NULL || *str == '\0')
-    {
-        return str;
-    }
-    int len = 0;
-    char *p = str;
-    while (*p != '\0' && (isspace(*p) || *p < 33 || *p > 122)) /* only print ascii 33~122 */
-    {
-        ++p; ++len;
-    }
-    memmove(str, p, strlen(str) - len + 1);
-    return str;
-}
+	/* The first byte is the valid data length */
+    int datalen = (unsigned char)orig[0];
 
-char *trim(char *str)
-{
-    str = rtrim(str);
-    str = ltrim(str);
-    return str;
+	DEBUG_PRINT("trim_ipmi_str: raw buffer[0]=%d, bufsize=%zu\n", datalen, bufsize);
+
+    /* Reasonableness check */
+    if (datalen <= 0 || datalen >= bufsize || datalen >= outbufsize) {
+        DEBUG_PRINT("trim_ipmi_str: invalid datalen=%d (bufsize=%zu, outbufsize=%zu), clearing outbuf\n",
+                    datalen, bufsize, outbufsize);
+        outbuf[0] = '\0';
+        return outbuf;
+    }
+
+    /* Move the valid data forward one byte */
+    memcpy(outbuf, orig + 1, datalen);
+
+    /* End of the string */
+    outbuf[datalen] = '\0';
+
+	DEBUG_PRINT("trim_ipmi_str: trimmed string=\"%s\"\n", outbuf);
+
+    return outbuf;
 }
 
 static ssize_t show_string(struct device *dev, struct device_attribute *da, char *buf)
@@ -1367,6 +1357,7 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da, char
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
 	char *str = NULL;
+	char tmpbuf[PSU_DATA_STRING_LEN];
 	int error = 0;
 
 	mutex_lock(&data->update_lock);
@@ -1380,13 +1371,25 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da, char
 	switch (attr->index) {
 		case PSU1_MODEL:
 		case PSU2_MODEL:
-			str = data->ipmi_resp[pid].model;
-			str = trim(str);
+			DEBUG_PRINT("show_string: before trim, raw model (first bytes): %*ph\n",
+                 (int)sizeof(data->ipmi_resp_string[pid].model),
+                 data->ipmi_resp_string[pid].model);
+
+			str = trim_ipmi_str(
+                        data->ipmi_resp_string[pid].model,
+                        sizeof(data->ipmi_resp_string[pid].model),
+                        tmpbuf, sizeof(tmpbuf));
 			break;
 		case PSU1_SERIAL:
 		case PSU2_SERIAL:
-			str = data->ipmi_resp[pid].serial;
-			str = trim(str);
+			DEBUG_PRINT("show_string: before trim, raw serial (first bytes): %*ph\n",
+                 (int)sizeof(data->ipmi_resp_string[pid].serial),
+                 data->ipmi_resp_string[pid].serial);
+
+			str = trim_ipmi_str(
+                        data->ipmi_resp_string[pid].serial,
+                        sizeof(data->ipmi_resp_string[pid].serial),
+                        tmpbuf, sizeof(tmpbuf));
 			break;
 		default:
 			error = -EINVAL;

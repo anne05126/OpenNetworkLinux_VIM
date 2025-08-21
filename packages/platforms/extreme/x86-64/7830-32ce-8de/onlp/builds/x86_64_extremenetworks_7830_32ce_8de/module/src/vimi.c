@@ -50,38 +50,38 @@ int pca9548_i2c_bus_id_array[VIM_MAX_PCA_COUNT] = {58, 66, 74, 82, 90, 98, 106, 
 char vim_pca9548_usage_status[VIM_MAX_PCA_COUNT];  /* 0 – VIM 1, 1 – VIM 2, 2 – NOT_USE */
 int pca9548_ch0_bus_id_list[8] = {0};
 
-vim_info vim_struct[VIM_TYPE_COUNT] =
+vim_info vim_struct[VIM_TYPE_COUNT] = 
 {
     {
         /* 8DE */
-        2,
-        8,
+        2, 
+        8, 
         "optoe3"
-    },
+    }, 
     {
         /* 16CE */
-        3,
-        16,
+        3, 
+        16, 
         "optoe1"
-    },
+    }, 
     {
         /* 24CE */
-        4,
-        24,
+        4, 
+        24, 
         "optoe3"
-    },
+    }, 
     {
         /* 24YE */
-        4,
-        24,
+        4, 
+        24, 
         "optoe2"
-    },
+    }, 
     {
         /* None */
-        0,
-        0,
+        0, 
+        0, 
         "optoe"
-    },
+    }, 
 };
 #endif /* DEBUG_FLAG_SAMPLE */
 
@@ -90,7 +90,7 @@ vim_info vim_struct[VIM_TYPE_COUNT] =
  * @param id The shared memory id.
  * @returns 0 if create shared memory success, otherwise it failed.
  */
-static int vimi_create_shm(key_t id)
+static int vimi_create_shm(key_t id) 
 {
     int rv;
 
@@ -153,7 +153,7 @@ bool execute_update_vim_i2c_tree(int vim_id, int operation, int vim_board_id)
 			vim_id,
 			operation,
 			vim_board_id);
-
+            
 		return TRUE;
 	}
 
@@ -163,7 +163,7 @@ bool execute_update_vim_i2c_tree(int vim_id, int operation, int vim_board_id)
 int new_i2c_device_for_vim(int vim_id, int vim_board_id)
 {
 #if DEBUG_FLAG_SAMPLE
-    /*
+    /* 
      * Example only for this case: insert VIM 1 8DE, VIM 2 not present (Hard code: vim_id = 1(VIM 1), vim_board_id = 0(8DE))
      * Extreme can have your mechanism to create VIM I2C tree
      */
@@ -179,14 +179,14 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
     /* I2c address reference to VIM I2C block diagram in VIM HW spec.
      * Create I2C device node for pca9548#1 0x76
      *      0x76: I2c address for pca9548#1
-     *      i2c-1: I2C bus id is 1
+     *      i2c-1: I2C bus id is 1 
      * Create I2C device node for CPLD 0x5c
      *      0x5c: I2c address for VIM 1 CPLD0
-     *      i2c-61: I2C bus id is 61
+     *      i2c-61: I2C bus id is 61 
      */
     system("echo pca9548 0x76 > /sys/bus/i2c/devices/i2c-1/new_device");
     system("echo VIM1_CPLD0 0x5c > /sys/bus/i2c/devices/i2c-61/new_device");
-
+    
 
     /* STEP2: Create I2C device node according to vim_board_id. */
     /* I2c address reference to VIM I2C block diagram in VIM HW spec.
@@ -196,13 +196,13 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
      */
     system("echo pca9548 0x70 > /sys/bus/i2c/devices/i2c-58/new_device");
 
-
+    
     /* STEP3: Create I2C device node for optical transceiver (SFP/QSFP/CMIS) EEPROMs according to vim_board_id */
     /* I2c address reference to VIM I2C block diagram in VIM HW spec.
      * Create I2C device node for optical transceiver EEPROMs
      *      optoe3: I2C device name base on optical transceiver(SFP/QSFP/CMIS). Reference to optoe driver(optoe.c).
-     *          - Use 'optoe1' to indicate this is a QSFP type device.
-     *          - Use 'optoe2' to indicate this is an SFP type device.
+     *          - Use 'optoe1' to indicate this is a QSFP type device. 
+     *          - Use 'optoe2' to indicate this is an SFP type device. 
      *          - Use 'optoe3' to indicate this is a CMIS type device. QSFP-DD is CMIS type device.
      *      0x50: I2c address for optical transceiver EEPROMs
      *      i2c-66~i2c-73: I2C bus id is 66~73
@@ -215,11 +215,11 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
     system("echo optoe3 0x50 > /sys/bus/i2c/devices/i2c-71/new_device");
     system("echo optoe3 0x50 > /sys/bus/i2c/devices/i2c-72/new_device");
     system("echo optoe3 0x50 > /sys/bus/i2c/devices/i2c-73/new_device");
-
+    
 
     /* STEP4: Keep VIM I2C bus id for update VIM I2C tree db */
-    current_vim_i2c_info.info[0].PCA9548_1_ch0_i2c_bus_id = 58;                 /* Channel 0 i2c bus id for VIM pca9548#1 */
-    current_vim_i2c_info.info[0].PCA9548_2_ch0_i2c_bus_id = 66;                 /* Channel 0 i2c bus id for VIM pca9548#0 */
+    current_vim_i2c_info.info[0].PCA9548_1_ch0_i2c_bus_id = 58;                 /* Channel 0 i2c bus id for VIM pca9548#1 */ 
+    current_vim_i2c_info.info[0].PCA9548_2_ch0_i2c_bus_id = 66;                 /* Channel 0 i2c bus id for VIM pca9548#0 */ 
     current_vim_i2c_info.info[0].PCA9548_3_ch0_i2c_bus_id = PCA9548_NOT_USE;    /* Channel 0 i2c bus id for VIM pca9548#3 */
     current_vim_i2c_info.info[0].PCA9548_4_ch0_i2c_bus_id = PCA9548_NOT_USE;    /* Channel 0 i2c bus id for VIM pca9548#4 */
 
@@ -245,7 +245,7 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
             break;
         }
     }
-
+    
     if (start_pca9548_id < 0)
     {
         AIM_LOG_ERROR("Get start_pca9548_id from vim pca9548 usage status failed\r\n");
@@ -254,7 +254,7 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
     pca9548_1_ch0_i2c_bus_id = pca9548_i2c_bus_id_array[start_pca9548_id];
 
     /* Record I2C bus id for all PCA9548’s channel 0 information */
-    current_vim_i2c_info.info[vim_index].PCA9548_1_ch0_i2c_bus_id = pca9548_1_ch0_i2c_bus_id;
+    current_vim_i2c_info.info[vim_index].PCA9548_1_ch0_i2c_bus_id = pca9548_1_ch0_i2c_bus_id;     
 
     /* Create I2C device node for pca9548#1 0x76 */
     sprintf(cmd, "echo pca9548 0x%02X > /sys/bus/i2c/devices/i2c-%d/new_device", PCA9548_1_ADDR, ((vim_id == VIM1_ID) ? VIM1_PCA9548_1_BUS_ID : VIM2_PCA9548_1_BUS_ID));
@@ -263,14 +263,14 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
     /* Create I2C device node for CPLD0 0x5c */
     sprintf(cmd, "echo VIM%d_CPLD0 0x%02X > /sys/bus/i2c/devices/i2c-%d/new_device", vim_id, VIM_CPLD0_ADDR, (pca9548_1_ch0_i2c_bus_id + VIM_PWR_CPLD_INDEX));
     system(cmd);
-
+    
 
     /* STEP2: Create I2C device node according to vim_board_id. */
-    /*
+    /* 
      * 1. Update PCA9548 usage status for pca9548#0 0x70, pca9548#3 0x71, pca9548#4 0x72.
      * 2. Record I2C bus id for PCA9548’s channel 0 information.
      */
-    count = 1;
+    count = 1; 
     for (i = 0; i < VIM_MAX_PCA_COUNT; i++)
     {
         if (vim_pca9548_usage_status[i] == NOT_USE)
@@ -282,11 +282,11 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
                     case PCA9548_2:
                         current_vim_i2c_info.info[vim_index].PCA9548_2_ch0_i2c_bus_id = pca9548_i2c_bus_id_array[i];
                         break;
-
+                        
                     case PCA9548_3:
                         current_vim_i2c_info.info[vim_index].PCA9548_3_ch0_i2c_bus_id = pca9548_i2c_bus_id_array[i];
                          break;
-
+                        
                     case PCA9548_4:
                         current_vim_i2c_info.info[vim_index].PCA9548_4_ch0_i2c_bus_id = pca9548_i2c_bus_id_array[i];
                         break;
@@ -300,7 +300,7 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
             }
         }
     }
-
+   
     switch (vim_board_id)
     {
         case VIM_8DE:
@@ -310,8 +310,8 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
             break;
 
         case VIM_16CE:
-            /* 0x76 CH0 --> 0x70,
-             * 0x76 CH1 --> 0x71
+            /* 0x76 CH0 --> 0x70, 
+             * 0x76 CH1 --> 0x71 
              */
             sprintf(cmd, "echo pca9548 0x%02X > /sys/bus/i2c/devices/i2c-%d/new_device", PCA9548_0_ADDR, pca9548_1_ch0_i2c_bus_id);
             system(cmd);
@@ -322,10 +322,10 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
 
         case VIM_24CE:
         case VIM_24YE:
-            /* 0x76 CH0 --> 0x70,
+            /* 0x76 CH0 --> 0x70, 
              * 0x76 CH1 --> 0x71,
-             * 0x76 CH2 --> 0x72,
-             * 0x76 CH4 --> 0x58 (CPLD1)
+             * 0x76 CH2 --> 0x72, 
+             * 0x76 CH4 --> 0x58 (CPLD1) 
              */
             sprintf(cmd, "echo pca9548 0x%02X > /sys/bus/i2c/devices/i2c-%d/new_device", PCA9548_0_ADDR, pca9548_1_ch0_i2c_bus_id);
             system(cmd);
@@ -335,7 +335,7 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
 
             sprintf(cmd, "echo pca9548 0x%02X > /sys/bus/i2c/devices/i2c-%d/new_device", PCA9548_4_ADDR, (pca9548_1_ch0_i2c_bus_id + PCA9548_4_INDEX));
             system(cmd);
-
+            
             sprintf(cmd, "echo VIM%d_CPLD1 0x%02X > /sys/bus/i2c/devices/i2c-%d/new_device", vim_id, VIM_CPLD1_ADDR, (pca9548_1_ch0_i2c_bus_id + VIM_PROT_CPLD_INDEX));
             system(cmd);
             break;
@@ -345,7 +345,7 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
             break;
     }
 
-
+    
     /* STEP3: Create optoe I2C device node according to vim_board_id */
     count = 0;
     for (i = 0; i < VIM_MAX_PCA_COUNT; i++)
@@ -361,12 +361,12 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
                     system(cmd);
                 }
             }
-            count += 1;
+            count += 1;  
         }
     }
 
     /* Debug: Print VIM pca9548 usage status */
-    AIM_SYSLOG_INFO("[SYSLOG_INFO]",
+    AIM_SYSLOG_INFO("[SYSLOG_INFO]", 
                     "[SYSLOG_INFO]",
                     "[SYSLOG_INFO] vim_pca9548_usage_status = [%d, %d, %d, %d, %d, %d, %d, %d])", \
                     vim_pca9548_usage_status[0], vim_pca9548_usage_status[1], \
@@ -381,7 +381,7 @@ int new_i2c_device_for_vim(int vim_id, int vim_board_id)
 int del_i2c_device_for_vim(int vim_id, int vim_board_id)
 {
 #if DEBUG_FLAG_SAMPLE
-    /*
+    /* 
      * Example only for this case: remove VIM 1 8DE, VIM 2 not present (Hard code: vim_id = 1(VIM 1), vim_board_id = 0(8DE))
      * Extreme can have your mechanism to remove VIM I2C tree
      */
@@ -399,14 +399,14 @@ int del_i2c_device_for_vim(int vim_id, int vim_board_id)
      *      0x50: I2c address for optoe I2C device
      *      i2c-66~i2c-73: I2C bus id is 66~73
      */
-    system("echo 0x50 > /sys/bus/i2c/devices/i2c-66/delete_device");
-    system("echo 0x50 > /sys/bus/i2c/devices/i2c-67/delete_device");
-    system("echo 0x50 > /sys/bus/i2c/devices/i2c-68/delete_device");
-    system("echo 0x50 > /sys/bus/i2c/devices/i2c-69/delete_device");
-    system("echo 0x50 > /sys/bus/i2c/devices/i2c-70/delete_device");
-    system("echo 0x50 > /sys/bus/i2c/devices/i2c-71/delete_device");
-    system("echo 0x50 > /sys/bus/i2c/devices/i2c-72/delete_device");
-    system("echo 0x50 > /sys/bus/i2c/devices/i2c-73/delete_device");
+    system("echo 0x50 > /sys/bus/i2c/devices/i2c-66/delete_device"); 
+    system("echo 0x50 > /sys/bus/i2c/devices/i2c-67/delete_device"); 
+    system("echo 0x50 > /sys/bus/i2c/devices/i2c-68/delete_device"); 
+    system("echo 0x50 > /sys/bus/i2c/devices/i2c-69/delete_device"); 
+    system("echo 0x50 > /sys/bus/i2c/devices/i2c-70/delete_device"); 
+    system("echo 0x50 > /sys/bus/i2c/devices/i2c-71/delete_device"); 
+    system("echo 0x50 > /sys/bus/i2c/devices/i2c-72/delete_device"); 
+    system("echo 0x50 > /sys/bus/i2c/devices/i2c-73/delete_device"); 
 
 
     /* STEP2: Delete I2C device node according to vim_board_id. */
@@ -422,14 +422,14 @@ int del_i2c_device_for_vim(int vim_id, int vim_board_id)
     /* I2c address reference to VIM I2C block diagram in VIM HW spec.
      * Delete I2C device node for CPLD 0x5c
      *      0x5c: I2c address for VIM 1 CPLD0
-     *      i2c-61: I2C bus id is 61
+     *      i2c-61: I2C bus id is 61 
      * Delete I2C device node for pca9548#1 0x76
      *      0x76: I2c address for pca9548#1
-     *      i2c-1: I2C bus id is 1
+     *      i2c-1: I2C bus id is 1 
      */
     system("echo 0x5c > /sys/bus/i2c/devices/i2c-61/delete_device");
     system("echo 0x76 > /sys/bus/i2c/devices/i2c-1/delete_device");
-
+    
 
     /* STEP4: Keep VIM I2C bus id for update VIM I2C tree db */
     current_vim_i2c_info.info[0].PCA9548_1_ch0_i2c_bus_id = PCA9548_NOT_USE;
@@ -461,15 +461,15 @@ int del_i2c_device_for_vim(int vim_id, int vim_board_id)
                     sprintf(cmd, "echo 0x%02X > /sys/bus/i2c/devices/i2c-%d/delete_device", VIM_SFP_EEPROM_ADDR, j);
                     system(cmd);
                 }
-            }
-            count += 1;
+            } 
+            count += 1; 
         }
     }
 
 
     /* STEP2: Delete I2C device node according to vim_board_id.  */
     /* Update PCA9548 usage status for pca9548#0 0x70, pca9548#3 0x71, pca9548#4 0x72. */
-    count = 0;
+    count = 0; 
     for (i = 0; i < VIM_MAX_PCA_COUNT; i++)
     {
         if (vim_pca9548_usage_status[i] == vim_index)
@@ -495,8 +495,8 @@ int del_i2c_device_for_vim(int vim_id, int vim_board_id)
             break;
 
         case VIM_16CE:
-            /* 0x76 CH0 --> 0x70,
-             * 0x76 CH1 --> 0x71
+            /* 0x76 CH0 --> 0x70, 
+             * 0x76 CH1 --> 0x71 
              */
             sprintf(cmd, "echo 0x%02X > /sys/bus/i2c/devices/i2c-%d/delete_device", PCA9548_0_ADDR, pca9548_1_ch0_i2c_bus_id);
             system(cmd);
@@ -507,10 +507,10 @@ int del_i2c_device_for_vim(int vim_id, int vim_board_id)
 
         case VIM_24CE:
         case VIM_24YE:
-            /* 0x76 CH0 --> 0x70,
+            /* 0x76 CH0 --> 0x70, 
              * 0x76 CH1 --> 0x71,
-             * 0x76 CH2 --> 0x72,
-             * 0x76 CH4 --> 0x58 (CPLD1)
+             * 0x76 CH2 --> 0x72, 
+             * 0x76 CH4 --> 0x58 (CPLD1) 
              */
             sprintf(cmd, "echo 0x%02X > /sys/bus/i2c/devices/i2c-%d/delete_device", PCA9548_0_ADDR, pca9548_1_ch0_i2c_bus_id);
             system(cmd);
@@ -523,13 +523,13 @@ int del_i2c_device_for_vim(int vim_id, int vim_board_id)
 
             sprintf(cmd, "echo 0x%02X > /sys/bus/i2c/devices/i2c-%d/delete_device", VIM_CPLD1_ADDR, pca9548_1_ch0_i2c_bus_id + VIM_PROT_CPLD_INDEX);
             system(cmd);
-            break;
+            break;    
 
         default:
             AIM_LOG_ERROR("VIM board id(%d) does not exist\r\n", vim_board_id);
             break;
     }
-
+    
     /* STEP3: Delete I2C device node for pca9548#1 0x76 and CPLD0 0x5c */
     /* Update PCA9548#1(0x76) usage status */
     for (i = 0; i < VIM_MAX_PCA_COUNT; i++)
@@ -540,7 +540,7 @@ int del_i2c_device_for_vim(int vim_id, int vim_board_id)
             break;
         }
     }
-
+    
     /* Delete PCA9548(0x76), CPLD0(0x5c) device on I2C tree */
     sprintf(cmd, "echo 0x%02X > /sys/bus/i2c/devices/i2c-%d/delete_device", VIM_CPLD0_ADDR, (pca9548_1_ch0_i2c_bus_id + VIM_PWR_CPLD_INDEX));
     system(cmd);
@@ -563,7 +563,7 @@ int del_i2c_device_for_vim(int vim_id, int vim_board_id)
     current_vim_i2c_info.info[vim_index].PCA9548_4_ch0_i2c_bus_id = PCA9548_NOT_USE;
 
     /* Debug: Print VIM pca9548 usage status */
-    AIM_SYSLOG_INFO("[SYSLOG_INFO]",
+    AIM_SYSLOG_INFO("[SYSLOG_INFO]", 
                     "[SYSLOG_INFO]",
                     "[SYSLOG_INFO] vim_pca9548_usage_status = [%d, %d, %d, %d, %d, %d, %d, %d]", \
                     vim_pca9548_usage_status[0], vim_pca9548_usage_status[1], \
@@ -583,8 +583,8 @@ int update_vim_i2c_tree_db(int vim_id, onlp_vim_i2c_info_t *current_vim_i2c_info
     int len;
     void *addr;
     char data[STORAGE_SIZE];
-
-    AIM_SYSLOG_INFO("[SYSLOG_INFO]",
+    
+    AIM_SYSLOG_INFO("[SYSLOG_INFO]", 
                     "[SYSLOG_INFO]",
                     "[SYSLOG_INFO] START update_vim_i2c_tree_db");
 
@@ -613,8 +613,8 @@ int update_vim_i2c_tree_db(int vim_id, onlp_vim_i2c_info_t *current_vim_i2c_info
 	}
 
     /* Organize data into strings */
-    sprintf(data, "%d %d %d %d %d %d %d %d", current_vim_i2c_info->info[VIM_1].PCA9548_1_ch0_i2c_bus_id,
-                                             current_vim_i2c_info->info[VIM_1].PCA9548_2_ch0_i2c_bus_id,
+    sprintf(data, "%d %d %d %d %d %d %d %d", current_vim_i2c_info->info[VIM_1].PCA9548_1_ch0_i2c_bus_id, 
+                                             current_vim_i2c_info->info[VIM_1].PCA9548_2_ch0_i2c_bus_id, 
                                              current_vim_i2c_info->info[VIM_1].PCA9548_3_ch0_i2c_bus_id,
                                              current_vim_i2c_info->info[VIM_1].PCA9548_4_ch0_i2c_bus_id,
                                              current_vim_i2c_info->info[VIM_2].PCA9548_1_ch0_i2c_bus_id,
@@ -626,11 +626,11 @@ int update_vim_i2c_tree_db(int vim_id, onlp_vim_i2c_info_t *current_vim_i2c_info
 	len = strlen(data) + 1;
 	memcpy(addr, data, len);
 
-    AIM_SYSLOG_INFO("[DEBUG]",
+    AIM_SYSLOG_INFO("[DEBUG]", 
                     "[DEBUG]",
                     "[update_vim_i2c_tree_db] Write to shared memory: addr--(%s)", addr);
-
-    AIM_SYSLOG_INFO("[DEBUG]",
+    
+    AIM_SYSLOG_INFO("[DEBUG]", 
                     "[DEBUG]",
                     "[update_vim_i2c_tree_db] Write to shared memory: data--(%s)", data);
 
@@ -651,11 +651,11 @@ int extreme_update_vim_i2c_tree_sample(int vim_id, int operation, int vim_board_
     int rv;
     char cmd[CMD_SIZE] = {0};
     int cpld_bus_id;
-
+    
     /*
-     * 1. When VIM is inserted or removed, this register call back function will be called with vim_id,
+     * 1. When VIM is inserted or removed, this register call back function will be called with vim_id, 
      *    VIM board id and insert/remove information
-     * 2. According to VIM id, VIM board id and inserted/removed information to update VIM I2C bus id
+     * 2. According to VIM id, VIM board id and inserted/removed information to update VIM I2C bus id 
      *    and rebuild VIM I2C tree
      */
     /* STEP1: Extreme can follow your design to update VIM I2C tree */
@@ -665,12 +665,12 @@ int extreme_update_vim_i2c_tree_sample(int vim_id, int operation, int vim_board_
             /* Create VIM I2C tree according to vim_id and vim_board_id */
             rv = new_i2c_device_for_vim(vim_id, vim_board_id);
             break;
-
+        
         case REMOVE:
             /* Delete VIM I2C tree according to vim_id and vim_board_id */
             rv = del_i2c_device_for_vim(vim_id, vim_board_id);
             break;
-
+        
         default:
             rv = -1;
             AIM_LOG_ERROR("The operation is unknown.\r\n");
@@ -685,10 +685,10 @@ int extreme_update_vim_i2c_tree_sample(int vim_id, int operation, int vim_board_
     }
     update_vim_i2c_tree_db(vim_id, &current_vim_i2c_info);
 
-
+    
     cpld_bus_id = onlp_vimi_cpld_bus_id_get(vim_id, VIM_PORT_CPLD_ID);
     sprintf(cmd, "echo %d > /sys/bus/i2c/devices/%d-0058/vim_%d_board_id", vim_board_id, cpld_bus_id, vim_id);
-    AIM_SYSLOG_INFO("[SYSLOG_INFO]",
+    AIM_SYSLOG_INFO("[SYSLOG_INFO]", 
                     "[SYSLOG_INFO]",
                     "[SYSLOG_INFO] Set VIM %d Board ID to %d. cmd: %s",vim_id, vim_board_id, cmd);
     system(cmd);
@@ -741,16 +741,16 @@ onlp_vimi_init(void)
 }
 
 
-/*
- * -------------------------------------------
+/*  
+ * ------------------------------------------- 
  * |                ONLPI API                |
- * -------------------------------------------
+ * ------------------------------------------- 
  */
 int
 onlp_vimi_present_get(int vim_id)
 {
     int present;
-    if (onlp_file_read_int(&present, VIM_PRESENT_PATH, vim_id))
+    if (onlp_file_read_int(&present, VIM_PRESENT_PATH, vim_id)) 
     {
         AIM_LOG_ERROR("Unable to read present status from VIM(%d)\r\n", vim_id);
         return ONLP_STATUS_E_INTERNAL;
@@ -770,7 +770,7 @@ onlp_vimi_board_id_get(int vim_id)
     vim_present = onlp_vimi_present_get(vim_id);
     if (vim_present == VIM_PRESENT)
     {
-        if (onlp_file_read_int(&vim_board_id, VIM_BOARD_ID_PATH, vim_id))
+        if (onlp_file_read_int(&vim_board_id, VIM_BOARD_ID_PATH, vim_id)) 
         {
             AIM_LOG_ERROR("Unable to read vim_board_id status from VIM(%d)\r\n", vim_id);
             return ONLP_STATUS_E_INTERNAL;
@@ -793,7 +793,7 @@ onlp_vimi_cpld_bus_id_get(int vim_id, int cpld_id)
     void *addr;
     int count = 0;
     int res;
-
+        
 
     /* Get shared memory file descriptor (not a file) */
     fd = shm_open(STORAGE_ID, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
@@ -811,7 +811,7 @@ onlp_vimi_cpld_bus_id_get(int vim_id, int cpld_id)
         return 30;
     }
 
-    /* Copy memory from addr to data */
+    /* Copy memory from addr to data */ 
     memcpy(data, addr, STORAGE_SIZE);
 
     /* Data processing */
@@ -823,13 +823,13 @@ onlp_vimi_cpld_bus_id_get(int vim_id, int cpld_id)
         count ++;
     }
 
-
+    
     while((split_date=strtok(NULL, " ")))
-    {
+    { 
         /* Use the first parameter as NULL to extract a substring */
         pca9548_ch0_bus_id_list[count] = atoi(split_date);
         count ++;
-    }
+    }    
 
     /* Get VIM CPLD I2C bus id */
     switch (vim_id)
@@ -855,7 +855,7 @@ onlp_vimi_cpld_bus_id_get(int vim_id, int cpld_id)
             break;
     }
 
-    /* mmap cleanup */
+    /* mmap cleanup */ 
 	res = munmap(addr, STORAGE_SIZE);
 	if (res == -1)
 	{
@@ -882,7 +882,7 @@ onlp_vimi_optoe_start_port_get(int vim_id)
             case VIM1_ID:
                 start_port = VIM_START_INDEX;
                 break;
-
+            
             case VIM2_ID:
                 vim1_board_id = onlp_vimi_board_id_get(VIM1_ID);
                 start_port = VIM_START_INDEX + vim_struct[vim1_board_id].port_count;
@@ -900,7 +900,7 @@ onlp_vimi_optoe_start_port_get(int vim_id)
                 /* If VIM not present, start_port is -1 */
                 start_port = VIM_START_INDEX;
                 break;
-
+            
             case VIM2_ID:
                 start_port = -1;
                 break;
@@ -917,7 +917,7 @@ onlp_vimi_optoe_start_port_get(int vim_id)
                 /* If VIM not present, start_port is -1 */
                 start_port = -1;
                 break;
-
+            
             case VIM2_ID:
                 start_port = VIM_START_INDEX;
                 break;
@@ -1028,7 +1028,7 @@ onlp_vimi_get_list_index(int vim_id, int index)
     return list_index;
 }
 
-int *
+int * 
 onlp_vimi_get_optoe_bus_id_list(int vim_id)
 {
     int i, j;
@@ -1039,7 +1039,7 @@ onlp_vimi_get_optoe_bus_id_list(int vim_id)
     char data[STORAGE_SIZE];
     void *addr;
     int res;
-
+        
 
     /* Get shared memory file descriptor (not a file) */
     fd = shm_open(STORAGE_ID, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
@@ -1055,7 +1055,7 @@ onlp_vimi_get_optoe_bus_id_list(int vim_id)
         AIM_LOG_ERROR("[onlp_vimi_get_optoe_bus_id_list] mmap failed\r\n");
     }
 
-    /* Copy memory from addr to data */
+    /* Copy memory from addr to data */ 
     memcpy(data, addr, STORAGE_SIZE);
 
     /* Data processing */
@@ -1068,11 +1068,11 @@ onlp_vimi_get_optoe_bus_id_list(int vim_id)
     }
 
     while((split_date=strtok(NULL, " ")))
-    {
+    { 
         /* Use the first parameter as NULL to extract a substring */
         pca9548_ch0_bus_id_list[count] = atoi(split_date);
         count ++;
-    }
+    }    
 
     /* Get optoe_bus_id list */
     count = 0;
@@ -1092,7 +1092,7 @@ onlp_vimi_get_optoe_bus_id_list(int vim_id)
                 }
             }
             break;
-
+        
         case VIM2_ID:
             /* pca9548_ch0_bus_id_list index 4~7 for VIM 2, optoe_bus_id_list need index 5~7(0x70, 0x71, 0x72) */
             for (i = 5; i < 8; i++)
@@ -1107,7 +1107,7 @@ onlp_vimi_get_optoe_bus_id_list(int vim_id)
                 }
             }
             break;
-
+        
         default:
             AIM_LOG_ERROR("[onlp_vimi_get_optoe_bus_id_list] vim id is out of range\r\n");
     }
@@ -1148,24 +1148,24 @@ onlp_vimi_eeprom_read(int vim_id, uint8_t data[256])
      */
     int size = 0;
     int vim_present = 0;
-
+    
     vim_present = onlp_vimi_present_get(vim_id);
 
-    if(vim_present == VIM_NOT_PRESENT)
+    if(vim_present == VIM_NOT_PRESENT) 
     {
         AIM_LOG_ERROR("vim(%d) not present\r\n", vim_id);
         return ONLP_STATUS_OK;
     }
 
-    if(onlp_file_read(data, 256, &size, VIM_EEPROM_PATH,
-                	vim_id) != ONLP_STATUS_OK)
+    if(onlp_file_read(data, 256, &size, VIM_EEPROM_PATH, 
+                	vim_id) != ONLP_STATUS_OK) 
     {
         AIM_LOG_ERROR("Unable to read eeprom from vim(%d)\r\n", vim_id);
         return ONLP_STATUS_E_INTERNAL;
     }
 
 
-    if(size != 256)
+    if(size != 256) 
     {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -1192,7 +1192,7 @@ onlp_vim_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
     bus = optoe_bus_id[port-start_port];
     ret = onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
     DIAG_PRINT("%s, port:%d, devaddr:%d, addr:%d, ret:%d(0x%02X)", __FUNCTION__, port, devaddr, addr, ret, ret);
-    return ret;
+    return ret; 
 }
 
 int
@@ -1266,21 +1266,21 @@ onlp_vim_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value
 int
 onlp_vim_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
-    int rv;
+    int rv;  
     int supported = 0;
     int cpld_bus_id, list_index;
     int vim_id, board_id;
     char format[128];
 
-    if ((onlp_sfpi_control_supported(port, control, &supported) == ONLP_STATUS_OK) &&
+    if ((onlp_sfpi_control_supported(port, control, &supported) == ONLP_STATUS_OK) && 
         (supported == 0))
     {
         AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
         return ONLP_STATUS_E_UNSUPPORTED;
     }
-
+    
     DIAG_PRINT("%s, port:%d, control:%d(%s), value:0x%X", __FUNCTION__, port, control, vim_sfp_control_to_str(control), value);
-
+    
     vim_id = onlp_vimi_index_map_to_vim_id(port);
     if (vim_id == ONLP_STATUS_E_INTERNAL)
     {
@@ -1303,19 +1303,19 @@ onlp_vim_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             case ONLP_SFP_CONTROL_LP_MODE:
                 strcpy(format, VIM_OPTOE_LP_MODE_PORT_CPLD_PATH);
                 break;
-            case ONLP_SFP_CONTROL_TX_DISABLE:
+            case ONLP_SFP_CONTROL_TX_DISABLE:			
                 strcpy(format, VIM_OPTOE_TX_DIS_PORT_CPLD_PATH);
                 break;
             default:
                 rv = ONLP_STATUS_E_UNSUPPORTED;
                 break;
         }
-        if (onlp_file_write_int(value, format, cpld_bus_id, list_index) < 0)
+        if (onlp_file_write_int(value, format, cpld_bus_id, list_index) < 0) 
         {
             AIM_LOG_ERROR("Unable to set reset status to port(%d). Path: %s\r\n", port, format);
             rv = ONLP_STATUS_E_INTERNAL;
         }
-        else
+        else 
         {
             rv = ONLP_STATUS_OK;
         }
@@ -1333,8 +1333,8 @@ onlp_vim_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             case ONLP_SFP_CONTROL_LP_MODE:
                 strcpy(format, VIM_OPTOE_LP_MODE_PWR_CPLD_PATH);
                 break;
-            case ONLP_SFP_CONTROL_TX_DISABLE:
-                strcpy(format, VIM_OPTOE_TX_DIS_PWR_CPLD_PATH);
+            case ONLP_SFP_CONTROL_TX_DISABLE:	
+                strcpy(format, VIM_OPTOE_TX_DIS_PWR_CPLD_PATH);		
                 break;
 
             default:
@@ -1342,12 +1342,12 @@ onlp_vim_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 break;
         }
 
-        if (onlp_file_write_int(value, format, cpld_bus_id, list_index) < 0)
+        if (onlp_file_write_int(value, format, cpld_bus_id, list_index) < 0) 
         {
             AIM_LOG_ERROR("Unable to set reset status to port(%d). Path: %s\r\n", port, format);
             rv = ONLP_STATUS_E_INTERNAL;
         }
-        else
+        else 
         {
             rv = ONLP_STATUS_OK;
         }
@@ -1374,14 +1374,14 @@ onlp_vim_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         return ONLP_STATUS_E_PARAM;
     }
 
-    if ((onlp_sfpi_control_supported(port, control, &supported) == ONLP_STATUS_OK) &&
+    if ((onlp_sfpi_control_supported(port, control, &supported) == ONLP_STATUS_OK) && 
         (supported == 0))
     {
         AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
         return ONLP_STATUS_E_UNSUPPORTED;
     }
     *value = 0;
-
+    
     /* ONLP_SFP_CONTROL_RX_LOS , ONLP_SFP_CONTROL_TX_FAULT are read-only. */
     vim_id = onlp_vimi_index_map_to_vim_id(port);
     if (vim_id == ONLP_STATUS_E_INTERNAL)
@@ -1389,7 +1389,7 @@ onlp_vim_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         DIAG_PRINT("%s, port:%d out of range.", __FUNCTION__, port);
         return ONLP_STATUS_E_INVALID;
     }
-
+    
     list_index = onlp_vimi_get_list_index(vim_id, port);
     board_id = onlp_vimi_board_id_get(vim_id);
 
@@ -1406,13 +1406,13 @@ onlp_vim_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
             case ONLP_SFP_CONTROL_LP_MODE:
                 strcpy(format, VIM_OPTOE_LP_MODE_PORT_CPLD_PATH);
                 break;
-            case ONLP_SFP_CONTROL_TX_DISABLE:
+            case ONLP_SFP_CONTROL_TX_DISABLE:			
                 strcpy(format, VIM_OPTOE_TX_DIS_PORT_CPLD_PATH);
                 break;
             case ONLP_SFP_CONTROL_RX_LOS:
                 strcpy(format, VIM_OPTOE_RX_LOSS_PORT_CPLD_PATH);
                 break;
-            case ONLP_SFP_CONTROL_TX_FAULT:
+            case ONLP_SFP_CONTROL_TX_FAULT:	
                 strcpy(format, VIM_OPTOE_TX_FAULT_PORT_CPLD_PATH);
                 break;
 
@@ -1421,7 +1421,7 @@ onlp_vim_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                 break;
         }
 
-        if (onlp_file_read_int(&val, format, cpld_bus_id, list_index) < 0)
+        if (onlp_file_read_int(&val, format, cpld_bus_id, list_index) < 0) 
         {
             AIM_LOG_ERROR("Unable to read %s status from port(%d). path: %s\r\n", vim_sfp_control_to_str(control), port, format);
             rv = ONLP_STATUS_E_INTERNAL;
@@ -1444,13 +1444,13 @@ onlp_vim_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
             case ONLP_SFP_CONTROL_LP_MODE:
                 strcpy(format, VIM_OPTOE_LP_MODE_PWR_CPLD_PATH);
                 break;
-            case ONLP_SFP_CONTROL_TX_DISABLE:
+            case ONLP_SFP_CONTROL_TX_DISABLE:			
                 strcpy(format, VIM_OPTOE_TX_DIS_PWR_CPLD_PATH);
                 break;
             case ONLP_SFP_CONTROL_RX_LOS:
                 strcpy(format, VIM_OPTOE_RX_LOSS_PWR_CPLD_PATH);
                 break;
-            case ONLP_SFP_CONTROL_TX_FAULT:
+            case ONLP_SFP_CONTROL_TX_FAULT:	
                 strcpy(format, VIM_OPTOE_TX_FAULT_PWR_CPLD_PATH);
                 break;
 
@@ -1459,7 +1459,7 @@ onlp_vim_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                 break;
         }
 
-        if (onlp_file_read_int(&val, format, cpld_bus_id, list_index) < 0)
+        if (onlp_file_read_int(&val, format, cpld_bus_id, list_index) < 0) 
         {
             AIM_LOG_ERROR("Unable to read %s status from port(%d). path: %s\r\n", vim_sfp_control_to_str(control), port, format);
             rv = ONLP_STATUS_E_INTERNAL;
@@ -1485,21 +1485,21 @@ onlp_vim_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 int
 onlp_vim_sfpi_control_set_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int value)
 {
-    int rv;
+    int rv;  
     int supported = 0;
     int cpld_bus_id, list_index;
     int vim_id, board_id;
     char format[128];
 
-    if ((onlp_sfpi_control_supported_for_b_attr(port, control, &supported) == ONLP_STATUS_OK) &&
+    if ((onlp_sfpi_control_supported_for_b_attr(port, control, &supported) == ONLP_STATUS_OK) && 
         (supported == 0))
     {
         AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
         return ONLP_STATUS_E_UNSUPPORTED;
     }
-
+    
     DIAG_PRINT("%s, port:%d, control:%d(%s), value:0x%X", __FUNCTION__, port, control, vim_sfp_control_for_b_attr_to_str(control), value);
-
+    
     vim_id = onlp_vimi_index_map_to_vim_id(port);
     if (vim_id == ONLP_STATUS_E_INTERNAL)
     {
@@ -1516,19 +1516,19 @@ onlp_vim_sfpi_control_set_for_b_attr(int port, onlp_sfp_control_for_b_attr_t con
 
         switch(control)
         {
-            case ONLP_SFP_CONTROL_TX_DISABLE_B:
+            case ONLP_SFP_CONTROL_TX_DISABLE_B:			
                 strcpy(format, VIM_OPTOE_TX_DIS_B_PORT_CPLD_PATH);
                 break;
             default:
                 rv = ONLP_STATUS_E_UNSUPPORTED;
                 break;
         }
-        if (onlp_file_write_int(value, format, cpld_bus_id, list_index) < 0)
+        if (onlp_file_write_int(value, format, cpld_bus_id, list_index) < 0) 
         {
             AIM_LOG_ERROR("Unable to set reset status to port(%d). Path: %s\r\n", port, format);
             rv = ONLP_STATUS_E_INTERNAL;
         }
-        else
+        else 
         {
             rv = ONLP_STATUS_OK;
         }
@@ -1540,8 +1540,8 @@ onlp_vim_sfpi_control_set_for_b_attr(int port, onlp_sfp_control_for_b_attr_t con
 
         switch(control)
         {
-            case ONLP_SFP_CONTROL_TX_DISABLE_B:
-                strcpy(format, VIM_OPTOE_TX_DIS_B_PWR_CPLD_PATH);
+            case ONLP_SFP_CONTROL_TX_DISABLE_B:	
+                strcpy(format, VIM_OPTOE_TX_DIS_B_PWR_CPLD_PATH);		
                 break;
 
             default:
@@ -1549,12 +1549,12 @@ onlp_vim_sfpi_control_set_for_b_attr(int port, onlp_sfp_control_for_b_attr_t con
                 break;
         }
 
-        if (onlp_file_write_int(value, format, cpld_bus_id, list_index) < 0)
+        if (onlp_file_write_int(value, format, cpld_bus_id, list_index) < 0) 
         {
             AIM_LOG_ERROR("Unable to set reset status to port(%d). Path: %s\r\n", port, format);
             rv = ONLP_STATUS_E_INTERNAL;
         }
-        else
+        else 
         {
             rv = ONLP_STATUS_OK;
         }
@@ -1586,14 +1586,14 @@ onlp_vim_sfpi_control_get_for_b_attr(int port, onlp_sfp_control_for_b_attr_t con
         return ONLP_STATUS_E_PARAM;
     }
 
-    if ((onlp_sfpi_control_supported_for_b_attr(port, control, &supported) == ONLP_STATUS_OK) &&
+    if ((onlp_sfpi_control_supported_for_b_attr(port, control, &supported) == ONLP_STATUS_OK) && 
         (supported == 0))
     {
         AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
         return ONLP_STATUS_E_UNSUPPORTED;
     }
     *value = 0;
-
+    
     /* ONLP_SFP_CONTROL_RX_LOS , ONLP_SFP_CONTROL_TX_FAULT are read-only. */
     vim_id = onlp_vimi_index_map_to_vim_id(port);
     if (vim_id == ONLP_STATUS_E_INTERNAL)
@@ -1601,7 +1601,7 @@ onlp_vim_sfpi_control_get_for_b_attr(int port, onlp_sfp_control_for_b_attr_t con
         DIAG_PRINT("%s, port:%d out of range.", __FUNCTION__, port);
         return ONLP_STATUS_E_INVALID;
     }
-
+    
     list_index = onlp_vimi_get_list_index(vim_id, port);
     board_id = onlp_vimi_board_id_get(vim_id);
 
@@ -1612,13 +1612,13 @@ onlp_vim_sfpi_control_get_for_b_attr(int port, onlp_sfp_control_for_b_attr_t con
 
         switch(control)
         {
-            case ONLP_SFP_CONTROL_TX_DISABLE_B:
+            case ONLP_SFP_CONTROL_TX_DISABLE_B:			
                 strcpy(format, VIM_OPTOE_TX_DIS_B_PORT_CPLD_PATH);
                 break;
             case ONLP_SFP_CONTROL_RX_LOS_B:
                 strcpy(format, VIM_OPTOE_RX_LOSS_B_PORT_CPLD_PATH);
                 break;
-            case ONLP_SFP_CONTROL_TX_FAULT_B:
+            case ONLP_SFP_CONTROL_TX_FAULT_B:	
                 strcpy(format, VIM_OPTOE_TX_FAULT_B_PORT_CPLD_PATH);
                 break;
 
@@ -1627,7 +1627,7 @@ onlp_vim_sfpi_control_get_for_b_attr(int port, onlp_sfp_control_for_b_attr_t con
                 break;
         }
 
-        if (onlp_file_read_int(&val, format, cpld_bus_id, list_index) < 0)
+        if (onlp_file_read_int(&val, format, cpld_bus_id, list_index) < 0) 
         {
             AIM_LOG_ERROR("Unable to read %s status from port(%d). path: %s\r\n", vim_sfp_control_for_b_attr_to_str(control), port, format);
             rv = ONLP_STATUS_E_INTERNAL;
@@ -1644,13 +1644,13 @@ onlp_vim_sfpi_control_get_for_b_attr(int port, onlp_sfp_control_for_b_attr_t con
 
         switch(control)
         {
-            case ONLP_SFP_CONTROL_TX_DISABLE_B:
+            case ONLP_SFP_CONTROL_TX_DISABLE_B:			
                 strcpy(format, VIM_OPTOE_TX_DIS_B_PWR_CPLD_PATH);
                 break;
             case ONLP_SFP_CONTROL_RX_LOS_B:
                 strcpy(format, VIM_OPTOE_RX_LOSS_B_PWR_CPLD_PATH);
                 break;
-            case ONLP_SFP_CONTROL_TX_FAULT_B:
+            case ONLP_SFP_CONTROL_TX_FAULT_B:	
                 strcpy(format, VIM_OPTOE_TX_FAULT_B_PWR_CPLD_PATH);
                 break;
 
@@ -1659,7 +1659,7 @@ onlp_vim_sfpi_control_get_for_b_attr(int port, onlp_sfp_control_for_b_attr_t con
                 break;
         }
 
-        if (onlp_file_read_int(&val, format, cpld_bus_id, list_index) < 0)
+        if (onlp_file_read_int(&val, format, cpld_bus_id, list_index) < 0) 
         {
             AIM_LOG_ERROR("Unable to read %s status from port(%d). path: %s\r\n", vim_sfp_control_for_b_attr_to_str(control), port, format);
             rv = ONLP_STATUS_E_INTERNAL;
@@ -1686,7 +1686,7 @@ onlp_vim_sfpi_control_get_for_b_attr(int port, onlp_sfp_control_for_b_attr_t con
 }
 
 /* Private function based on VIM 24CE (sfp) */
-int
+int 
 onlp_sfpi_control_supported_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int *supported)
 {
     int vim_end_index = onlp_vimi_get_vim_end_index();
@@ -1706,7 +1706,7 @@ onlp_sfpi_control_supported_for_b_attr(int port, onlp_sfp_control_for_b_attr_t c
     {
         return ONLP_STATUS_E_INVALID;
     }
-
+    
 
     if (supported == NULL)
     {
@@ -1733,7 +1733,7 @@ onlp_sfpi_control_supported_for_b_attr(int port, onlp_sfp_control_for_b_attr_t c
                     /* SFP-DD and SFP28 (SFF-8472) */
                     *supported = 1;
                     break;
-                default:
+                default:   
                     break;
             }
         }
@@ -1745,7 +1745,7 @@ onlp_sfpi_control_supported_for_b_attr(int port, onlp_sfp_control_for_b_attr_t c
     }
 
     DIAG_PRINT("%s, port:%d, control:%d(%s), supported:%d", __FUNCTION__, port, control, vim_sfp_control_for_b_attr_to_str(control), *supported);
-
+    
     return ONLP_STATUS_OK;
 }
 
@@ -1754,24 +1754,24 @@ onlp_sfpi_control_supported_for_b_attr(int port, onlp_sfp_control_for_b_attr_t c
 int
 onlp_sfpi_control_set_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control, int value)
 {
-    int rv;
+    int rv;  
     int supported = 0;
     int vim_end_index = onlp_vimi_get_vim_end_index();
 
-    if ((onlp_sfpi_control_supported_for_b_attr(port, control, &supported) == ONLP_STATUS_OK) &&
+    if ((onlp_sfpi_control_supported_for_b_attr(port, control, &supported) == ONLP_STATUS_OK) && 
         (supported == 0))
     {
         AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
         return ONLP_STATUS_E_UNSUPPORTED;
     }
-
+    
     DIAG_PRINT("%s, port:%d, control:%d(%s), value:0x%X", __FUNCTION__, port, control, vim_sfp_control_for_b_attr_to_str(control), value);
-
+    
     /* ONLP_SFP_CONTROL_RESET: write-only. */
     switch(control)
     {
         case ONLP_SFP_CONTROL_TX_DISABLE_B:
-        {
+        {			
             if(IS_VIM_PORT(port, vim_end_index))
             {
                 rv = onlp_vim_sfpi_control_set_for_b_attr(port, control, value);
@@ -1811,18 +1811,18 @@ onlp_sfpi_control_get_for_b_attr(int port, onlp_sfp_control_for_b_attr_t control
         return ONLP_STATUS_E_PARAM;
     }
 
-    if ((onlp_sfpi_control_supported_for_b_attr(port, control, &supported) == ONLP_STATUS_OK) &&
+    if ((onlp_sfpi_control_supported_for_b_attr(port, control, &supported) == ONLP_STATUS_OK) && 
         (supported == 0))
     {
         AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ONLP_STATUS_E_UNSUPPORTED);
         return ONLP_STATUS_E_UNSUPPORTED;
     }
     *value = 0;
-
+    
     /* ONLP_SFP_CONTROL_RX_LOS , ONLP_SFP_CONTROL_TX_FAULT are read-only. */
     switch(control)
     {
-        case ONLP_SFP_CONTROL_RX_LOS_B:
+        case ONLP_SFP_CONTROL_RX_LOS_B: 
         case ONLP_SFP_CONTROL_TX_FAULT_B:
         case ONLP_SFP_CONTROL_TX_DISABLE_B:
         {
@@ -1856,7 +1856,7 @@ onlp_vimi_power_good_get(int vim_id)
 {
     int vim_power_good = -1;
 
-    if (onlp_file_read_int(&vim_power_good, VIM_POWER_GOOD_PATH, vim_id) < 0)
+    if (onlp_file_read_int(&vim_power_good, VIM_POWER_GOOD_PATH, vim_id) < 0) 
     {
         AIM_LOG_ERROR("Get vim power good failed\r\n");
         return ONLP_STATUS_E_INTERNAL;
@@ -1871,7 +1871,7 @@ onlp_vimi_power_control(int vim_power_operation, int vim_id)
     int rv = 0;
     int vim_power_good = -1;
     vim_power_good = onlp_vimi_power_good_get(vim_id);
-
+    
     /* VIM power on */
     if ((vim_power_good == VIM_POWER_FAIL) && (vim_power_operation == ON))
     {
@@ -1888,7 +1888,7 @@ onlp_vimi_power_control(int vim_power_operation, int vim_id)
         }
 
         /*  Enable VIM's MP5990 */
-        if (onlp_file_write_int(VIM_PWR_CTRL_ENA_MP5990, VIM_POWER_CONTROL_PATH, vim_id) < 0)
+        if (onlp_file_write_int(VIM_PWR_CTRL_ENA_MP5990, VIM_POWER_CONTROL_PATH, vim_id) < 0) 
         {
             AIM_LOG_ERROR("Enable VIM%d's MP5990 failed\r\n", vim_id);
             return ONLP_STATUS_E_INTERNAL;
@@ -1898,7 +1898,7 @@ onlp_vimi_power_control(int vim_power_operation, int vim_id)
         usleep(50000);
 
         /* Enable VIM's DCDC power */
-        if (onlp_file_write_int(VIM_PWR_CTRL_ENA_DCDC, VIM_POWER_CONTROL_PATH, vim_id) < 0)
+        if (onlp_file_write_int(VIM_PWR_CTRL_ENA_DCDC, VIM_POWER_CONTROL_PATH, vim_id) < 0) 
         {
             AIM_LOG_ERROR("Enable VIM%d's DCDC power failed\r\n", vim_id);
             return ONLP_STATUS_E_INTERNAL;
@@ -1911,13 +1911,13 @@ onlp_vimi_power_control(int vim_power_operation, int vim_id)
     if ((vim_power_good == VIM_POWER_GOOD) && (vim_power_operation == OFF))
     {
         /* Disable VIM1's MP5990 and DCDC */
-        if (onlp_file_write_int(VIM_PWR_CTRL_DIS_PWR, VIM_POWER_CONTROL_PATH, vim_id) < 0)
+        if (onlp_file_write_int(VIM_PWR_CTRL_DIS_PWR, VIM_POWER_CONTROL_PATH, vim_id) < 0) 
         {
             AIM_LOG_ERROR("Disable VIM%d's MP5990 and DCDC power failed\r\n", vim_id);
             return ONLP_STATUS_E_INTERNAL;
         }
 
-        return ONLP_STATUS_OK;
+        return ONLP_STATUS_OK; 
     }
 
     if ( !(vim_power_operation == ON || vim_power_operation == OFF))
